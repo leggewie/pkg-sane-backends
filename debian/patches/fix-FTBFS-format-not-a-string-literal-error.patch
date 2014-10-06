@@ -1,0 +1,28 @@
+From: Markus Koschany <apo@gambaru.de>
+Date: Thu, 27 Jun 2013 12:12:40 +0200
+Subject: fix FTBFS format not a string literal error
+
+---
+ frontend/scanimage.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/frontend/scanimage.c
++++ b/frontend/scanimage.c
+@@ -1894,7 +1894,7 @@
+ 				printf (start, int_arg);
+ 				break;
+ 			      case 0:
+-				printf (start);
++				printf ("%s", start);
+ 				break;
+ 			      }
+ 			    *percent = cc;
+@@ -1908,7 +1908,7 @@
+ 			  }
+ 		      }
+ 		    if (*start)
+-		      printf (start);
++		      printf ("%s", start);
+ 		  }
+ 	      }
+ 	    if (i == 0 && ch != 'f')

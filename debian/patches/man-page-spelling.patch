@@ -1,0 +1,218 @@
+Description:
+ Correction of some spelling/grammatical errors and miscellany in man pages.
+Author: Mark Buda <hermit@acm.org>
+
+--- a/doc/sane-cardscan.man
++++ b/doc/sane-cardscan.man
+@@ -53,7 +53,7 @@
+ .PP
+ "lines_per_block 16" (or other number from 1 to 32)
+ .RS
+-Controls the number of lines of image data which will be aquired in each pass.
++Controls the number of lines of image data which will be acquired in each pass.
+ Older scanners will require this number set lower, often 1.
+ .RE
+ .PP
+--- a/doc/sane-coolscan.man
++++ b/doc/sane-coolscan.man
+@@ -39,7 +39,7 @@
+ 
+ Some SCSI-adapters and low-level SCSI drivers do not work correctly with this backend and the
+ Coolscan scanners. These systems hang when the autofocus command is send to the Scanner.
+-To see a list of which card/driver combinations work or dont work have a look at:
++To see a list of which card/driver combinations work or don't work have a look at:
+ http://andreas.rick.free.fr/sane/autofocus.html.
+ 
+ 
+--- a/doc/sane-epson.man
++++ b/doc/sane-epson.man
+@@ -91,7 +91,7 @@
+ 
+ The 
+ .I \-\-dropout
+-switch selects the so called dropout color. Vald options are None,
++switch selects the so called dropout color. Valid options are None,
+ Red, Green and Blue. The default is None. The dropout color is used for
+ monochrome scanning and selects the color that is not scanned. This can
+ be used to e.g. scan an original with a colored background.
+@@ -269,7 +269,7 @@
+ Only a value of 2 is supported.
+ .TP
+ .B SANE_EPSON_CMD_LVL
+-This allows to override the function or command level that the backend 
++This allows one to override the function or command level that the backend
+ uses to communicate with the scanner. The function level a scanner
+ supports is determined during the initialization of the device. If
+ the backend does not recognize the function level reported by the 
+--- a/doc/sane-epson2.man
++++ b/doc/sane-epson2.man
+@@ -137,7 +137,7 @@
+ 
+ The 
+ .I \-\-dropout
+-switch selects the so called dropout color. Vald options are None,
++switch selects the so called dropout color. Valid options are None,
+ Red, Green and Blue. The default is None. The dropout color is used for
+ monochrome scanning and selects the color that is not scanned. This can
+ be used to e.g. scan an original with a colored background.
+@@ -323,7 +323,7 @@
+ Smaller levels reduce verbosity.
+ .TP
+ .B SANE_EPSON2_CMD_LVL
+-This allows to override the function or command level that the backend 
++This allows one to override the function or command level that the backend
+ uses to communicate with the scanner. The function level a scanner
+ supports is determined during the initialization of the device. If
+ the backend does not recognize the function level reported by the 
+--- a/doc/sane-genesys.man
++++ b/doc/sane-genesys.man
+@@ -48,7 +48,7 @@
+ .SH "CALIBRATION"
+ To give correct image quality, sheet fed scanners need to be calibrated using the
+ calibration sheet sold with the scanner. To do calibration, you must insert this target
+-in the feeder then start calibration either by passing the --calibrate option to scanimage
++in the feeder then start calibration either by passing the \-\-calibrate option to scanimage
+ or by clicking on the available 'calibrate' button in the 'advanced options' in a graphical
+ frontend. The result of the calibration is stored in a file in the home directory of the user doing it.
+ If you plug the scanner in another machine or use it with another account, calibration
+@@ -69,13 +69,13 @@
+ 
+ .B \-\-brightness value
+ .RS
+-	-100..100 (in steps of 1). Set the brightness enhancement. 0 for no enhancement, negative
++	\-100..100 (in steps of 1). Set the brightness enhancement. 0 for no enhancement, negative
+ values to decrease brigthness, and positive values to increase it.
+ .RE
+ 
+ .B \-\-contrast value
+ .RS
+-	-100..100 (in steps of 1). Set the contrast enhancement. 0 for no enhancement, negative
++	\-100..100 (in steps of 1). Set the contrast enhancement. 0 for no enhancement, negative
+ values to decrease contrast, and positive values to increase it.
+ .RE
+ 
+@@ -295,7 +295,7 @@
+ Powersaving isn't implemented for gl646 based scanner. Dynamic (emulated from gray data and with dithering) isn't enabled for gl646 scanners. Hardware lineart is limited up to 600 dpi for gl847 based scanners, due to the way image sensors are built.
+ .br
+ .TP
+-This backend will be much slower if not using libusb-1.0. So be sure that sane-backends is built with the --enable-libusb_1_0 option.
++This backend will be much slower if not using libusb\-1.0. So be sure that sane\-backends is built with the \-\-enable-libusb_1_0 option.
+ .br
+ 
+ .SH "BUGS"
+--- a/doc/sane-gt68xx.man
++++ b/doc/sane-gt68xx.man
+@@ -117,7 +117,7 @@
+ .PP
+ The
+ .B afe
+-option allows to set custom offset and gain values for the Analog FrontEnd of
++option allows one to set custom offset and gain values for the Analog FrontEnd of
+ the scanner. This option can be either used to select the AFE values if
+ automatic coarse calibration is disabled, or to make automatic coarse
+ calibration faster. For the latter usage, enable debug level 3 (see below),
+--- a/doc/sane-pixma.man
++++ b/doc/sane-pixma.man
+@@ -136,7 +136,7 @@
+ \#.B experimental
+ options for button handling, i.e. the options might change in the future.
+ .br
+-The button status can be polled i.e. with 'scanimage -A'.
++The button status can be polled i.e. with 'scanimage \-A'.
+ .br
+ Button scan is disabled on MAC OS X due to darwin libusb not handling
+ timeouts in usb interrupt reads.
+--- a/doc/sane-scsi.man
++++ b/doc/sane-scsi.man
+@@ -28,7 +28,7 @@
+ for HP scanners, etc.).
+ .PP
+ For some operating systems (e.g. Linux and OS/2), there is an alternate way of
+-specifying scanner devices.  This alternate way allows to identify scanners by
++specifying scanner devices.  This alternate way allows one to identify scanners by
+ the SCSI vendor and model string and/or by the SCSI device address (consisting
+ of bus number, channel number, id, and logical unit number).  The syntax for
+ specifying a scanner in this way is:
+--- a/doc/sane-test.man
++++ b/doc/sane-test.man
+@@ -40,7 +40,7 @@
+ .B hand\-scanner
+ results in the test-backend behaving like a hand-scanner.  Hand-scanners do
+ not know the image height a priori.  Instead, they return a height of \-1.
+-Setting this option allows to test whether a frontend can handle this
++Setting this option allows one to test whether a frontend can handle this
+ correctly.  This option also enables a fixed width of 11 cm.
+ .PP
+ Setting option
+@@ -68,7 +68,7 @@
+ .SH SPECIAL OPTIONS
+ Option
+ .B test\-picture
+-allows to set the image that's returned to the frontend.  While "Solid white"
++allows one to set the image that's returned to the frontend.  While "Solid white"
+ and "Solid black" are quite obvious, the other options need some more
+ explanation.  Color patterns are used to determine if all modes and their
+ colors are represented correctly by the frontend.  The grid should look like the
+@@ -76,10 +76,10 @@
+ found at: http://www.meier\-geinitz.de/sane/test\-backend/test\-pictures.html.
+ .PP
+ If option
+-.B invert\-endianess
++.B invert\-endianness
+ is set, the upper and lower bytes of image data in 16 bit modes are exchanged.
+ This option can be used to test the 16 bit modes of frontends, e.g. if the
+-frontend uses the correct endianess.
++frontend uses the correct endianness.
+ .PP
+ If option
+ .B read\-limit
+--- a/doc/sane.man
++++ b/doc/sane.man
+@@ -429,7 +429,7 @@
+ .TP
+ .B plustek
+ The SANE plustek backend supports USB flatbed scanners that use the National
+-Semiconductor LM983[1/2/3]-chipset aka Merlin. Scanners using this LM983x chips
++Semiconductor LM983[1/2/3] chipset aka Merlin. Scanners using this LM983x chips
+ include some models from Plustek, KYE/Genius, Hewlett-Packard, Mustek, Umax,
+ Epson, and Canon. See
+ .BR sane\-plustek (5)
+--- a/doc/sane-kodakaio.man
++++ b/doc/sane-kodakaio.man
+@@ -1,4 +1,4 @@
+-.TH sane\-kodakaio 2.4 "17 Jun 2012" "@PACKAGEVERSION@" "SANE Scanner Access Now Easy"
++.TH sane\-kodakaio 5 "17 Jun 2012" "@PACKAGEVERSION@" "SANE Scanner Access Now Easy"
+ .IX sane\-kodakaio
+ 
+ .SH NAME
+--- a/doc/sane-umax_pp.man
++++ b/doc/sane-umax_pp.man
+@@ -58,7 +58,7 @@
+ run the backend through the network interface (See saned(8) and sane\-net(5)).
+ A more relaxed solution (security wise) is to add suid bit to the frontend
+ (See chmod(1)).
+-The backend drop root priviledges as soon as it can, right after gaining direct
++The backend drop root privileges as soon as it can, right after gaining direct
+ access to IO ports, which lessen risks when being root.
+ 
+ .SH "DEVICE NAMES"
+@@ -100,7 +100,7 @@
+ OS/2
+ .PP 
+ .RE
+-\fBNOTE:\fR in all cases, you must have sufficient priviledges
++\fBNOTE:\fR in all cases, you must have sufficient privileges
+ to get access to the chosen device or address. Depending on the
+ security settings, devices may not be available for all users.
+ You have to change permissions on the dev/ppi* or /dev/parport* devices. 
+--- a/doc/sane-usb.man
++++ b/doc/sane-usb.man
+@@ -90,7 +90,7 @@
+ and the individual backend manpages.
+ .PP
+ Most backends can detect USB scanners automatically using "usb" configuration
+-file lines. This method allows to identify scanners by the USB vendor and
++file lines. This method allows one to identify scanners by the USB vendor and
+ product numbers.  The syntax for specifying a scanner this way is:
+ .PP
+ .RS
