@@ -134,5 +134,3 @@ override_dh_builddeb:
 override_dh_makeshlibs:
 	dpkg-gensymbols -plibsane
 	dh_makeshlibs
-
-

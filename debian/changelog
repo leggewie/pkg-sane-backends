@@ -1,28 +1,29 @@
 sane-backends (1.0.24-2) unstable; urgency=medium
 
-  * New Maintainer (Closes: #764198).
+  * New Maintainer. (Closes: #764198)
   * debian/control:
-    - Add myself as Maintainer.
-    - Replace missing Vcs to alioth.
+    - Set myself as Maintainer.
+    - Add missing Vcs-* fields.
     - Bump Standards-Version to 3.9.6 (no changes required).
-    - Add Build-Depends dh-systemd.
+    - Add dh-systemd to Build-Depends.
   * debian/copyright:
     - Rewrite into machine-readable format.
     - Add myself to the list of authors for debian/*.
   * debian/sane-utils.saned.init:
-    - Replace avahi with avahi-daemon to make it systemd 
-      compatible (Closes: #731610).
-    - Add fancy lsb output (Closes: #676845).
+    - Replace avahi with avahi-daemon to make it systemd-
+      compatible. (Closes: #731610)
+    - Add fancy lsb output. (Closes: #676845)
       Thanks to Dirk Sandbrink <d.sandbrink@gmail.com>.
   * debian/libsane/README.Debian:
     - TROUBLESHOOTING section: Add handling of "HP ScanJet 3400 C
-      type C7720A" on Device busy message (Closes: #653857).
+      type C7720A" on Device busy message. (Closes: #653857)
       Thanks to Joost van Baal-Ilić <joostvb-debian-bugs-20111231-2@mdcc.cx>.
   * debian/sane-utils.postinst:
-    - Set the home directory to /var/lib/saned at adduser call
-      (Closes: #665915).
+    - Set the home directory to /var/lib/saned at adduser call.
+      (Closes: #665915)
   * debian/rules:
-    - libsane-common: Correct the move of the htlm files to prevent dup files.
+    - libsane-common: Correct the move of the HTML files to prevent
+      duplicate files within the package.
     - Add systemd to dh commandline.
     - Manuelly install the systemd .socket file.
   * Add systemd support:
@@ -36,10 +37,10 @@ sane-backends (1.0.24-1.2) unstable; urgency=medium
 
   * Non-maintainer upload.
   * update config.* without dh-autoreconf because of local patches
-    to build on ppc64el. Closes: #759289
+    to build on ppc64el. (Closes: #759289)
 
  -- Andreas Barth <aba@ayous.org>  Sat, 30 Aug 2014 11:57:08 +0000
- 
+
 sane-backends (1.0.24-1.1) unstable; urgency=medium
 
   * Non-maintainer upload.
@@ -126,7 +127,7 @@ sane-backends (1.0.22-7.4) unstable; urgency=low
 sane-backends (1.0.22-7.3) unstable; urgency=low
 
   * Non-maintainer upload.
-  * Fix build failure on kfreebsd. (Closes: #680234)
+  * Fix build failure on kFreeBSD. (Closes: #680234)
 
  -- Michael Gilbert <mgilbert@debian.org>  Sun, 15 Jul 2012 17:07:15 -0400
 
