@@ -1,0 +1,4 @@
+usr/lib/*/*.la
+usr/lib/*/*.so.*
+usr/lib/*/sane/*.la
+usr/lib/*/sane/*.so.*

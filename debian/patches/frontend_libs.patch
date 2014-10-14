@@ -1,0 +1,31 @@
+From: Markus Koschany <apo@gambaru.de>
+Date: Sun, 30 Jun 2013 15:20:24 +0200
+Subject: frontend_libs
+
+Only link frontends against the libraries they need
+Reduce the dependencies on frontends by linking in only the required
+libraries.
+---
+ frontend/Makefile.in | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/frontend/Makefile.in
++++ b/frontend/Makefile.in
+@@ -238,7 +238,7 @@
+ LD = @LD@
+ LDFLAGS = @LDFLAGS@
+ LIBOBJS = @LIBOBJS@
+-LIBS = @LIBS@
++LIBS =
+ LIBTOOL = @LIBTOOL@
+ LIBUSB_1_0_CFLAGS = @LIBUSB_1_0_CFLAGS@
+ LIBUSB_1_0_LIBS = @LIBUSB_1_0_LIBS@
+@@ -361,7 +361,7 @@
+ 
+ saned_SOURCES = saned.c
+ saned_LDADD = ../backend/libsane.la ../sanei/libsanei.la ../lib/liblib.la \
+-             ../lib/libfelib.la @SYSLOG_LIBS@ @SYSTEMD_LIBS@
++             ../lib/libfelib.la @SYSLOG_LIBS@ @SYSTEMD_LIBS@ @AVAHI_LIBS@
+ 
+ test_SOURCES = test.c
+ test_LDADD = ../lib/liblib.la ../lib/libfelib.la ../backend/libsane.la

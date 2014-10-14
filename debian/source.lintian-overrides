@@ -1,0 +1,4 @@
+#
+# false positives. See Debian bug #765166
+#
+license-problem-gfdl-invariants

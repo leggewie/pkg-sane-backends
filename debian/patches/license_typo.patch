@@ -1,0 +1,21 @@
+Description: Correct some typos in license of po/fr.po
+Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
+Forwarded: not-needed
+Last-Update: 2014-10-13
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: trunk/po/fr.po
+===================================================================
+--- trunk.orig/po/fr.po
++++ trunk/po/fr.po
+@@ -6,8 +6,8 @@
+ #      Permission is granted to copy, distribute and/or modify this document
+ #      under the terms of the GNU Free Documentation License, Version 1.1
+ #      or any later version published by the Free Software Foundation;
+-#      with no Invariant Sections, with no Front-Cover Texts, and with
+-#      no Back-Cover.
++#      with no Invariant Sections, no Front-Cover Texts, and no Back-Cover
++#      Texts.
+ #      A copy of the license is included in the section entitled "GNU
+ #      Free Documentation License".
+ #

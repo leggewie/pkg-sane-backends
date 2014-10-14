@@ -1,0 +1,36 @@
+Description:
+ Don't build the USB tests because they will fail on the autobuilders.
+Author: Mark Buda <hermit@acm.org>
+
+--- a/testsuite/sanei/Makefile.am
++++ b/testsuite/sanei/Makefile.am
+@@ -15,7 +15,7 @@
+ PTHREAD_LIBS = @PTHREAD_LIBS@
+ TEST_LDADD = ../../sanei/libsanei.la ../../lib/liblib.la ../../lib/libfelib.la $(MATH_LIB) $(USB_LIBS) $(PTHREAD_LIBS)
+ 
+-check_PROGRAMS = sanei_usb_test test_wire sanei_check_test sanei_config_test sanei_constrain_test
++check_PROGRAMS = test_wire sanei_check_test sanei_config_test sanei_constrain_test
+ TESTS = $(check_PROGRAMS)
+ 
+ AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include
+@@ -30,9 +30,6 @@
+ sanei_check_test_SOURCES = sanei_check_test.c
+ sanei_check_test_LDADD = $(TEST_LDADD)
+ 
+-sanei_usb_test_SOURCES = sanei_usb_test.c
+-sanei_usb_test_LDADD = $(TEST_LDADD)
+-
+ test_wire_SOURCES = test_wire.c
+ test_wire_LDADD = $(TEST_LDADD)
+ 
+--- a/testsuite/sanei/Makefile.in
++++ b/testsuite/sanei/Makefile.in
+@@ -77,7 +77,7 @@
+ POST_UNINSTALL = :
+ build_triplet = @build@
+ host_triplet = @host@
+-check_PROGRAMS = sanei_usb_test$(EXEEXT) test_wire$(EXEEXT) \
++check_PROGRAMS = test_wire$(EXEEXT) \
+ 	sanei_check_test$(EXEEXT) sanei_config_test$(EXEEXT) \
+ 	sanei_constrain_test$(EXEEXT)
+ subdir = testsuite/sanei

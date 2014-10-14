@@ -1,0 +1,42 @@
+Description: Keep /usr/lib/sane as a fallback for SANE backends
+ Make /usr/lib/arch_triplet/sane the default location for SANE backends,
+ but keep /usr/lib/sane as a fallback for now.
+Author: Julien BLACHE <jblache@debian.org>
+
+--- a/backend/dll.c
++++ b/backend/dll.c
+@@ -430,7 +430,7 @@
+ 
+   if (path)
+     {
+-      src_len = strlen (path) + strlen (STRINGIFY (LIBDIR)) + 1 + 1;
++      src_len = strlen (path) + strlen (DEB_DLL_LIBDIR) + 1 + 1;
+       src = malloc (src_len);
+       if (!src)
+ 	{
+@@ -438,12 +438,11 @@
+ 	  return SANE_STATUS_NO_MEM;
+ 	}
+       orig_src = src;
+-      snprintf (src, src_len, "%s:%s", path, STRINGIFY (LIBDIR));
++      snprintf (src, src_len, "%s:%s", path, DEB_DLL_LIBDIR);
+     }
+   else
+     {
+-      src = STRINGIFY (LIBDIR);
+-      src = strdup (src);
++      src = strdup (DEB_DLL_LIBDIR);
+       if (!src)
+ 	{
+ 	  DBG (1, "load: strdup failed: %s\n", strerror (errno));
+--- a/backend/Makefile.in
++++ b/backend/Makefile.in
+@@ -1868,7 +1868,7 @@
+ top_build_prefix = @top_build_prefix@
+ top_builddir = @top_builddir@
+ top_srcdir = @top_srcdir@
+-AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -DLIBDIR="$(libdir)/sane"
++AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -DLIBDIR="$(libdir)/sane" -DDEB_DLL_LIBDIR="\"$(libdir)/sane:$(prefix)/lib/sane\""
+ AM_LDFLAGS = @STRICT_LDFLAGS@
+ # The -rpath option is added because we are creating _LTLIBRARIES based
+ # on configure substitution.  This causes automake to not know the

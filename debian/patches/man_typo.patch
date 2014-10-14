@@ -1,0 +1,18 @@
+Description: format error in man page
+Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
+Forwarded: not-needed
+Last-Update: 2014-10-13
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: trunk/doc/sane-mustek_usb.man
+===================================================================
+--- trunk.orig/doc/sane-mustek_usb.man
++++ trunk/doc/sane-mustek_usb.man
+@@ -180,6 +180,7 @@ export SANE_DEBUG_MUSTEK_USB=4
+ .BR sane\-ma1509 (5)
+ .br
+ .IR @DOCDIR@/mustek_usb/mustek_usb.CHANGES ,
++.br
+ .I @DOCDIR@/mustek_usb/mustek_usb.TODO
+ .br
+ .I http://www.meier\-geinitz.de/sane/mustek_usb\-backend/
