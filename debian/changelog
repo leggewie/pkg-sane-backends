@@ -1,3 +1,11 @@
+sane-backends (1.0.24-3) unstable; urgency=medium
+
+  * debian/rules:
+    - Revert moving of HTML documentation to previous method to fix FTBFS
+      and simply delete duplicate HTML files afterwards. (Closes: #765339)
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Tue, 14 Oct 2014 14:25:25 +0200
+
 sane-backends (1.0.24-2) unstable; urgency=medium
 
   * New Maintainer. (Closes: #764198)
@@ -22,7 +30,7 @@ sane-backends (1.0.24-2) unstable; urgency=medium
     - Set the home directory to /var/lib/saned at adduser call.
       (Closes: #665915)
   * debian/rules:
-    - libsane-common: Correct the move of the HTML files to prevent
+    - libsane-common: Correct moving of HTML files to prevent
       duplicate files within the package.
     - Add systemd to dh commandline.
     - Manuelly install the systemd .socket file.

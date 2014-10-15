@@ -97,7 +97,7 @@ override_dh_installdocs:
 	# Platform-specific documentation
 	# move the html files into html/
 	install -d debian/libsane-common/usr/share/doc/libsane/html
-	mv $(CURDIR)/debian/libsane-common/usr/share/doc/libsane/*.html $(CURDIR)/debian/libsane-common/usr/share/doc/libsane/html/
+	mv debian/tmp/usr/share/doc/libsane/*.html debian/libsane-common/usr/share/doc/libsane/html/
 	# create the /etc/sane.d/dll.d directory in libsane
 	install -d debian/libsane/etc/sane.d/dll.d
 	$(RM) debian/libsane-common/etc/sane.d/saned.conf
@@ -107,6 +107,8 @@ endif
 ifeq (linux,$(DEB_HOST_ARCH_OS))
 	cp README.linux debian/libsane-common/usr/share/doc/libsane/
 endif
+	$(RM) -f $(CURDIR)/debian/libsane-common/usr/share/doc/libsane/*.html
+	$(RM) -f $(CURDIR)/debian/tmp/usr/share/doc/libsane/*.html
 
 override_dh_installudev:
 ifeq (linux,$(DEB_HOST_ARCH_OS))
