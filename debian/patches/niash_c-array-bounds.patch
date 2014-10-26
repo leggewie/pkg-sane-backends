@@ -1,6 +1,6 @@
 Description: prevent array bounds in TScanner
 Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
-Forwarded: <URL|no|not-needed, useless if you have a Bug field, optional>
+Forwarded: http://lists.alioth.debian.org/pipermail/sane-devel/2014-October/032777.html
 Last-Update: 2014-10-26
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/

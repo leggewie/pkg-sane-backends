@@ -14,6 +14,8 @@ sane-backends (1.0.24-4) UNRELEASED; urgency=medium
         Thanks to Peter Walser <pjw1965@gmail.com>.
     - New niash_c-array-bounds.patch:
       + Prevent array bounds in TScanner.
+    - New hp5370c.patch:
+      + Improved recognizability.(LP: #1080787)
   * debian/control:
     - Change Build-Depends from the transitional package libgphoto2-2-dev
       to libgphoto2-dev. (Closes: #736451)

@@ -19,3 +19,4 @@ nousbtest.patch
 man-page-spelling.patch
 source-spelling.patch
 ppc64el.patch
+hp5370c.patch

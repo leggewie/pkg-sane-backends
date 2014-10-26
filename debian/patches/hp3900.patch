@@ -1,7 +1,7 @@
 Description: Replace the startup gamma with the same from the standalone version
 Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
 Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=629470
-Forwarded: <URL|no|not-needed, useless if you have a Bug field, optional>
+Forwarded: http://lists.alioth.debian.org/pipermail/sane-devel/2014-October/032777.html
 Last-Update: 2014-10-26
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
