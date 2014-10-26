@@ -27,10 +27,6 @@ if [ "$1" = install ] || [ "$1" = upgrade ]; then
         mv /etc/udev/rules.d/025_libsane.rules /etc/udev/rules.d/z60_libsane.rules
     fi
 
-    ## Remove obsolete /etc/modprobe.d/libsane conffile
-    if dpkg --compare-versions "$2" le "1.0.19-25"; then
-	rm_conffile libsane /etc/modprobe.d/libsane
-    fi
 fi
 
 #DEBHELPER#

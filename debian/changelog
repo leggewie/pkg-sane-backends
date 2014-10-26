@@ -1,3 +1,13 @@
+sane-backends (1.0.24-4) UNRELEASED; urgency=medium
+
+  * debian/rules:
+    - Move the creation of /etc/sane.d/dll.d to libsane-common.
+  * Move libsane.(postrm|preinst) to libsane-common.* to handle
+    in the right package.
+  * Remose useless ( <  "1.0.19-25" ) from libsane-common.preinst.
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 25 Oct 2014 09:34:09 +0200
+
 sane-backends (1.0.24-3) unstable; urgency=medium
 
   * debian/rules:
