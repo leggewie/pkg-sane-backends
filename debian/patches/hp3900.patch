@@ -1,0 +1,20 @@
+Description: Replace the startup gamma with the same from the standalone version
+Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=629470
+Forwarded: <URL|no|not-needed, useless if you have a Bug field, optional>
+Last-Update: 2014-10-26
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: trunk/backend/hp3900_sane.c
+===================================================================
+--- trunk.orig/backend/hp3900_sane.c
++++ trunk/backend/hp3900_sane.c
+@@ -1159,7 +1159,7 @@ options_init (TScanner * scanner)
+       TOptionValue *pVal;
+ 
+       /* set gamma */
+-      gamma_create (scanner, 2.2);
++      gamma_create (scanner, 1.0);
+ 
+       /* color convertion */
+       scanner->cnv.colormode = -1;

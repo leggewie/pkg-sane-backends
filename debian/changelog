@@ -3,8 +3,20 @@ sane-backends (1.0.24-4) UNRELEASED; urgency=medium
   * debian/rules:
     - Move the creation of /etc/sane.d/dll.d to libsane-common.
   * Move libsane.(postrm|preinst) to libsane-common.* to handle
-    in the right package.
+    in the right package. (Closes: #766340)
   * Remose useless ( <  "1.0.19-25" ) from libsane-common.preinst.
+  * debian/patches:
+    - New typo.patch:
+      + Correct typo in backend/gennesys.conf.in. (Closes: #743848)
+        Thanks to Jakub Wilk <jwilk@debian.org>.
+    - New hp3900.patch:
+      + Set startup gamma to the standalone default. (Closes: #629470)
+        Thanks to Peter Walser <pjw1965@gmail.com>.
+    - New niash_c-array-bounds.patch:
+      + Prevent array bounds in TScanner.
+  * debian/control:
+    - Change Build-Depends from the transitional package libgphoto2-2-dev
+      to libgphoto2-dev. (Closes: #736451)
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 25 Oct 2014 09:34:09 +0200
 

@@ -11,7 +11,7 @@ Build-Depends:
  gettext,
  libavahi-client-dev,
  libcam-dev [kfreebsd-any],
- libgphoto2-2-dev,
+ libgphoto2-dev,
  libieee1284-3-dev [!hurd-i386],
  libjpeg-dev,
  libltdl3-dev,
