@@ -1,4 +1,3 @@
-niash_c-array-bounds.patch
 hp3900.patch
 typo.patch
 license_typo.patch
@@ -20,3 +19,4 @@ man-page-spelling.patch
 source-spelling.patch
 ppc64el.patch
 hp5370c.patch
+out_of_bounds.patch

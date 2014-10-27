@@ -1,4 +1,4 @@
-sane-backends (1.0.24-4) UNRELEASED; urgency=medium
+sane-backends (1.0.24-4) unstable; urgency=medium
 
   * debian/rules:
     - Move the creation of /etc/sane.d/dll.d to libsane-common.
@@ -12,15 +12,15 @@ sane-backends (1.0.24-4) UNRELEASED; urgency=medium
     - New hp3900.patch:
       + Set startup gamma to the standalone default. (Closes: #629470)
         Thanks to Peter Walser <pjw1965@gmail.com>.
-    - New niash_c-array-bounds.patch:
-      + Prevent array bounds in TScanner.
     - New hp5370c.patch:
       + Improved recognizability.(LP: #1080787)
+    - New out_of_bounds.patch:
+      + Prevent some out-of-bounds.
   * debian/control:
     - Change Build-Depends from the transitional package libgphoto2-2-dev
       to libgphoto2-dev. (Closes: #736451)
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 25 Oct 2014 09:34:09 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Mon, 27 Oct 2014 22:36:01 +0100
 
 sane-backends (1.0.24-3) unstable; urgency=medium
 
