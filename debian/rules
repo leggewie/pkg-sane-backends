@@ -125,7 +125,7 @@ endif
 
 override_dh_installinit:
 	dh_installinit -psane-utils --name=saned --error-handler=saned_eh
-	cp $(CURDIR)/debian/sane-utils.saned.socket $(CURDIR)/debian/sane-utils/lib/systemd/system/saned.socket
+	cp $(CURDIR)/debian/sane-utils.saned.socket $(CURDIR)/debian/sane-utils/lib/systemd/system/saned@.socket
 
 override_dh_strip:
 	dh_strip --dbg-package=libsane-dbg
