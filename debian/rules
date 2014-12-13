@@ -27,9 +27,10 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 endif
 
 %:
-	dh $@ --parallel --with autotools_dev, systemd
+	dh $@ --parallel --with autotools_dev,systemd
 
 override_dh_auto_configure:
+	autoconf
 	./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) \
 		--prefix=/usr \
 		--libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH) \
@@ -124,8 +125,8 @@ endif
 	chrpath -d debian/sane-utils/usr/bin/sane-find-scanner
 
 override_dh_installinit:
-	dh_installinit -psane-utils --name=saned --error-handler=saned_eh
-	cp $(CURDIR)/debian/sane-utils.saned.socket $(CURDIR)/debian/sane-utils/lib/systemd/system/saned@.socket
+	dh_installinit -psane-utils --name=saned@ --error-handler=saned_eh
+	cp $(CURDIR)/debian/sane-utils.saned.socket $(CURDIR)/debian/sane-utils/lib/systemd/system/saned.socket
 
 override_dh_strip:
 	dh_strip --dbg-package=libsane-dbg

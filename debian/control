@@ -5,6 +5,7 @@ Maintainer: Jörg Frings-Fürst <debian@jff-webhosting.net>
 Standards-Version: 3.9.6
 Build-Depends:
  autotools-dev,
+ autoconf,
  chrpath,
  debhelper (>= 9),
  dh-systemd,
@@ -15,6 +16,7 @@ Build-Depends:
  libieee1284-3-dev [!hurd-i386],
  libjpeg-dev,
  libltdl3-dev,
+ libsystemd-dev [linux-any],
  libtiff-dev,
  libusb-1.0-0-dev [!hurd-i386],
  libv4l-dev [linux-any],

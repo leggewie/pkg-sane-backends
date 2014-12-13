@@ -20,3 +20,4 @@ source-spelling.patch
 ppc64el.patch
 hp5370c.patch
 out_of_bounds.patch
+0500-systemd_configure.patch

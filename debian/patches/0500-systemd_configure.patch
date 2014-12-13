@@ -1,0 +1,60 @@
+Description: Change test for systemd >= 209
+Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=769196
+Forwarded: https://alioth.debian.org/tracker/index.php?func=detail&aid=314906&group_id=30186&atid=410366
+Last-Update: 2014-12-11
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: trunk/configure.in
+===================================================================
+--- trunk.orig/configure.in
++++ trunk/configure.in
+@@ -344,17 +344,40 @@ else
+ 	with_cups="no"
+ fi
+ 
++dnl
+ dnl added by llagendijk 12/7/2012 to detect systemd for saned
+-$as_echo_n "Checking for systemd..."
+-if test -e /usr/include/systemd/sd-daemon.h ; then
+-    AC_DEFINE(HAVE_SYSTEMD, 1, [Is /usr/include/systemd/sd-daemon.h available?])
+-    with_systemd="yes"
+-    SYSTEMD_LIBS=" -lsystemd-daemon"
+-    AC_SUBST(SYSTEMD_LIBS)
+-    $as_echo "yes"
++dnl changed by jff 2014/12/11 for detect systemd >=209
++dnl
++$as_echo "Begin checking for systemd"
++test_systemd=no
++PKG_CHECK_MODULES([libsystemd],
++    [libsystemd >= 209],
++    [test_systemd=yes],
++    [PKG_CHECK_MODULES([libsystemd],
++        [libsystemd-daemon],
++	[test_systemd=yes],
++	[]
++	)
++    ]
++)
++if test x$test_systemd = xyes; then
++    AC_CHECK_HEADERS(systemd/sd-daemon.h,
++        [
++	    AC_DEFINE(HAVE_SYSTEMD, 1, [Is /usr/include/systemd/sd-daemon.h available?])
++            with_systemd="yes"
++	    SYSTEMD_LIBS=" "${libsystemd_LIBS}
++	    AC_SUBST(SYSTEMD_LIBS)
++	    $as_echo "Checking for systemd...yes"
++	],
++	[
++	    AC_MSG_ERROR([systemd development headers not found.])
++	    with_systemd="no"
++	    $as_echo "Checking for systemd...no"
++	]
++    )
+ else
+     with_systemd="no"
+-    $as_echo "no"
++    $as_echo "Checking for systemd...no"
+ fi
+ 
+ dnl ***********

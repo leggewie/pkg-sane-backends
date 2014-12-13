@@ -1,0 +1,4 @@
+#
+# User enabled. See sane-utils.README.Debian
+#
+postrm-contains-additional-updaterc.d-calls
