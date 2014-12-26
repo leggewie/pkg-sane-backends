@@ -8,3 +8,5 @@ usr/share/man/man1/sane-find-scanner.1
 usr/share/man/man1/scanimage.1
 usr/share/man/man8/saned.8
 tools/umax_pp usr/bin
+debian/saned.socket lib/systemd/system
+debian/saned@.service lib/systemd/system

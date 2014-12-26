@@ -1,3 +1,20 @@
+sane-backends (1.0.24-7) unstable; urgency=medium
+
+  * debian/rules:
+    - Split dh_installinit in two parts for systemd and SysV-style.
+    - Install systemd files without dh to prevent sideeffects (Closes: #773320).
+    - Override dh_systemd_enable to don't enable saned.socked.
+  * debian/sane-utils.lintian-overrides:
+    - Override systemd-no-service-for-init-script.
+  * debian/sane-utils.postrm:
+    - Add purge the manual installed files.
+  * debian/sane-utils.README.Debian:
+    - Add handling with systemd.
+  * debian/sane-utils.saned.default:
+    - Add note for enabling under systemd.
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 17 Dec 2014 09:18:47 +0100
+
 sane-backends (1.0.24-6) unstable; urgency=medium
 
   * Revert changes from 1.0.24-5.

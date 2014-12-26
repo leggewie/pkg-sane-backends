@@ -125,8 +125,10 @@ endif
 	chrpath -d debian/sane-utils/usr/bin/sane-find-scanner
 
 override_dh_installinit:
-	dh_installinit -psane-utils --name=saned@ --error-handler=saned_eh
-	cp $(CURDIR)/debian/sane-utils.saned.socket $(CURDIR)/debian/sane-utils/lib/systemd/system/saned.socket
+	dh_installinit -psane-utils --name=saned --error-handler=saned_eh
+
+override_dh_systemd_enable:
+	dh_systemd_enable --no-enable saned.socket
 
 override_dh_strip:
 	dh_strip --dbg-package=libsane-dbg

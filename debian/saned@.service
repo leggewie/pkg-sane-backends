@@ -1,6 +1,7 @@
 [Unit]
 Description=Scanner Service
 Requires=saned.socket
+Alias=saned
 
 [Service]
 ExecStart=/usr/sbin/saned

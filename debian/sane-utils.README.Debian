@@ -57,6 +57,16 @@ To disable saned, use update-inetd to disable the service:
 If you want to run saned under another user and/or group, edit /etc/inetd.conf
 and change saned:saned for the appropriate user:group combination.
 
+ Running saned from systemd
+ --------------------------
+
+To enable saned in the default configuration (running as user and group saned),
+use systemctl to enable the service:
+ # systemctl enable saned.socket
+To disable saned, use systemctl to disable the service:
+ # systemctl disable saned.socket
+
+
  Running saned as a standalone daemon
  ------------------------------------
 
@@ -70,3 +80,4 @@ To run saned as a standalone server:
 
 
 -- Julien BLACHE <jblache@debian.org>, Mon, 05 May 2008 19:29:28 +0200
+-- Jörg Frings-Fürst <debian@jff-webhosting.net>  Tue, 16 Dec 2014 22:04:23 +0100
