@@ -1,24 +1,26 @@
 sane-backends (1.0.24-8) unstable; urgency=medium
 
-  * New debian/patch/0100-usb3-corrections.patch:
-    - Backport of upstream Vcc to correct USB3/xhci problems (Closes: #738592).
+  * New debian/patches/0100-usb3-corrections.patch:
+    - Cherry-picked from upstream to address
+      USB3/xhci problems (Closes: #738592).
   * debian/saned@.service:
     - Move Alias to section [Install] (Closes: #773371).
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 26 Dec 2014 14:00:20 +0100
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 27 Dec 2014 09:36:22 +0100
 
 sane-backends (1.0.24-7) unstable; urgency=medium
 
   * debian/rules:
     - Split dh_installinit in two parts for systemd and SysV-style.
-    - Install systemd files without dh to prevent sideeffects (Closes: #773320).
-    - Override dh_systemd_enable to don't enable saned.socked.
+    - Install systemd files without dh to prevent
+      side effects (Closes: #773320).
+    - Override dh_systemd_enable to not enable saned.socked.
   * debian/sane-utils.lintian-overrides:
     - Override systemd-no-service-for-init-script.
   * debian/sane-utils.postrm:
-    - Add purge the manual installed files.
+    - Add purge for the manually installed files.
   * debian/sane-utils.README.Debian:
-    - Add handling with systemd.
+    - Add instructions for use with systemd.
   * debian/sane-utils.saned.default:
     - Add note for enabling under systemd.
 
@@ -30,7 +32,7 @@ sane-backends (1.0.24-6) unstable; urgency=medium
   * Rename sane-utils.saned.service to sane-utils.saned@.service to
     install it as template (Closes: #769196).
   * For test for newer versions of systemd:
-    - New debian/patches/0500-systemd_configure.patch 
+    - New debian/patches/0500-systemd_configure.patch
       + Add part into configure.in to find systemd >=209
     - debian/control:
       + Add autoconf and libsystemd-dev to Built-Depends.
@@ -38,7 +40,7 @@ sane-backends (1.0.24-6) unstable; urgency=medium
       + Add autoconf before running configure to build the patched
         configure script.
     - Thanks to Michael Biebl <biebl@debian.org>.
-  * Change sane-utils.saned@.service and sane-utils.saned.socket 
+  * Change sane-utils.saned@.service and sane-utils.saned.socket
     for running as template (Closes: #772955).
   * debian/sane-utils.postinst:
     - Add part to move the homedir from /home/saned to /var/lib/saned.
