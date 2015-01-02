@@ -3,6 +3,11 @@ sane-backends (1.0.24-9) UNRELEASED; urgency=medium
   * Correct typo and add missing "-q" to line 33 of
     debian/sane-utils.postinst (Closes: #773826).
     - Thanks to "Nelson A. de Oliveira" <naoliv@debian.org>
+  * debian/rules:
+    - Add line to extract the version from debian/changelog.
+    - Add version string to dpkg-gensymbols.
+  * debian/copyright:
+    - Add years to 2014-2015 on my debian/* tag.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 28 Dec 2014 10:50:14 +0100
 
