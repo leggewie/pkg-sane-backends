@@ -28,25 +28,32 @@
 
 #include "sane/sanei_debug.h"
 
-int
-sanei_epson_net_read_raw(Epson_Scanner *s, unsigned char *buf, size_t wanted,
-		       SANE_Status * status)
+static int
+sanei_epson_net_read_raw(Epson_Scanner *s, unsigned char *buf, ssize_t wanted,
+		       SANE_Status *status)
 {
-	size_t size, read = 0;
+	int ready, read = -1;
+	fd_set readable;
+	struct timeval tv;
+
+	tv.tv_sec = 10;
+	tv.tv_usec = 0;
+
+	FD_ZERO(&readable);
+	FD_SET(s->fd, &readable);
+
+	ready = select(s->fd + 1, &readable, NULL, NULL, &tv);
+	if (ready > 0) {
+		read = sanei_tcp_read(s->fd, buf, wanted);
+	} else {
+		DBG(15, "%s: select failed: %d\n", __func__, ready);
+	}
 
 	*status = SANE_STATUS_GOOD;
 
-	while (read < wanted) {
-		size = sanei_tcp_read(s->fd, buf + read, wanted - read);
-
-		if (size == 0)
-			break;
-
-		read += size;
-	}
-
-	if (read < wanted)
+	if (read < wanted) {
 		*status = SANE_STATUS_IO_ERROR;
+	}
 
 	return read;
 }
@@ -80,9 +87,8 @@ sanei_epson_net_read(Epson_Scanner *s, unsigned char *buf, ssize_t wanted,
 	}
 
 	/* receive net header */
-	size = sanei_tcp_read(s->fd, header, 12);
+	size = sanei_epson_net_read_raw(s, header, 12, status);
 	if (size != 12) {
-		*status = SANE_STATUS_IO_ERROR;
 		return 0;
 	}
 
@@ -102,7 +108,8 @@ sanei_epson_net_read(Epson_Scanner *s, unsigned char *buf, ssize_t wanted,
 	if (size == wanted) {
 
 		DBG(15, "%s: full read\n", __func__);
-		read = sanei_tcp_read(s->fd, buf, size);
+
+		read = sanei_epson_net_read_raw(s, buf, size, status);
 
 		if (s->netbuf) {
 			free(s->netbuf);
@@ -111,7 +118,6 @@ sanei_epson_net_read(Epson_Scanner *s, unsigned char *buf, ssize_t wanted,
 		}
 
 		if (read < 0) {
-			*status = SANE_STATUS_IO_ERROR;
 			return 0;
 		}
 		
@@ -119,9 +125,8 @@ sanei_epson_net_read(Epson_Scanner *s, unsigned char *buf, ssize_t wanted,
 	} else {
 		DBG(23, "%s: partial read\n", __func__);
 
-		read = sanei_tcp_read(s->fd, s->netbuf, size);
+		read = sanei_epson_net_read_raw(s, s->netbuf, size, status);
 		if (read != size) {
-			*status = SANE_STATUS_IO_ERROR;
 			return 0;
 		}
 

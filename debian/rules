@@ -10,6 +10,7 @@ DEB_HOST_MULTIARCH  ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 DEB_HOST_ARCH       ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
 DEB_HOST_ARCH_OS    ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_OS)
 
+
 ifeq ($(DEB_HOST_ARCH_OS),)
   DEB_HOST_ARCH_OS := $(subst -gnu,,$(shell dpkg-architecture -qDEB_HOST_GNU_SYSTEM))
   ifeq ($(DEB_HOST_ARCH_OS),gnu)
@@ -25,6 +26,8 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	INSTALL_STRIP_FLAG = ""
 	STRIP = ""
 endif
+
+VERSION = $(shell head -n1 debian/changelog | sed -e 's/.*(//;s/+.*).*//;s/\+/\-/')
 
 %:
 	dh $@ --parallel --with autotools_dev,systemd
@@ -137,5 +140,5 @@ override_dh_builddeb:
 	dh_builddeb -- -Zxz
 
 override_dh_makeshlibs:
-	dpkg-gensymbols -plibsane
+	dpkg-gensymbols -v$(VERSION) -plibsane
 	dh_makeshlibs

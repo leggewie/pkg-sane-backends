@@ -72,6 +72,7 @@ enum fujitsu_Option
   OPT_DF_DIFF,
   OPT_DF_RECOVERY,
   OPT_PAPER_PROTECT,
+  OPT_ADV_PAPER_PROT,
   OPT_STAPLE_DETECT,
   OPT_BG_COLOR,
   OPT_DROPOUT_COLOR,
@@ -79,6 +80,7 @@ enum fujitsu_Option
   OPT_PREPICK,
   OPT_OVERSCAN,
   OPT_SLEEP_TIME,
+  OPT_OFF_TIME,
   OPT_DUPLEX_OFFSET,
   OPT_GREEN_OFFSET,
   OPT_BLUE_OFFSET,
@@ -89,6 +91,7 @@ enum fujitsu_Option
   OPT_SWDESPECK,
   OPT_SWCROP,
   OPT_SWSKIP,
+  OPT_HALT_ON_CANCEL,
 
   OPT_ENDORSER_GROUP,
   OPT_ENDORSER,
@@ -125,6 +128,13 @@ enum fujitsu_Option
 
   /* must come last: */
   NUM_OPTIONS
+};
+
+/* used to control the max page-height, which varies by resolution */
+struct y_size
+{
+  int res;
+  int len;
 };
 
 struct fujitsu
@@ -242,6 +252,7 @@ struct fujitsu
 
   int has_df_recovery;
   int has_paper_protect;
+  int has_adv_paper_prot;
   int has_staple_detect;
 
   int has_rif;
@@ -257,6 +268,7 @@ struct fujitsu
   int has_ipc3;
   int has_rotation;
   int has_hybrid_crop_deskew;
+  int has_off_mode;
 
   int has_comp_MH;
   int has_comp_MR;
@@ -265,6 +277,7 @@ struct fujitsu
   int has_comp_JPG1;
   int has_comp_JPG2;
   int has_comp_JPG3;
+  int has_op_halt;
 
   /*FIXME: more endorser data? */
   int endorser_type_f;
@@ -299,6 +312,7 @@ struct fujitsu
   /* the scan size in 1/1200th inches, NOT basic_units or sane units */
   int max_x;
   int max_y;
+  struct y_size max_y_by_res[4];
   int min_x;
   int min_y;
   int max_x_fb;
@@ -313,6 +327,7 @@ struct fujitsu
   int window_gamma;
   int endorser_string_len;
   int has_pixelsize;
+  int has_short_pixelsize; /* m3091/2 put weird stuff at end, ignore it */
 
   int broken_diag_serial;   /* some scanners are just plain borked */
   int need_q_table;         /* some scanners wont work without these */
@@ -382,6 +397,7 @@ struct fujitsu
   SANE_String_Const df_diff_list[5];
   SANE_String_Const df_recovery_list[4];
   SANE_String_Const paper_protect_list[4];
+  SANE_String_Const adv_paper_prot_list[4];
   SANE_String_Const staple_detect_list[4];
   SANE_String_Const bg_color_list[4];
   SANE_String_Const do_color_list[5];
@@ -390,6 +406,7 @@ struct fujitsu
   SANE_String_Const prepick_list[4];
   SANE_String_Const overscan_list[4];
   SANE_Range sleep_time_range;
+  SANE_Range off_time_range;
   SANE_Range duplex_offset_range;
   SANE_Range green_offset_range;
   SANE_Range blue_offset_range;
@@ -467,6 +484,7 @@ struct fujitsu
   int df_diff;
   int df_recovery;
   int paper_protect;
+  int adv_paper_prot;
   int staple_detect;
   int bg_color;
   int dropout_color;
@@ -475,6 +493,7 @@ struct fujitsu
   int overscan;
   int lamp_color;
   int sleep_time;
+  int off_time;
   int duplex_offset;
   int green_offset;
   int blue_offset;
@@ -484,6 +503,7 @@ struct fujitsu
   int swdespeck;
   int swcrop;
   double swskip;
+  int halt_on_cancel;
 
   /*endorser group*/
   int u_endorser;
@@ -514,8 +534,10 @@ struct fujitsu
   SANE_Parameters s_params;
 
   /* also keep a backup copy, in case the software enhancement code overwrites*/
+  /*
   SANE_Parameters u_params_bk;
   SANE_Parameters s_params_bk;
+  */
 
   /* --------------------------------------------------------------------- */
   /* values which are set by scanning functions to keep track of pages, etc */
@@ -556,7 +578,6 @@ struct fujitsu
   int deskew_vals[2];
   double deskew_slope;
 
-  SANE_Status crop_stat;
   int crop_vals[4];
 
   /* --------------------------------------------------------------------- */
@@ -622,12 +643,16 @@ struct fujitsu
 #define COMP_NONE WD_cmp_NONE
 #define COMP_JPEG WD_cmp_JPG1
 
-#define JPEG_STAGE_HEAD 0
-#define JPEG_STAGE_SOF 1
-#define JPEG_STAGE_SOS 2
-#define JPEG_STAGE_FRONT 3
-#define JPEG_STAGE_BACK 4
-#define JPEG_STAGE_EOI 5
+#define JPEG_STAGE_NONE 0
+#define JPEG_STAGE_SOI 1
+#define JPEG_STAGE_HEAD 2
+#define JPEG_STAGE_SOF 3
+#define JPEG_STAGE_SOS 4
+#define JPEG_STAGE_FRONT 5
+#define JPEG_STAGE_BACK 6
+#define JPEG_STAGE_EOI 7
+
+#define JFIF_APP0_LENGTH 18
 
 /* these are same as scsi data to make code easier */
 #define MODE_LINEART WD_comp_LA
@@ -771,7 +796,7 @@ do_usb_cmd(struct fujitsu *s, int runRS, int shortTime,
 
 static SANE_Status wait_scanner (struct fujitsu *s);
 
-static SANE_Status object_position (struct fujitsu *s, int i_load);
+static SANE_Status object_position (struct fujitsu *s, int action);
 
 static SANE_Status scanner_control (struct fujitsu *s, int function);
 static SANE_Status scanner_control_ric (struct fujitsu *s, int bytes, int side);
@@ -789,11 +814,13 @@ static SANE_Status mode_select_prepick (struct fujitsu *s);
 static SANE_Status mode_select_auto (struct fujitsu *s);
 
 static SANE_Status set_sleep_mode(struct fujitsu *s);
+static SANE_Status set_off_mode(struct fujitsu *s);
 
 static int must_downsample (struct fujitsu *s);
 static int must_fully_buffer (struct fujitsu *s);
 static int get_page_width (struct fujitsu *s);
 static int get_page_height (struct fujitsu *s);
+static int set_max_y (struct fujitsu *s);
 
 static SANE_Status send_lut (struct fujitsu *s);
 static SANE_Status send_endorser (struct fujitsu *s);
@@ -803,19 +830,17 @@ static SANE_Status get_pixelsize(struct fujitsu *s, int actual);
 
 static SANE_Status update_params (struct fujitsu *s);
 static SANE_Status update_u_params (struct fujitsu *s);
-static SANE_Status backup_params (struct fujitsu *s);
-static SANE_Status restore_params (struct fujitsu *s);
+
 static SANE_Status start_scan (struct fujitsu *s);
 
 static SANE_Status check_for_cancel(struct fujitsu *s);
 
-#ifdef SANE_FRAME_JPEG
 static SANE_Status read_from_JPEGduplex(struct fujitsu *s);
-#endif
 static SANE_Status read_from_3091duplex(struct fujitsu *s);
 static SANE_Status read_from_scanner(struct fujitsu *s, int side);
 
 static SANE_Status copy_3091(struct fujitsu *s, unsigned char * buf, int len, int side);
+static SANE_Status copy_JPEG(struct fujitsu *s, unsigned char * buf, int len, int side);
 static SANE_Status copy_buffer(struct fujitsu *s, unsigned char * buf, int len, int side);
 
 static SANE_Status read_from_buffer(struct fujitsu *s, SANE_Byte * buf, SANE_Int max_len, SANE_Int * len, int side);

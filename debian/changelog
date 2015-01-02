@@ -1,3 +1,32 @@
+sane-backends (1.0.25+git20150102-1) experimental; urgency=medium
+
+  * Build from daily snapshot sane-backends-git20150102.tar.gz.
+  * Remove applied patches from debian/patches:
+    - fix-FTBFS-format-not-a-string-literal-error.patch
+    - kodakaio.patch
+    - saned.man.patch
+    - man-page-spelling.patch
+    - source-spelling.patch
+    - hp5370c.patch
+    - out_of_bounds.patch
+    - 0100-usb3-corrections.patch
+  * Refresh patches:
+    - sane-desc.c_debian_mods.patch
+    - 0500-systemd_configure.patch
+  * debian/rules:
+    - Add line to extract the version from debian/changelog.
+    - Add version string to dpkg-gensymbols.
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 02 Jan 2015 10:28:45 +0100
+
+sane-backends (1.0.24-9) UNRELEASED; urgency=medium
+
+  * Correct typo and add missing "-q" to line 33 of
+    debian/sane-utils.postinst (Closes: #773826).
+    - Thanks to "Nelson A. de Oliveira" <naoliv@debian.org>
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 02 Jan 2015 10:28:33 +0100
+
 sane-backends (1.0.24-8) unstable; urgency=medium
 
   * New debian/patches/0100-usb3-corrections.patch:

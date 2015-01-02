@@ -11,44 +11,44 @@
    		xerox travelscan device entry
    Copyright (C) 2010 Chris Berry <s0457957@sms.ed.ac.uk> and Michael Rickmann <mrickma@gwdg.de>
                  for Plustek Opticbook 3600 support
-   
+
    This file is part of the SANE package.
-   
+
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
    published by the Free Software Foundation; either version 2 of the
    License, or (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful, but
    WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place - Suite 330, Boston,
    MA 02111-1307, USA.
-   
+
    As a special exception, the authors of SANE give permission for
    additional uses of the libraries contained in this release of SANE.
-   
+
    The exception is that, if you link a SANE library with other files
    to produce an executable, this does not by itself cause the
    resulting executable to be covered by the GNU General Public
    License.  Your use of that executable is in no way restricted on
    account of linking the SANE library code into it.
-   
+
    This exception does not, however, invalidate any other reasons why
    the executable file might be covered by the GNU General Public
    License.
-   
+
    If you submit changes to SANE to the maintainers to be included in
    a subsequent release, you agree by submitting the changes that
    those changes may be distributed with this exception intact.
-   
+
    If you write modifications of your own for SANE, it is your choice
    whether to permit this exception to apply to your modifications.
-   If you do not wish that, delete this exception notice. 
+   If you do not wish that, delete this exception notice.
 */
 
 /* ------------------------------------------------------------------------ */
@@ -81,7 +81,7 @@ static Genesys_Frontend Wolfson[] = {
   ,				/* 2: ST24 */
   {DAC_WOLFSON_5345,{0x00, 0x03, 0x05, 0x12}
    , {0x00, 0x00, 0x00}
-   , {0xb8, 0xb8, 0xb8}	
+   , {0xb8, 0xb8, 0xb8}
    , {0x04, 0x04, 0x04}
    , {0x00, 0x00, 0x00}
    }
@@ -114,10 +114,10 @@ static Genesys_Frontend Wolfson[] = {
      {0x58, 0x80, 0x00, 0x00}	/* reg1=0x80 ? */
    , {0x00, 0x00, 0x00}
    , {0x09, 0x09, 0x09}
-   , {0x09, 0x09, 0x09} 
+   , {0x09, 0x09, 0x09}
    , {0x00, 0x00, 0x00}
    }
-  ,                            
+  ,
   {DAC_WOLFSON_XP300,{0x00, 0x35, 0x20, 0x14}  /* 7: XP300 */
    , {0x00, 0x00, 0x00}
    , {0xe1, 0xe1, 0xe1}
@@ -125,7 +125,7 @@ static Genesys_Frontend Wolfson[] = {
    , {0x07, 0x00, 0x00}
    }
   ,				/* 8: HP3670 */
-  {DAC_WOLFSON_HP3670,  
+  {DAC_WOLFSON_HP3670,
    /* reg0  reg1  reg2  reg3 */
      {0x00, 0x03, 0x05, 0x32} /* reg3=0x32 for 100-300 dpi, 0x12 at 1200 */
    , {0x00, 0x00, 0x00} /* sign */
@@ -160,7 +160,7 @@ static Genesys_Frontend Wolfson[] = {
   {DAC_KVSS080,
      {0x00, 0x23, 0x24, 0x0f}
    , {0x00, 0x00, 0x00}
-   , {0x80, 0x80, 0x80}	
+   , {0x80, 0x80, 0x80}
    , {0x4b, 0x4b, 0x4b}
    , {0x00,0x00,0x00}
    }
@@ -211,12 +211,23 @@ static Genesys_Frontend Wolfson[] = {
    , {0x00, 0x00, 0x00}	/* 0x20, 0x21, 0x22 */
    , {0x00, 0x00, 0x00} /* 0x28, 0x29, 0x2a */
    , {0x00, 0x00, 0x00}
-   }
+   },
+  {DAC_CANONLIDE80,
+     /* reg0: control 74 data, 70 no data
+      * reg3: offset
+      * reg6: gain
+      * reg0 , reg3, reg6 */
+     {0x70, 0x16, 0x60, 0x00}
+   , {0x00, 0x00, 0x00}
+   , {0x00, 0x00, 0x00}
+   , {0x00, 0x00, 0x00}
+   , {0x00, 0x00, 0x00}
+  }
 };
 
 
 /** for setting up the sensor-specific settings:
- * Optical Resolution, number of black pixels, number of dummy pixels, 
+ * Optical Resolution, number of black pixels, number of dummy pixels,
  * CCD_start_xoffset, and overall number of sensor pixels
  * registers 0x08-0x0b, 0x10-0x1d and 0x52-0x5e
  */
@@ -294,13 +305,14 @@ static Genesys_Sensor Sensor[] = {
   }
   ,
   /* CANOLIDE35 */
-  {CCD_CANONLIDE35, 1200,
-   87,				/*(black) */
+  {CCD_CANONLIDE35,
+   1200,
+   87,				/* (black) */
    87,				/* (dummy) */
    0,				/* (startxoffset) */
-   10400,			/*sensor_pixels */
-   210,
-   200,
+   10400,			/* sensor_pixels */
+   0,
+   0,
    {0x00, 0x00, 0x00, 0x00},
    {0x04, 0x00, 0x04, 0x00, 0x04, 0x00, 0x00, 0x02, 0x00, 0x50,
     0x00, 0x00, 0x00, 0x02	/* TODO(these do no harm, but may be neccessery for CCD) */
@@ -349,7 +361,7 @@ static Genesys_Sensor Sensor[] = {
    200,
    {0x00, 0x00, 0x00, 0x00},
    {0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x00, 0x02, 0x04, 0x50,
-    0x10, 0x00, 0x20, 0x02	
+    0x10, 0x00, 0x20, 0x02
     },
    {0x04, 0x05,
     0x00, 0x00, 0x00, 0x00,	/*[GB](HI|LOW) not needed for cis */
@@ -372,7 +384,7 @@ static Genesys_Sensor Sensor[] = {
    200,
    {0x00, 0x00, 0x00, 0x00},
    {0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x00, 0x02, 0x04, 0x50,
-    0x10, 0x00, 0x20, 0x02	
+    0x10, 0x00, 0x20, 0x02
     },
    {0x04, 0x05,
     0x00, 0x00, 0x00, 0x00,	/*[GB](HI|LOW) not needed for cis */
@@ -395,7 +407,7 @@ static Genesys_Sensor Sensor[] = {
    200,
    {0x00, 0x00, 0x00, 0x00},
    {0x15, 0x44, 0x15, 0x44, 0x15, 0x44, 0x00, 0x02, 0x04, 0x50,
-    0x10, 0x00, 0x20, 0x02	
+    0x10, 0x00, 0x20, 0x02
     },
    {0x04, 0x05,
     0x00, 0x00, 0x00, 0x00,	/*[GB](HI|LOW) not needed for cis */
@@ -418,7 +430,7 @@ static Genesys_Sensor Sensor[] = {
    200,
    {0x00, 0x00, 0x00, 0x00},
    {0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x00, 0x02, 0x04, 0x50,
-    0x10, 0x00, 0x20, 0x02	
+    0x10, 0x00, 0x20, 0x02
     },
    {0x04, 0x05,
     0x00, 0x00, 0x00, 0x00,	/*[GB](HI|LOW) not needed for cis */
@@ -441,7 +453,7 @@ static Genesys_Sensor Sensor[] = {
    200,
    {0x00, 0x00, 0x00, 0x00},
    {0x11, 0x00, 0x11, 0x00, 0x11, 0x00, 0x00, 0x02, 0x04, 0x50,
-    0x10, 0x00, 0x20, 0x02	
+    0x10, 0x00, 0x20, 0x02
     },
    {0x04, 0x05,
     0x00, 0x00, 0x00, 0x00,	/*[GB](HI|LOW) not needed for cis */
@@ -471,9 +483,9 @@ static Genesys_Sensor Sensor[] = {
    {0x03, 0x07,
     0x00, 0x00, 0x00, 0x00,
     0x2a, 0xe1,
-    0x55,		
-    0x00, 0x00, 0x00, 
-    0x41	
+    0x55,
+    0x00, 0x00, 0x00,
+    0x41
     }
    ,
    {1.7, 1.7, 1.7},
@@ -497,9 +509,9 @@ static Genesys_Sensor Sensor[] = {
    {0x07, 0x03,
     0x00, 0x00, 0x00, 0x00,
     0x2a, 0xe1,
-    0x55,		
-    0x00, 0x00, 0x00, 
-    0x41	
+    0x55,
+    0x00, 0x00, 0x00,
+    0x41
     }
    ,
   {1.0, 1.0, 1.0},
@@ -524,9 +536,9 @@ static Genesys_Sensor Sensor[] = {
    {0x03, 0x07,
     0x00, 0x00, 0x00, 0x00,
     0x2a, 0xe1,
-    0x55,		
-    0x00, 0x00, 0x00, 
-    0x41	
+    0x55,
+    0x00, 0x00, 0x00,
+    0x41
     }
    ,
    {1.7, 1.7, 1.7},
@@ -696,8 +708,8 @@ static Genesys_Sensor Sensor[] = {
   /* Canon Image formula 101 */
   {CCD_IMG101,
    1200,	/* optical resolution */
-   31,	
-   31,	
+   31,
+   31,
    0,
    10800,
    210,
@@ -711,9 +723,9 @@ static Genesys_Sensor Sensor[] = {
    {0x02, 0x04,
     0x06, 0x08, 0x0a, 0x00,
     0x59, 0x31,
-    0x40,		
-    0x00, 0x00, 0x00, 
-    0x1f	
+    0x40,
+    0x00, 0x00, 0x00,
+    0x1f
     }
    ,
    {1.7, 1.7, 1.7},
@@ -723,8 +735,8 @@ static Genesys_Sensor Sensor[] = {
   /* Plustek OpticBook 3800 */
   {CCD_PLUSTEK3800,
    1200,	/* optical resolution */
-   31,	
-   31,	
+   31,
+   31,
    0,
    10200,
    210,
@@ -738,14 +750,31 @@ static Genesys_Sensor Sensor[] = {
    {0x02, 0x04,
     0x06, 0x08, 0x0a, 0x00,
     0x59, 0x31,
-    0x40,		
-    0x00, 0x00, 0x00, 
-    0x1f	
+    0x40,
+    0x00, 0x00, 0x00,
+    0x1f
     }
    ,
    {1.7, 1.7, 1.7},
    {NULL, NULL, NULL}
-  }
+  },
+  /* CANOLIDE80 */
+  {CIS_CANONLIDE80,
+   1200, /* real hardware limit is 2400 */
+   20,   /* black pixels */
+   6,    /* expdummy 6 */
+   /* tuned to give 3*8 multiple startx coordinate during  shading calibration */
+   34,    /* CCD_start_xoffset 14=>3, 20=>2 */
+   10240, /* 10400, too wide=>10288 in shading data 10240~, 10208 too short for shading, max shading data = 10240 pixels, endpix-startpix=10208 */
+   150,
+   150,
+   {0x00, 0x05, 0x07, 0x09}, /* in fact ,maps to 0x70-0x73 for GL841 */
+   /* [0x10-0x15] values are initial led exposure values */
+   /* 10    11    12    13    14    15    16    17    18    19    1a    1b    1c    1d*/
+   {0x10, 0x00, 0x10, 0x00, 0x05, 0x00, 0x00, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x04},
+   {0x03, 0x07, 0x00, 0x00, 0x00, 0x00, 0x29, 0x69, 0x55, 0x00, 0x00, 0x20, 0x41} ,
+   {1.0, 1.0, 1.0},
+   {NULL, NULL, NULL}}
 };
 
 /** for General Purpose Output specific settings:
@@ -909,6 +938,12 @@ static Genesys_Gpo Gpo[] = {
   {GPO_PLUSTEK3800,
    {0x41, 0xa4},
    {0x13, 0xa7}
+  },
+  /* Canon LiDE 80 */
+  {
+    GPO_CANONLIDE80,
+   {0x28, 0x90}, /* 6c, 6d */
+   {0x75, 0x80}, /* 6e, 6f */
   }
 };
 
@@ -919,7 +954,7 @@ static Genesys_Motor Motor[] = {
    2400,			/* maximum motor resolution */
    1,				/* maximum step mode */
    1,                           /* number of power modes*/
-   {{{   
+   {{{
      11000,			/* maximum start speed */
      3000,			/* maximum end speed */
      128,			/* step count */
@@ -937,7 +972,7 @@ static Genesys_Motor Motor[] = {
    2400,
    1,
    1,
-   {{{   
+   {{{
      2000,
      1375,
      128,
@@ -966,7 +1001,7 @@ static Genesys_Motor Motor[] = {
      2100,
      128,
      0.3,
-    },},}, 
+    },},},
   },
   {MOTOR_HP3670,	/* HP 3670 */
    1200,
@@ -1027,18 +1062,8 @@ static Genesys_Motor Motor[] = {
    2400,
    1,
    1,
-   {{{
-     3500,
-     1300,
-     60,
-     0.8,
-     },
-    {
-     3500,
-     1400,
-     60,
-     0.8,
-    },},},
+   {{{ 3500, 1300, 60, 0.8, },
+    { 3500, 1400, 60, 0.8, },},},
   },
   {MOTOR_XP200,			/* Strobe XP200 */
    600,
@@ -1263,6 +1288,21 @@ static Genesys_Motor Motor[] = {
        { 3500, 3250, 60, 0.8 },
      },
    },},
+  {MOTOR_CANONLIDE80,
+   2400, /* 2400 ???? */
+   4800, /* 9600 ???? */
+   1,	/* max step type */
+   1,	/* power mode count */
+   {
+     { /* start speed, max end speed, step number */
+       /* maximum speed (second field) is used to compute exposure as seen by motor */
+       /* exposure=max speed/ slope dpi * base dpi */
+       /* 5144 = max pixels at 600 dpi */
+       /* 1288=(5144+8)*ydpi(=300)/base_dpi(=1200) , where 5152 is exposure */
+       /* 6440=9660/(1932/1288) */
+       {  9560,  1912, 31, 0.8 },
+     },
+   },},
 };
 
 /* here we have the various device settings...
@@ -1296,7 +1336,7 @@ static Genesys_Model umax_astra_4500_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 8, 16,			/* RGB CCD Line-distance correction in pixel */
@@ -1323,8 +1363,8 @@ static Genesys_Model canon_lide_50_model = {
   GENESYS_GL841,
   NULL,
 
-  {1200, 600, 300, 150, 75, 0},	/* possible x-resolutions */
-  {2400, 1200, 600, 300, 150, 75, 0},	/* possible y-resolutions */
+  {      1200, 600, 400, 300, 240, 200, 150, 75, 0},	/* possible x-resolutions */
+  {2400, 1200, 600, 400, 300, 240, 200, 150, 75, 0},	/* possible y-resolutions */
   {16, 8, 0},			/* possible depths in gray mode */
   {16, 8, 0},			/* possible depths in color mode */
 
@@ -1333,7 +1373,7 @@ static Genesys_Model canon_lide_50_model = {
   SANE_FIX (218.0),		/* Size of scan area in mm (x) */
   SANE_FIX (299.0),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (6.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -1345,7 +1385,7 @@ static Genesys_Model canon_lide_50_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -1359,8 +1399,8 @@ static Genesys_Model canon_lide_50_model = {
   GPO_CANONLIDE35,
   MOTOR_CANONLIDE35,
   GENESYS_FLAG_LAZY_INIT | 	/* Which flags are needed for this scanner? */
-  GENESYS_FLAG_SKIP_WARMUP | 
-  GENESYS_FLAG_OFFSET_CALIBRATION | 
+  GENESYS_FLAG_SKIP_WARMUP |
+  GENESYS_FLAG_OFFSET_CALIBRATION |
   GENESYS_FLAG_DARK_WHITE_CALIBRATION |
   GENESYS_FLAG_CUSTOM_GAMMA |
   GENESYS_FLAG_HALF_CCD_MODE,
@@ -1401,7 +1441,7 @@ static Genesys_Model panasonic_kvss080_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 8, 16,			/* RGB CCD Line-distance correction in pixel */
@@ -1452,7 +1492,7 @@ static Genesys_Model hp4850c_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 24, 48,		        /* RGB CCD Line-distance correction in line number */
@@ -1467,7 +1507,7 @@ static Genesys_Model hp4850c_model = {
   DAC_G4050,
   GPO_G4050,
   MOTOR_G4050,
-  GENESYS_FLAG_LAZY_INIT | 
+  GENESYS_FLAG_LAZY_INIT |
   GENESYS_FLAG_OFFSET_CALIBRATION |
   GENESYS_FLAG_STAGGERED_LINE |
   GENESYS_FLAG_SKIP_WARMUP |
@@ -1507,7 +1547,7 @@ static Genesys_Model hpg4010_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 24, 48,		        /* RGB CCD Line-distance correction in line number */
@@ -1522,7 +1562,7 @@ static Genesys_Model hpg4010_model = {
   DAC_G4050,
   GPO_G4050,
   MOTOR_G4050,
-  GENESYS_FLAG_LAZY_INIT | 
+  GENESYS_FLAG_LAZY_INIT |
   GENESYS_FLAG_OFFSET_CALIBRATION |
   GENESYS_FLAG_STAGGERED_LINE |
   GENESYS_FLAG_SKIP_WARMUP |
@@ -1562,7 +1602,7 @@ static Genesys_Model hpg4050_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 24, 48,		        /* RGB CCD Line-distance correction in line number */
@@ -1577,7 +1617,7 @@ static Genesys_Model hpg4050_model = {
   DAC_G4050,
   GPO_G4050,
   MOTOR_G4050,
-  GENESYS_FLAG_LAZY_INIT | 
+  GENESYS_FLAG_LAZY_INIT |
   GENESYS_FLAG_OFFSET_CALIBRATION |
   GENESYS_FLAG_STAGGERED_LINE |
   GENESYS_FLAG_SKIP_WARMUP |
@@ -1618,7 +1658,7 @@ static Genesys_Model canon_4400f_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 24, 48,		        /* RGB CCD Line-distance correction in line number */
@@ -1634,7 +1674,7 @@ static Genesys_Model canon_4400f_model = {
   GPO_CS4400F,
   MOTOR_G4050,
   GENESYS_FLAG_NO_CALIBRATION |
-  GENESYS_FLAG_LAZY_INIT | 
+  GENESYS_FLAG_LAZY_INIT |
   GENESYS_FLAG_OFFSET_CALIBRATION |
   GENESYS_FLAG_STAGGERED_LINE |
   GENESYS_FLAG_SKIP_WARMUP |
@@ -1677,7 +1717,7 @@ static Genesys_Model canon_8400f_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 24, 48,		        /* RGB CCD Line-distance correction in line number */
@@ -1693,7 +1733,7 @@ static Genesys_Model canon_8400f_model = {
   GPO_CS8400F,
   MOTOR_CS8400F,
   GENESYS_FLAG_NO_CALIBRATION |
-  GENESYS_FLAG_LAZY_INIT | 
+  GENESYS_FLAG_LAZY_INIT |
   GENESYS_FLAG_OFFSET_CALIBRATION |
   GENESYS_FLAG_STAGGERED_LINE |
   GENESYS_FLAG_SKIP_WARMUP |
@@ -1736,7 +1776,7 @@ static Genesys_Model canon_lide_100_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -1748,7 +1788,7 @@ static Genesys_Model canon_lide_100_model = {
   CIS_CANONLIDE100,
   DAC_CANONLIDE200,
   GPO_CANONLIDE200,
-  MOTOR_CANONLIDE100,	
+  MOTOR_CANONLIDE100,
   /* Which flags are needed for this scanner? */
       GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_SIS_SENSOR
@@ -1790,7 +1830,7 @@ static Genesys_Model canon_lide_110_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -1802,7 +1842,7 @@ static Genesys_Model canon_lide_110_model = {
   CIS_CANONLIDE110,
   DAC_CANONLIDE110,
   GPO_CANONLIDE110,
-  MOTOR_CANONLIDE110,	
+  MOTOR_CANONLIDE110,
       GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
     | GENESYS_FLAG_DARK_CALIBRATION
@@ -1844,7 +1884,7 @@ static Genesys_Model canon_lide_210_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -1856,7 +1896,7 @@ static Genesys_Model canon_lide_210_model = {
   CIS_CANONLIDE210,
   DAC_CANONLIDE110,
   GPO_CANONLIDE210,
-  MOTOR_CANONLIDE210,	
+  MOTOR_CANONLIDE210,
       GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
     | GENESYS_FLAG_DARK_CALIBRATION
@@ -1897,7 +1937,7 @@ static Genesys_Model canon_5600f_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -1950,7 +1990,7 @@ static Genesys_Model canon_lide_700f_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2005,7 +2045,7 @@ static Genesys_Model canon_lide_200_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2047,7 +2087,7 @@ static Genesys_Model canon_lide_60_model = {
   SANE_FIX (218.0),		/* Size of scan area in mm (x) */
   SANE_FIX (299.0),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (6.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -2059,7 +2099,7 @@ static Genesys_Model canon_lide_60_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2076,13 +2116,69 @@ static Genesys_Model canon_lide_60_model = {
     | GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
     | GENESYS_FLAG_DARK_WHITE_CALIBRATION
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_HALF_CCD_MODE,
 
   GENESYS_HAS_NO_BUTTONS, /* no buttons supported */
   300,
   400
 };				/* this is completely untested -- hmg */
+
+static Genesys_Model canon_lide_80_model = {
+  "canon-lide-80",		/* Name */
+  "Canon",			/* Device vendor string */
+  "LiDE 80",			/* Device model name */
+  GENESYS_GL841,
+  NULL,
+
+  {      1200, 600, 400, 300, 240, 150, 100, 75, 0},	/* possible x-resolutions */
+  {2400, 1200, 600, 400, 300, 240, 150, 100, 75, 0},	/* possible y-resolutions */
+  {16, 8, 0},			/* possible depths in gray mode */
+  {16, 8, 0},			/* possible depths in color mode */
+  SANE_FIX (0.42),		/* Start of scan area in mm  (x)   0.42 */
+  SANE_FIX (7.90),		/* Start of scan area in mm (y)    7.90 */
+  SANE_FIX (216.07),		/* Size of scan area in mm (x)   218.00 */
+  SANE_FIX (299.0),		/* Size of scan area in mm (y) */
+
+  SANE_FIX (4.5),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of black mark in mm (x) */
+
+  SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
+  SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (y) */
+  SANE_FIX (100.0),		/* Size of scan area in TA mode in mm (x) */
+  SANE_FIX (100.0),		/* Size of scan area in TA mode in mm (y) */
+
+  SANE_FIX (0.0),		/* Start of white strip in TA mode in mm (y) */
+
+  SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
+				   sensing document in mm */
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
+				   after finishing scanning in mm */
+
+  0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
+
+  COLOR_ORDER_RGB,		/* Order of the CCD/CIS colors */
+
+  SANE_TRUE,			/* Is this a CIS scanner? */
+  SANE_FALSE,			/* Is this a sheetfed scanner? */
+  CIS_CANONLIDE80,
+  DAC_CANONLIDE80,
+  GPO_CANONLIDE80,
+  MOTOR_CANONLIDE80,
+  GENESYS_FLAG_LAZY_INIT | 	/* Which flags are needed for this scanner? */
+  GENESYS_FLAG_SKIP_WARMUP |
+  GENESYS_FLAG_OFFSET_CALIBRATION |
+  GENESYS_FLAG_DARK_WHITE_CALIBRATION |
+  GENESYS_FLAG_CUSTOM_GAMMA |
+  GENESYS_FLAG_HALF_CCD_MODE,
+  GENESYS_HAS_SCAN_SW |
+  GENESYS_HAS_FILE_SW |
+  GENESYS_HAS_EMAIL_SW |
+  GENESYS_HAS_COPY_SW,
+  160, /* 280 @2400 */
+  400
+};
+
 
 static Genesys_Model hp2300c_model = {
   "hewlett-packard-scanjet-2300c",	/* Name */
@@ -2113,7 +2209,7 @@ static Genesys_Model hp2300c_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   16, 8, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2139,7 +2235,7 @@ static Genesys_Model hp2300c_model = {
   132
 };
 
-static 
+static
 Genesys_Model hp2400c_model = {
   "hewlett-packard-scanjet-2400c",	/* Name */
   "Hewlett Packard",		/* Device vendor string */
@@ -2169,7 +2265,7 @@ Genesys_Model hp2400c_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 24, 48,			/* RGB CCD Line-distance correction in pixel */
@@ -2194,7 +2290,7 @@ Genesys_Model hp2400c_model = {
   132
 };
 
-static 
+static
 Genesys_Model visioneer_xp200_model = {
   "visioneer-strobe-xp200",	/* Name */
   "Visioneer",			/* Device vendor string */
@@ -2224,7 +2320,7 @@ Genesys_Model visioneer_xp200_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2277,7 +2373,7 @@ static Genesys_Model hp3670c_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 24, 48,			/* RGB CCD Line-distance correction in pixel */
@@ -2331,7 +2427,7 @@ static Genesys_Model plustek_st12_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 8, 16,			/* RGB CCD Line-distance correction in pixel */
@@ -2379,7 +2475,7 @@ static Genesys_Model plustek_st24_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 8, 16,			/* RGB CCD Line-distance correction in pixel */
@@ -2395,7 +2491,7 @@ static Genesys_Model plustek_st24_model = {
   GENESYS_FLAG_UNTESTED
     | GENESYS_FLAG_14BIT_GAMMA
     | GENESYS_FLAG_LAZY_INIT
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_SEARCH_START
     | GENESYS_FLAG_OFFSET_CALIBRATION,
   GENESYS_HAS_NO_BUTTONS, /* no buttons supported */
@@ -2432,7 +2528,7 @@ static Genesys_Model medion_md5345_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   48, 24, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2475,7 +2571,7 @@ static Genesys_Model visioneer_xp300_model = {
   SANE_FIX (435.0),		/* Size of scan area in mm (x) */
   SANE_FIX (511),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -2487,9 +2583,9 @@ static Genesys_Model visioneer_xp300_model = {
 
   SANE_FIX (26.5),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  /* this is larger than needed -- accounts for second sensor head, which is a 
+  /* this is larger than needed -- accounts for second sensor head, which is a
      calibration item */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
 
@@ -2540,7 +2636,7 @@ static Genesys_Model syscan_docketport_665_model = {
 
   SANE_FIX (17.5),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2580,7 +2676,7 @@ static Genesys_Model visioneer_roadwarrior_model = {
   SANE_FIX (220.0),		/* Size of scan area in mm (x) */
   SANE_FIX (511),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -2592,7 +2688,7 @@ static Genesys_Model visioneer_roadwarrior_model = {
 
   SANE_FIX (16.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2608,7 +2704,7 @@ static Genesys_Model visioneer_roadwarrior_model = {
   GENESYS_FLAG_LAZY_INIT 	/* Which flags are needed for this scanner? */
     | GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_DARK_CALIBRATION,
   GENESYS_HAS_SCAN_SW | GENESYS_HAS_PAGE_LOADED_SW | GENESYS_HAS_CALIBRATE,
   100,
@@ -2632,7 +2728,7 @@ static Genesys_Model syscan_docketport_465_model = {
   SANE_FIX (220.0),		/* Size of scan area in mm (x) */
   SANE_FIX (511),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -2644,7 +2740,7 @@ static Genesys_Model syscan_docketport_465_model = {
 
   SANE_FIX (16.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2660,7 +2756,7 @@ static Genesys_Model syscan_docketport_465_model = {
   GENESYS_FLAG_LAZY_INIT 	/* Which flags are needed for this scanner? */
     | GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_NO_CALIBRATION
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_UNTESTED,
   GENESYS_HAS_SCAN_SW | GENESYS_HAS_PAGE_LOADED_SW,
   300,
@@ -2684,7 +2780,7 @@ static Genesys_Model visioneer_xp100_r3_model = {
   SANE_FIX (220.0),		/* Size of scan area in mm (x) */
   SANE_FIX (511),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -2696,7 +2792,7 @@ static Genesys_Model visioneer_xp100_r3_model = {
 
   SANE_FIX (16.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2712,7 +2808,7 @@ static Genesys_Model visioneer_xp100_r3_model = {
   GENESYS_FLAG_LAZY_INIT 	/* Which flags are needed for this scanner? */
     | GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_DARK_CALIBRATION,
   GENESYS_HAS_SCAN_SW | GENESYS_HAS_PAGE_LOADED_SW | GENESYS_HAS_CALIBRATE,
   100,
@@ -2736,7 +2832,7 @@ static Genesys_Model pentax_dsmobile_600_model = {
   SANE_FIX (220.0),		/* Size of scan area in mm (x) */
   SANE_FIX (511),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -2748,7 +2844,7 @@ static Genesys_Model pentax_dsmobile_600_model = {
 
   SANE_FIX (16.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2764,7 +2860,7 @@ static Genesys_Model pentax_dsmobile_600_model = {
   GENESYS_FLAG_LAZY_INIT 	/* Which flags are needed for this scanner? */
     | GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_DARK_CALIBRATION,
   GENESYS_HAS_SCAN_SW | GENESYS_HAS_PAGE_LOADED_SW | GENESYS_HAS_CALIBRATE,
   100,
@@ -2788,7 +2884,7 @@ static Genesys_Model syscan_docketport_467_model = {
   SANE_FIX (220.0),		/* Size of scan area in mm (x) */
   SANE_FIX (511),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -2800,7 +2896,7 @@ static Genesys_Model syscan_docketport_467_model = {
 
   SANE_FIX (16.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -2816,7 +2912,7 @@ static Genesys_Model syscan_docketport_467_model = {
   GENESYS_FLAG_LAZY_INIT 	/* Which flags are needed for this scanner? */
     | GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_DARK_CALIBRATION,
   GENESYS_HAS_SCAN_SW | GENESYS_HAS_PAGE_LOADED_SW | GENESYS_HAS_CALIBRATE,
   100,
@@ -2840,7 +2936,7 @@ static Genesys_Model syscan_docketport_685_model = {
   SANE_FIX (212.0),		/* Size of scan area in mm (x) */
   SANE_FIX (500),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -2852,9 +2948,9 @@ static Genesys_Model syscan_docketport_685_model = {
 
   SANE_FIX (26.5),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  /* this is larger than needed -- accounts for second sensor head, which is a 
+  /* this is larger than needed -- accounts for second sensor head, which is a
      calibration item */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
 
@@ -2869,7 +2965,7 @@ static Genesys_Model syscan_docketport_685_model = {
   GENESYS_FLAG_LAZY_INIT 	/* Which flags are needed for this scanner? */
     | GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_DARK_CALIBRATION,
   GENESYS_HAS_SCAN_SW | GENESYS_HAS_PAGE_LOADED_SW | GENESYS_HAS_CALIBRATE,
   100,
@@ -2893,7 +2989,7 @@ static Genesys_Model syscan_docketport_485_model = {
   SANE_FIX (435.0),		/* Size of scan area in mm (x) */
   SANE_FIX (511),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -2905,9 +3001,9 @@ static Genesys_Model syscan_docketport_485_model = {
 
   SANE_FIX (26.5),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  /* this is larger than needed -- accounts for second sensor head, which is a 
+  /* this is larger than needed -- accounts for second sensor head, which is a
      calibration item */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
 
@@ -2922,7 +3018,7 @@ static Genesys_Model syscan_docketport_485_model = {
   GENESYS_FLAG_LAZY_INIT 	/* Which flags are needed for this scanner? */
     | GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_DARK_CALIBRATION,
   GENESYS_HAS_SCAN_SW | GENESYS_HAS_PAGE_LOADED_SW | GENESYS_HAS_CALIBRATE,
   100,
@@ -2946,7 +3042,7 @@ static Genesys_Model dct_docketport_487_model = {
   SANE_FIX (435.0),		/* Size of scan area in mm (x) */
   SANE_FIX (511),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -2958,9 +3054,9 @@ static Genesys_Model dct_docketport_487_model = {
 
   SANE_FIX (26.5),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  /* this is larger than needed -- accounts for second sensor head, which is a 
+  /* this is larger than needed -- accounts for second sensor head, which is a
      calibration item */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
 
@@ -2976,7 +3072,7 @@ static Genesys_Model dct_docketport_487_model = {
     | GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
     | GENESYS_FLAG_DARK_CALIBRATION
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_UNTESTED,
   GENESYS_HAS_SCAN_SW | GENESYS_HAS_PAGE_LOADED_SW | GENESYS_HAS_CALIBRATE,
   100,
@@ -3012,7 +3108,7 @@ static Genesys_Model visioneer_7100_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   48, 24, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -3067,7 +3163,7 @@ static Genesys_Model xerox_2400_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   48, 24, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -3111,7 +3207,7 @@ static Genesys_Model xerox_travelscanner_model = {
   SANE_FIX (220.0),		/* Size of scan area in mm (x) */
   SANE_FIX (511),		/* Size of scan area in mm (y) */
 
-  SANE_FIX (3.0),		/* Start of white strip in mm (y) */
+  SANE_FIX (0.0),		/* Start of white strip in mm (y) */
   SANE_FIX (0.0),		/* Start of black mark in mm (x) */
 
   SANE_FIX (0.0),		/* Start of scan area in TA mode in mm (x) */
@@ -3123,7 +3219,7 @@ static Genesys_Model xerox_travelscanner_model = {
 
   SANE_FIX (16.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 0, 0,			/* RGB CCD Line-distance correction in pixel */
@@ -3139,7 +3235,7 @@ static Genesys_Model xerox_travelscanner_model = {
   GENESYS_FLAG_LAZY_INIT 	/* Which flags are needed for this scanner? */
     | GENESYS_FLAG_SKIP_WARMUP
     | GENESYS_FLAG_OFFSET_CALIBRATION
-    | GENESYS_FLAG_CUSTOM_GAMMA 
+    | GENESYS_FLAG_CUSTOM_GAMMA
     | GENESYS_FLAG_DARK_CALIBRATION,
   GENESYS_HAS_SCAN_SW | GENESYS_HAS_PAGE_LOADED_SW | GENESYS_HAS_CALIBRATE,
   100,
@@ -3176,7 +3272,7 @@ static Genesys_Model plustek_3600_model = {
 				   sensing document in mm */
   SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
- 
+
   0, 24, 48,			/* RGB CCD Line-distance correction in pixel */
 
   COLOR_ORDER_RGB,		/* Order of the CCD/CIS colors */
@@ -3199,7 +3295,7 @@ static Genesys_Model plustek_3600_model = {
   7,
   200
 };
- 
+
 static Genesys_Model hpn6310_model = {
   "hewlett-packard-scanjet-N6310",	/* Name */
   "Hewlett Packard",			/* Device vendor string */
@@ -3288,7 +3384,7 @@ static Genesys_Model plustek_3800_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 24, 48,			/* RGB CCD Line-distance correction in pixel */
@@ -3340,7 +3436,7 @@ static Genesys_Model canon_formula101_model = {
 
   SANE_FIX (0.0),		/* Size of scan area after paper sensor stops
 				   sensing document in mm */
-  SANE_FIX (0.0),		/* Amount of feeding needed to eject document 
+  SANE_FIX (0.0),		/* Amount of feeding needed to eject document
 				   after finishing scanning in mm */
 
   0, 24, 48,			/* RGB CCD Line-distance correction in pixel */
@@ -3382,6 +3478,7 @@ static Genesys_USB_Device_Entry genesys_usb_device_list[] = {
   {0x04a7, 0x04ac, &xerox_travelscanner_model},
   {0x04a9, 0x2213, &canon_lide_50_model},
   {0x04a9, 0x221c, &canon_lide_60_model},
+  {0x04a9, 0x2214, &canon_lide_80_model},
   {0x07b3, 0x0900, &plustek_3600_model},
   {0x0a17, 0x3210, &pentax_dsmobile_600_model},
   {0x04f9, 0x2038, &pentax_dsmobile_600_model}, /* clone, only usb id is different */
@@ -3413,3 +3510,6 @@ static Genesys_USB_Device_Entry genesys_usb_device_list[] = {
   {0x04a9, 0x190a, &canon_lide_210_model},
   {0, 0, NULL}
 };
+
+#define MAX_SCANNERS (sizeof(genesys_usb_device_list) / \
+        sizeof(genesys_usb_device_list[0]))

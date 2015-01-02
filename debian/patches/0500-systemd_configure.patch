@@ -5,13 +5,13 @@ Forwarded: https://alioth.debian.org/tracker/index.php?func=detail&aid=314906&gr
 Last-Update: 2014-12-11
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
-Index: trunk/configure.in
+Index: experimental/configure.in
 ===================================================================
---- trunk.orig/configure.in
-+++ trunk/configure.in
-@@ -344,17 +344,40 @@ else
- 	with_cups="no"
- fi
+--- experimental.orig/configure.in
++++ experimental/configure.in
+@@ -344,17 +344,40 @@ dnl 	$as_echo "in order to autodetect ne
+ dnl 	with_cups="no"
+ dnl fi
  
 +dnl
  dnl added by llagendijk 12/7/2012 to detect systemd for saned

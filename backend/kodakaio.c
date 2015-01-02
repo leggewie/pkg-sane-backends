@@ -1,7 +1,7 @@
 /*
  * kodakaio.c - SANE library for Kodak ESP Aio scanners.
  *
- * Copyright (C)   2011-2013 Paul Newall
+ * Copyright (C)   2011-2015 Paul Newall
  *
  * Based on the Magicolor sane backend: 
  * Based on the epson2 sane backend:
@@ -14,19 +14,32 @@
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, version 2.
 
- * Using avahi now 25/11/12 for net autodiscovery. Use configure option --enable-avahi
+ * Modified 30/12/14 to fix bug where network connection was broken after 30s of idle time.
+ * The connection is now made in sane_start and ended in sane_cancel.
  * 01/01/13 Now with adf, the scan can be padded to make up the full page length, 
  * or the page can terminate at the end of the paper. This is a selectable option.
+ * 25/11/12 Using avahi now for net autodiscovery. Use configure option --enable-avahi
  */
 
-/* convenient lines to paste
-export SANE_DEBUG_KODAKAIO=10
+/* 
+Packages to add to a clean ubuntu install
+libavahi-common-dev
+libusb-dev
+libsnmp-dev
+
+convenient lines to paste
+export SANE_DEBUG_KODAKAIO=20
 
 for ubuntu prior to 12.10
-./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-avahi --disable-latex BACKENDS=kodakaio
+./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-avahi --disable-latex BACKENDS="kodakaio test"
 
 for ubuntu 12.10
-./configure --prefix=/usr --libdir=/usr/lib/i386-linux-gnu --sysconfdir=/etc --localstatedir=/var --enable-avahi --disable-latex BACKENDS=kodakaio 
+./configure --prefix=/usr --libdir=/usr/lib/i386-linux-gnu --sysconfdir=/etc --localstatedir=/var --enable-avahi --disable-latex BACKENDS="kodakaio test"
+
+for ubuntu 14.10
+./configure --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu --sysconfdir=/etc --localstatedir=/var --enable-avahi --disable-latex BACKENDS="kodakaio test"
+
+If you want to use the test backend, for example with sane-troubleshoot, you should enable it in /etc/sane.d/dll.conf
 
 */
 
@@ -50,20 +63,14 @@ for ubuntu 12.10
 */
 /* FUNCTION-TREE
 	sane_init
-	sane_start
-		k_init_parametersta
-		k_lock_scanner
-		k_set_scanning_parameters
-		print_params
-		k_start_scan
-			cmd_start_scan
-				print_status
-				k_send
-				kodakaio_txrxack
 	sane_open
 		device_detect
+			k_dev_init
+			open_scanner
+			close_scanner
 		sane_get_devices
 		init_options
+		(open_scanner - moved to sane_start 27/12/14 )
 	sane_control_option
 		getvalue
 		setvalue
@@ -71,6 +78,18 @@ for ubuntu 12.10
 			change_source
 				activateOption
 				deactivateOption
+	sane_start
+		open_scanner
+		k_init_parametersta
+		k_lock_scanner
+			k_hello
+		k_set_scanning_parameters
+		print_params
+		k_start_scan
+			cmd_start_scan
+				print_status
+				k_send
+				kodakaio_txrxack
 	sane_get_parameters
 		print_params
 	sane_read
@@ -78,6 +97,11 @@ for ubuntu 12.10
 			cmd_read_data (reads one block)
 				k_recv
 			cmp_array
+	sane_cancel
+		cmd_cancel_scan
+		close_scanner
+	sane_close
+		(close_scanner - moved to sane_cancel 27/12/14)
 	sane_exit
 		free_devices
 	k_recv
@@ -89,7 +113,9 @@ for ubuntu 12.10
 	open_scanner
 		sanei_kodakaio_net_open
 	close_scanner
-		sanei_kodakaio_net_close
+		k_scan_finish
+			cmd_cancel_scan
+		sanei_kodakaio_net_close or sanei_usb_close
 	detect_usb
 		kodakaio_getNumberOfUSBProductIds
 	attach_one_config - (Passed to sanei_configure_attach)
@@ -126,8 +152,8 @@ for ubuntu 12.10
 
 
 #define KODAKAIO_VERSION	02
-#define KODAKAIO_REVISION	4
-#define KODAKAIO_BUILD		6
+#define KODAKAIO_REVISION	7
+#define KODAKAIO_BUILD		2
 
 /* for usb (but also used for net though it's not required). */
 #define MAX_BLOCK_SIZE		32768
@@ -214,10 +240,12 @@ static int K_SNMP_Timeout = 3000; /* used for any auto detection method */
 static int K_Scan_Data_Timeout = 10000;
 static int K_Request_Timeout = 5000;
 
+static int bitposn=0; /* used to pack bits into bytes in lineart mode */
+
 /* This file is used to store directly the raster returned by the scanner for debugging
 If RawScanPath has no length it will not be created */
 FILE *RawScan = NULL;
-/* example: unsigned char RawScanPath[] = "TestRawScan.pgm"; */
+/* example: char RawScanPath[] = "TestRawScan.pgm"; */
 char RawScanPath[] = ""; /* empty path means no raw scan file is made */
 
 /*
@@ -566,16 +594,17 @@ commandtype, max depth, pointer to depth list
  * The depth variable gets updated when the bit depth is modified.
  */
 
+/* could be affecting what data sane delivers */
 static struct mode_param mode_params[] = {
-	/* {0x00, 1, 1},  // Lineart, 1 color, 1 bit   */
+	{0x03, 3, 24},  /* Color, 3 colors, 24 bit */
 	{0x02, 1, 8}, /* Grayscale, 1 color, 8 bit */
-	{0x03, 3, 24}  /* Color, 3 colors, 24 bit */
+	{0x00, 1, 1}  /* Lineart, 1 color, 8 bit (was 8 bit)   */
 };
 
 static SANE_String_Const mode_list[] = {
-	/* SANE_VALUE_SCAN_MODE_LINEART, */
-	SANE_VALUE_SCAN_MODE_GRAY,
 	SANE_VALUE_SCAN_MODE_COLOR,
+	SANE_VALUE_SCAN_MODE_GRAY,
+	SANE_VALUE_SCAN_MODE_LINEART,
 	NULL
 };
 
@@ -601,6 +630,9 @@ static SANE_String_Const source_list[] = {
 	NULL,
 	NULL
 };
+
+static const SANE_Range percent_range_fixed = {SANE_FIX(0.0), SANE_FIX(100.0), SANE_FIX(1.0)};
+static const SANE_Range percent_range_int = {0, 100, 1};
 
 /* prototypes */
 static SANE_Status attach_one_usb(SANE_String_Const devname);
@@ -659,11 +691,12 @@ print_status(KodakAio_Scanner *s,int level)
 /****************************************************************************
  *   Low-level Network communication functions ****************************************************************************/
 
-/* We don't have a packet wrapper, which holds packet size etc., so we
-   don't have to use a *read_raw and a *_read function... */
 static int
 kodakaio_net_read(struct KodakAio_Scanner *s, unsigned char *buf, size_t wanted,
 		       SANE_Status * status)
+/* there seems to be a condition where this returns no error and no data without detecting a timeout
+That is probably if the scanner disconnected the network connection
+*/
 {
 	size_t size, read = 0;
 	struct pollfd fds[1];
@@ -676,7 +709,7 @@ kodakaio_net_read(struct KodakAio_Scanner *s, unsigned char *buf, size_t wanted,
 	fds[0].events = POLLIN;
 	fds[0].revents = 0;
 	if ((pollreply = poll (fds, 1, K_Request_Timeout)) <= 0) {
-		if (pollreply ==0)
+		if (pollreply == 0)
 			DBG(1, "net poll timeout\n");
 		else
 			/* pollreply is -ve */
@@ -684,21 +717,22 @@ kodakaio_net_read(struct KodakAio_Scanner *s, unsigned char *buf, size_t wanted,
 		*status = SANE_STATUS_IO_ERROR;
 		return read;
 	}
-	else if(fds[0].revents & POLLIN) {
+	else if((fds[0].revents & POLLIN) && !(fds[0].revents & (POLLERR | POLLHUP | POLLNVAL))) {
 		while (read < wanted) {
+			DBG(50, "reading: read %d, wanted %d\n",read, wanted);
 			size = sanei_tcp_read(s->fd, buf + read, wanted - read);
-
-			if (size == 0)
-			break;
-
+			if (size == 0) {
+				DBG(1, "No data read. Scanner may have disconnected\n");
+				break;
+			}
 			read += size;
 		}
 
-/* this error removed 28/12/12 because adf scans end with less data than wanted
-		if (read < wanted)
+		if (read == 0)
 			*status = SANE_STATUS_IO_ERROR;
- */
+
 		DBG(32, "net read %d bytes:%x,%x,%x,%x,%x,%x,%x,%x\n",read,buf[0],buf[1],buf[2],buf[3],buf[4],buf[5],buf[6],buf[7]);
+
 		return read;
 	}
 	else
@@ -706,7 +740,7 @@ kodakaio_net_read(struct KodakAio_Scanner *s, unsigned char *buf, size_t wanted,
 		return read;
 }
 
-/* kodak does not pad commands like magicolor, so there's only a write_raw function */
+
 static int
 sanei_kodakaio_net_write_raw(struct KodakAio_Scanner *s,
 			      const unsigned char *buf, size_t buf_size,
@@ -832,6 +866,7 @@ k_recv(KodakAio_Scanner * s, void *buf, ssize_t buf_size,
 this function called by a number of others 
 
 In USB mode, this function will wait until data is available for a maximum of SCANNER_READ_TIMEOUT seconds.
+In NET mode the timeout is in kodakaio_net_read
 */
 	ssize_t n = 0;
 	char fmt_buf[25];
@@ -847,6 +882,10 @@ In USB mode, this function will wait until data is available for a maximum of SC
 		DBG(min(16,DBG_READ), "[%ld]  %s: net req size = %ld  ", (long) time_start, __func__, (long) buf_size);
  		n = kodakaio_net_read(s, buf, buf_size, status);
 		DBG(min(16,DBG_READ), "returned %d\n", n);
+		if (*status != SANE_STATUS_GOOD) {
+			DBG(1, "%s: err returned from kodakaio_net_read, %s\n", __func__, sane_strstatus(*status));
+		}
+
 
 	} else if (s->hw->connection == SANE_KODAKAIO_USB) {
 		/* Start the clock for USB timeout */
@@ -922,16 +961,29 @@ kodakaio_txrx(KodakAio_Scanner *s, unsigned char *txbuf, unsigned char *rxbuf)
 /* Sends 8 byte data to scanner and returns reply and appropriate status. */
 {
 	SANE_Status status;
+	ssize_t n = 0;
 
 	k_send(s, txbuf, 8, &status);
 	if (status != SANE_STATUS_GOOD) {
 		DBG(1, "%s: tx err, %s\n", __func__, sane_strstatus(status));
 		return status;
 	}
-	k_recv(s, rxbuf, 8, &status);
+	n = k_recv(s, rxbuf, 8, &status);
 	if (status != SANE_STATUS_GOOD) {
 		DBG(1, "%s: %s gave rx err, %s\n", __func__, "txvalue", sane_strstatus(status));
 		return status;
+	}
+	if (n == 0) {
+		DBG(1, "%s: try 1 k_recv returned 0 bytes with status %s\n", __func__, sane_strstatus(status));
+		n = k_recv(s, rxbuf, 8, &status);
+		if (status != SANE_STATUS_GOOD) {
+			DBG(1, "%s: %s gave rx err, %s\n", __func__, "txvalue", sane_strstatus(status));
+			return status;
+		}
+		if (n == 0) {
+			DBG(1, "%s: try 2 k_recv returned 0 bytes with status %s\n", __func__, sane_strstatus(status));
+			return status;
+		}
 	}
 	return status;
 }
@@ -962,7 +1014,8 @@ and returns appropriate status
 			s->adf_loaded = SANE_TRUE;
 			DBG(5, "%s: News - docs in ADF\n", __func__);
 		}
-		else if (rxbuf[4] != 0x01 && s->adf_loaded == SANE_TRUE) {
+		else if (rxbuf[4] != 
+0x01 && s->adf_loaded == SANE_TRUE) {
 			s->adf_loaded = SANE_FALSE;
 			DBG(5, "%s: News - ADF is empty\n", __func__);
 		}
@@ -974,6 +1027,25 @@ and returns appropriate status
 	}
 
 	return status;
+}
+
+static ssize_t 
+kodakaio_rxflush(KodakAio_Scanner *s)
+/*
+Tries to get 64 byte reply
+and returns number of bytes read
+*/
+{
+	SANE_Status status;
+	unsigned char rxbuf[64];
+	ssize_t n = 0;
+
+	n = k_recv(s, rxbuf, 64, &status);
+	if (status != SANE_STATUS_GOOD) {
+		DBG(1, "%s: %s gave rx err, %s\n", __func__, "status", sane_strstatus(status));
+	}
+	DBG(5, "%s: flushed, %d bytes\n", __func__,  (int)n);
+	return n;
 }
 
 /*
@@ -988,6 +1060,13 @@ k_hello (KodakAio_Scanner * s)
 	char fmt_buf[25];
 
 	DBG(5, "%s\n", __func__);
+
+/* check that there is nothing already in the input buffer before starting 
+kodakaio_rxflush(s);
+*/
+/* preset the reply, so I can see if it gets changed */
+reply[0] = 0; reply[1] = 1; reply[2] = 2; reply[3] = 3; reply[4] = 4; reply[5] = 5; reply[6] = 6; reply[7] = 7;
+
 	if((status = kodakaio_txrx(s, KodakEsp_V, reply))!= SANE_STATUS_GOOD) {
 		DBG(1, "%s: KodakEsp_V failure, %s\n", __func__, sane_strstatus(status));
 		return SANE_STATUS_IO_ERROR;
@@ -998,6 +1077,8 @@ k_hello (KodakAio_Scanner * s)
 			DBG(1, "%s: KodakEsp_v err, got %s\n", __func__, fmt_buf);
 			return SANE_STATUS_IO_ERROR;
 	}
+
+
 	DBG(5, "%s: OK %s\n", __func__, sane_strstatus(status));
 	return status;
 }
@@ -1045,12 +1126,24 @@ cmd_cancel_scan (SANE_Handle handle)
 	unsigned char reply[8];
 /* adf added 20/2/12 should it be adf? or adf with paper in? */
 	if (strcmp(source_list[s->val[OPT_SOURCE].w], ADF_STR) == 0) { /* adf */
-		if (kodakaio_txrxack(s, KodakEsp_F, reply)!= SANE_STATUS_GOOD) return SANE_STATUS_IO_ERROR;
-		if (kodakaio_txrxack(s, KodakEsp_UnLock, reply)!= SANE_STATUS_GOOD) return SANE_STATUS_IO_ERROR;
+		if (kodakaio_txrxack(s, KodakEsp_F, reply)!= SANE_STATUS_GOOD) 
+		{
+			DBG(1, "%s: KodakEsp_F command failed\n", __func__);
+			return SANE_STATUS_IO_ERROR;
+		}
+		if (kodakaio_txrxack(s, KodakEsp_UnLock, reply)!= SANE_STATUS_GOOD) 
+		{
+			DBG(1, "%s: KodakEsp_UnLock command failed\n", __func__);
+			return SANE_STATUS_IO_ERROR;
+		}
 		DBG(5, "%s unlocked the scanner with adf F U\n", __func__);
 	}
 	else { /* no adf */
-		if (kodakaio_txrxack(s, KodakEsp_UnLock, reply)!= SANE_STATUS_GOOD) return SANE_STATUS_IO_ERROR;
+		if (kodakaio_txrxack(s, KodakEsp_UnLock, reply)!= SANE_STATUS_GOOD)
+		{
+			DBG(1, "%s: KodakEsp_UnLock command failed\n", __func__);
+			return SANE_STATUS_IO_ERROR;
+		}
 		DBG(5, "%s unlocked the scanner U\n", __func__);
 	}
 	s->scanning = SANE_FALSE;
@@ -1084,6 +1177,7 @@ Old mc cmd read this stuff from the scanner. I don't think kodak can do that eas
 	return status;
 }
 
+/* Set color curve command, low level, sends commands to the scanner*/
 static SANE_Status
 cmd_set_color_curve(SANE_Handle handle, unsigned char col)
 {
@@ -1093,11 +1187,12 @@ cmd_set_color_curve(SANE_Handle handle, unsigned char col)
 	unsigned char tx_col[8];
 	unsigned char rx[8];
 	unsigned char tx_curve[256];
-	unsigned char i;
+	int i; /* 7/9/14 was unsigned char and that stopped the loop that made the linear curve from going to 255 */
 	DBG(32, "%s: start\n", __func__);
 	tx_col[0]=0x1b; tx_col[1]='S'; tx_col[2]='K'; tx_col[3]=col; tx_col[4]=0; tx_col[5]=0; tx_col[6]=0; tx_col[7]=0;
 /* linear curve now but could send tailor made curves in future */	
-	for(i=0;i<255;++i) tx_curve[i]=i;
+	for(i=0;i<=255;++i) tx_curve[i]=i; /* 7/9/14 was i<255 the missing elements caused speckles */
+
 	k_send(s, tx_col, 8, &status);
 	if (status != SANE_STATUS_GOOD) {
 		DBG(1, "%s: tx err, %s\n", __func__, "curve command");
@@ -1113,7 +1208,7 @@ cmd_set_color_curve(SANE_Handle handle, unsigned char col)
 		return status;
 }
 
-/* Set scanning parameters command low level */
+/* Set scanning parameters command, low level, sends commands to the scanner*/
 static SANE_Status
 cmd_set_scanning_parameters(SANE_Handle handle,
 	int resolution,
@@ -1210,8 +1305,6 @@ unsigned int i;
 	return 0;
 }
 
-
-
 static SANE_Status
 cmd_read_data (SANE_Handle handle, unsigned char *buf, size_t *len)
 {
@@ -1283,11 +1376,11 @@ But it seems that the scanner takes care of that, and gives you the ack as a sep
 		}
 	}
 	else {
-		DBG(min(1,DBG_READ), "%s: tiny read, got %d bytes of %d\n", __func__, bytecount, *len);
+		DBG(min(1,DBG_READ), "%s: tiny read, got %d bytes of %d\n", __func__, (int) bytecount, *len);
 		return SANE_STATUS_IO_ERROR;
 	}
 	if (*len > s->params.bytes_per_line) {
-		/* store average colour as background. That's not the ideal method but it's easy to implement. */
+		/* store average colour as background. That's not the ideal method but it's easy to implement. What's it used for? */
 		lines = *len / s->params.bytes_per_line;
 		s->background[0] = 0;
 		s->background[1] = 0;
@@ -1545,11 +1638,11 @@ k_set_scanning_parameters(KodakAio_Scanner * s)
 		s->params.bytes_per_line *= 3;
 
 	/* Calculate how many bytes per line will be returned by the scanner.
-	magicolor needed this because it uses padding. Scan bytes per line != image bytes per line
+	magicolor needed this because it uses padding so scan bytes per line != image bytes per line.
 	 * The values needed for this are returned by get_scanning_parameters */
-	s->scan_bytes_per_line = 3 * ceil (scan_pixels_per_line * s->params.depth / 8.0);
+	s->scan_bytes_per_line = 3 * ceil (scan_pixels_per_line); /* we always scan in colour 8 bit */
 	s->data_len = s->scan_bytes_per_line * floor (s->height * dpi / optres + 0.5); /* NB this is the length for a full scan */
-	DBG (1, "Check: scan_bytes_per_line = %d  s->params.bytes_per_line = %d \n", s->scan_bytes_per_line, s->params.bytes_per_line);
+	DBG (5, "Check: scan_bytes_per_line = %d  s->params.bytes_per_line = %d \n", s->scan_bytes_per_line, s->params.bytes_per_line);
 
 /* k_setup_block_mode at the start of each page for adf to work */
 	status = k_setup_block_mode (s);
@@ -1604,9 +1697,13 @@ k_copy_image_data(KodakAio_Scanner * s, SANE_Byte * data, SANE_Int max_length,
 uncompressed data is RRRR...GGGG...BBBB  per line */
 {
 		SANE_Int bytes_available;
+		SANE_Int threshold;
 
 		DBG (min(18,DBG_READ), "%s: bytes_read  in line: %d\n", __func__, s->bytes_read_in_line);
 		*length = 0;
+
+		threshold = 255 - (int) (SANE_UNFIX(s->val[OPT_THRESHOLD].w) * 255.0 / 100.0 + 0.5); /* 255 - for the grey scale version */
+		DBG (20, "%s: threshold: %d\n", __func__, threshold);
 
 		while ((max_length >= s->params.bytes_per_line) && (s->ptr < s->end)) {
 			SANE_Int bytes_to_copy = s->scan_bytes_per_line - s->bytes_read_in_line;
@@ -1635,23 +1732,36 @@ uncompressed data is RRRR...GGGG...BBBB  per line */
 				*length += s->params.bytes_per_line;
 
 				for (i=0; i< s->params.pixels_per_line; ++i) {
+				/* different behaviour for each mode */
 
 					if (s->val[OPT_MODE].w == MODE_COLOR){
-					/*interlace */
-					 *data++ = 255-line[0]; /*red */
-					 *data++ = 255-line[s->params.pixels_per_line];  /*green */
-					 *data++ = 255-line[2 * s->params.pixels_per_line];  /*blue */
-
+					/*interlace was subtracting from 255 until 6/9/14 */
+					 	*data++ = 255-line[0]; /*red */
+					 	*data++ = 255-line[s->params.pixels_per_line];  /*green */
+					 	*data++ = 255-line[2 * s->params.pixels_per_line];  /*blue */
 					}
 
-					else { /* grey */
-					/*Average*/
-					*data++ = (255-line[0]
+					else if (s->val[OPT_MODE].w == MODE_LINEART) { /* gives 1 bit output  */
+        					/*output image location*/
+        					int offset = i % 8;
+        					unsigned char mask = 0x80 >> offset;
+						/*set if any colour is over the threshold  */
+						if (line[0] < threshold || line[s->params.pixels_per_line] < threshold || line[2 * s->params.pixels_per_line] < threshold)
+          						*data &= ~mask;     /* white clear the bit in mask */
+        					else
+          						*data |= mask;      /* black set the bit in mask */
+                  
+        					if (offset == 7 || i == s->params.pixels_per_line-1) 
+            						data++; /* move on a byte if the byte is full or the line is complete */
+					}
+
+					else { /* greyscale - Average the 3 colours */
+						*data++ = (255-line[0]
 						+255-line[s->params.pixels_per_line]
 						+255-line[2 * s->params.pixels_per_line])
 						/ 3;
 					}
-					line++;
+						line++;
 				}
 /*debug file The same for color or grey because the scan is colour */
 				if (RawScan != NULL) {
@@ -1716,21 +1826,22 @@ k_init_parametersta(KodakAio_Scanner * s)
 	    SANE_UNFIX(s->val[OPT_BR_X].w), SANE_UNFIX(s->val[OPT_BR_Y].w));
 
 	/*
-	 * The default color depth is stored in mode_params.depth:
+	 * The default color depth is stored in mode_params.depth:‭
 	 */
 	if (mode_params[s->val[OPT_MODE].w].depth == 1)
 		s->params.depth = 1;
 	else {
-		DBG(20, "%s: setting depth = s->val[OPT_BIT_DEPTH].w = %d\n", __func__,s->val[OPT_BIT_DEPTH].w);
 		s->params.depth = s->val[OPT_BIT_DEPTH].w;
 	}
+	DBG(20, "%s: bit depth = s->params.depth = %d\n", __func__,s->params.depth);
 	s->params.last_frame = SANE_TRUE;
 	s->params.bytes_per_line = 3 * ceil (s->params.depth * s->params.pixels_per_line / 8.0);
 
-/* kodak only scans in color and conversion to grey is done in the driver 
+/* kodak only scans in color and conversion to grey or lineart is done in the driver 
 		s->params.format = SANE_FRAME_RGB; */
-		DBG(20, "%s: s->val[OPT_MODE].w = %d (color is %d)\n", __func__,s->val[OPT_MODE].w, MODE_COLOR);
+	DBG(20, "%s: s->val[OPT_MODE].w = %d (color is %d)\n", __func__,s->val[OPT_MODE].w, MODE_COLOR);
 	if (s->val[OPT_MODE].w == MODE_COLOR) s->params.format = SANE_FRAME_RGB;
+	else if (s->val[OPT_MODE].w == MODE_LINEART) s->params.format = SANE_FRAME_GRAY;
 	else s->params.format = SANE_FRAME_GRAY;
 
 	DBG(20, "%s: format=%d, bytes_per_line=%d, lines=%d\n", __func__, s->params.format, s->params.bytes_per_line, s->params.lines);
@@ -1761,19 +1872,16 @@ you don't know how many blocks there will be in advance because their size may b
 	SANE_Status status = SANE_STATUS_GOOD;
 	size_t buf_len = 0;
 
-	/* did we passed everything we read to sane? */
+	/* have we passed everything we read to sane? */
 	if (s->ptr == s->end) {
-
 		if (s->eof)
 			return SANE_STATUS_EOF;
 
 		s->counter++;
-
 		if (s->bytes_unread >= s->block_len)
 			buf_len = s->block_len;
 		else
 			buf_len = s->bytes_unread;
-
 		DBG(min(20,DBG_READ), "%s: block %d, size %lu\n", __func__,
 			s->counter, (unsigned long) buf_len);
 
@@ -1810,9 +1918,7 @@ you don't know how many blocks there will be in advance because their size may b
 					return SANE_STATUS_IO_ERROR;
 				}
 			}
-
 		}
-
 		s->end = s->buf + buf_len;
 		s->ptr = s->buf;
 	}
@@ -1857,7 +1963,6 @@ get_device_from_identification (const char *ident, const char *vid, const char *
 	}
 	return NULL;
 }
-
 
 /*
  * close_scanner()
@@ -2184,6 +2289,7 @@ static void resolve_callback(
     AvahiLookupResultFlags flags,
     AVAHI_GCC_UNUSED void* userdata) {
 
+	AvahiStringList *vid_pair_list = NULL, *pid_pair_list = NULL;
 	char *pidkey, *pidvalue;
 	char *vidkey, *vidvalue;
 	size_t valuesize;
@@ -2204,20 +2310,40 @@ static void resolve_callback(
             avahi_address_snprint(a, sizeof(a), address);
 
 /* Output short for Kodak ESP */
-	DBG(min(10,DBG_AUTO), "%s:%u  %s  ", a,port,host_name);
-	avahi_string_list_get_pair(avahi_string_list_find(txt, "vid"), 
-		&vidkey, &vidvalue, &valuesize);
-	DBG(min(10,DBG_AUTO), "%s=%s  ", vidkey, vidvalue);
-	avahi_string_list_get_pair(avahi_string_list_find(txt, "pid"), 
-		&pidkey, &pidvalue, &valuesize);
-	DBG(min(10,DBG_AUTO), "%s=%s\n", pidkey, pidvalue);
+	DBG(min(10,DBG_AUTO), "%s:%u  %s\n", a,port,host_name);
 
+	vid_pair_list = avahi_string_list_find(txt, "vid");
+	if(vid_pair_list != NULL) {
+		avahi_string_list_get_pair(vid_pair_list, &vidkey, &vidvalue, &valuesize);
+		DBG(min(10,DBG_AUTO), "%s=%s  ", vidkey, vidvalue);
+	}
+	else	DBG(min(10,DBG_AUTO), "failed to find key vid\n");
+
+	pid_pair_list = avahi_string_list_find(txt, "pid");
+	if(pid_pair_list != NULL) {
+		avahi_string_list_get_pair(pid_pair_list, &pidkey, &pidvalue, &valuesize);
+		DBG(min(10,DBG_AUTO), "%s=%s\n", pidkey, pidvalue);
+	}
+	else	DBG(min(10,DBG_AUTO), "failed to find key pid\n");
+
+	if(pid_pair_list != NULL && vid_pair_list != NULL) {
 		ProcessAvahiDevice(name, vidvalue, pidvalue, a);
-	avahi_free(vidkey); avahi_free(vidvalue);
-	avahi_free(pidkey); avahi_free(pidvalue);
+	}
+	else DBG(min(10,DBG_AUTO), "didn't call ProcessAvahiDevice\n");
+
+	if(vid_pair_list != NULL) {
+		avahi_free(vidkey); 
+		avahi_free(vidvalue);
+		DBG(min(15,DBG_AUTO), "vidkey and vidvalue freed\n");
+	}
+	if(pid_pair_list != NULL) {
+		avahi_free(pidkey); 
+		avahi_free(pidvalue);
+		DBG(min(15,DBG_AUTO), "pidkey and pidvalue freed\n");
+	}
         }
     }
-
+    DBG(min(10,DBG_AUTO), "ending resolve_callback\n");
     avahi_service_resolver_free(r);
 }
 
@@ -2619,8 +2745,32 @@ init_options(KodakAio_Scanner *s)
 	s->opt[OPT_MODE].size = max_string_size(mode_list);
 	s->opt[OPT_MODE].constraint_type = SANE_CONSTRAINT_STRING_LIST;
 	s->opt[OPT_MODE].constraint.string_list = mode_list;
-	s->val[OPT_MODE].w = 0;	/* Binary */
-	DBG(20, "%s: mode_list has first entry %s\n", __func__, mode_list[0]);
+	s->val[OPT_MODE].w = MODE_COLOR;	/* default */
+	DBG(20, "%s: mode_list has first entry %s, default mode is %s\n", __func__, mode_list[0],mode_list[s->val[OPT_MODE].w]);
+
+	/* theshold the sane std says should be SANE_TYPE_FIXED 0..100 but all other backends seem to use INT 0..255 */
+	s->opt[OPT_THRESHOLD].name = SANE_NAME_THRESHOLD;
+	s->opt[OPT_THRESHOLD].title = SANE_TITLE_THRESHOLD;
+	s->opt[OPT_THRESHOLD].desc = SANE_DESC_THRESHOLD;
+	s->opt[OPT_THRESHOLD].type = SANE_TYPE_FIXED;
+	s->opt[OPT_THRESHOLD].unit = SANE_UNIT_PERCENT;
+	s->opt[OPT_THRESHOLD].size = sizeof(SANE_Word);
+	s->opt[OPT_THRESHOLD].constraint_type = SANE_CONSTRAINT_RANGE;
+	s->opt[OPT_THRESHOLD].constraint.range = &percent_range_fixed;
+	s->val[OPT_THRESHOLD].w = SANE_FIX(50.0);
+	DBG(20, "%s: threshold initialised to fixed %f\n", __func__, SANE_UNFIX(s->val[OPT_THRESHOLD].w));
+
+	/* theshold the sane std says should be SANE_TYPE_FIXED 0..100 but all other backends seem to use INT 0..255
+	s->opt[OPT_THRESHOLD].name = SANE_NAME_THRESHOLD;
+	s->opt[OPT_THRESHOLD].title = SANE_TITLE_THRESHOLD;
+	s->opt[OPT_THRESHOLD].desc = SANE_DESC_THRESHOLD;
+	s->opt[OPT_THRESHOLD].type = SANE_TYPE_INT;
+	s->opt[OPT_THRESHOLD].unit = SANE_UNIT_PERCENT;
+	s->opt[OPT_THRESHOLD].size = sizeof(SANE_Word);
+	s->opt[OPT_THRESHOLD].constraint_type = SANE_CONSTRAINT_RANGE;
+	s->opt[OPT_THRESHOLD].constraint.range = &percent_range_int;
+	s->val[OPT_THRESHOLD].w = 51;
+	DBG(20, "%s: threshold initialised to int %d\n", __func__, s->val[OPT_THRESHOLD].w); */
 
 	/* bit depth */
 	s->opt[OPT_BIT_DEPTH].name = SANE_NAME_BIT_DEPTH;
@@ -2655,6 +2805,17 @@ init_options(KodakAio_Scanner *s)
 	s->opt[OPT_RESOLUTION].constraint.word_list = res_list;
 	s->val[OPT_RESOLUTION].w = s->hw->cap->dpi_range.min;
 
+
+	/* trial option for debugging 
+	s->opt[OPT_TRIALOPT].name = "trialoption";
+	s->opt[OPT_TRIALOPT].title = "trialoption";
+	s->opt[OPT_TRIALOPT].desc = "trialoption";
+	s->opt[OPT_TRIALOPT].type = SANE_TYPE_INT;
+	s->opt[OPT_TRIALOPT].unit = SANE_UNIT_NONE;
+	s->opt[OPT_TRIALOPT].size = sizeof(SANE_Word);
+	s->opt[OPT_TRIALOPT].constraint_type = SANE_CONSTRAINT_RANGE;
+	s->opt[OPT_TRIALOPT].constraint.range = &percent_range_int;
+	s->val[OPT_TRIALOPT].w = 1; */
 
 	/* preview */
 	s->opt[OPT_PREVIEW].name = SANE_NAME_PREVIEW;
@@ -2831,12 +2992,13 @@ maybe we should only be rebuilding the source list here? */
 
 	*handle = (SANE_Handle) s;
 
+/* moving the open scanner section below to sane_start 27/12/14 
 	status = open_scanner(s);
 	if (status != SANE_STATUS_GOOD) {
 		free(s);
 		return status;
 	}
-
+*/
 	return status;
 }
 
@@ -2853,8 +3015,11 @@ sane_close(SANE_Handle handle)
 	s = (KodakAio_Scanner *) handle;
 	DBG(2, "%s: called\n", __func__);
 
+/* moving the close scanner section below to sane_cancel 27/12/14 */
 	if (s->fd != -1)
 		close_scanner(s);
+/* end of section */
+
 	if(RawScan != NULL)
 		fclose(RawScan);
 	RawScan = NULL;
@@ -2867,7 +3032,7 @@ sane_get_option_descriptor(SANE_Handle handle, SANE_Int option)
 /* this may be a sane call, but it happens way too often to have DBG level 2 */
 	KodakAio_Scanner *s = (KodakAio_Scanner *) handle;
 
-	DBG(20, "%s: called for option %d\n", __func__, option);
+	DBG(30, "%s: called for option %d\n", __func__, option);
 
 	if (option < 0 || option >= NUM_OPTIONS)
 		return NULL;
@@ -2922,7 +3087,7 @@ getvalue(SANE_Handle handle, SANE_Int option, void *value)
 
 	case OPT_NUM_OPTS:
 	case OPT_BIT_DEPTH:
-/*	case OPT_BRIGHTNESS: */
+	/* case OPT_TRIALOPT: */
 	case OPT_RESOLUTION:
 	case OPT_PREVIEW:
 	case OPT_TL_X:
@@ -2930,6 +3095,13 @@ getvalue(SANE_Handle handle, SANE_Int option, void *value)
 	case OPT_BR_X:
 	case OPT_BR_Y:
 		*((SANE_Word *) value) = sval->w;
+		DBG(20, "%s: got option %d as %d\n", __func__, option, *((SANE_Word *) value));
+		break;
+
+	case OPT_THRESHOLD:
+		*((SANE_Word *) value) = sval->w;
+		DBG(20, "%s: got option %d as %f\n", __func__, option, SANE_UNFIX(*((SANE_Word *) value)));
+		/*DBG(20, "%s: got option %d as %d\n", __func__, option, *((SANE_Word *) value));*/
 		break;
 
 	case OPT_MODE:
@@ -2942,9 +3114,11 @@ getvalue(SANE_Handle handle, SANE_Int option, void *value)
 		break;
 
 	default:
+		DBG(20, "%s: returning inval\n", __func__);
 		return SANE_STATUS_INVAL;
 	}
 
+	DBG(20, "%s: returning good\n", __func__);
 	return SANE_STATUS_GOOD;
 }
 
@@ -3050,18 +3224,23 @@ setvalue(SANE_Handle handle, SANE_Int option, void *value, SANE_Int *info)
 	case OPT_MODE:
 	{
 		sval->w = optindex;
-		/* if binary, then disable the bit depth selection */
-		if (optindex == 0) {
+		/* if binary, then disable the bit depth selection and enable threshold */
+		if (optindex == MODE_LINEART) {
+	DBG(17, "%s: binary mode setting depth to 1\n", __func__);
+			s->val[OPT_BIT_DEPTH].w = 1;
 			s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
+			s->opt[OPT_THRESHOLD].cap &= ~SANE_CAP_INACTIVE;
 		} else {
-			if (s->hw->cap->depth_list[0] == 1)
-				s->opt[OPT_BIT_DEPTH].cap |=
-					SANE_CAP_INACTIVE;
-			else {
-				s->opt[OPT_BIT_DEPTH].cap &=
-					~SANE_CAP_INACTIVE;
-				s->val[OPT_BIT_DEPTH].w =
-					mode_params[optindex].depth;
+			if (s->hw->cap->depth_list[0] == 1) { /* only one entry in the list ? */
+	DBG(17, "%s: non-binary mode but only one depth available\n", __func__);
+				s->val[OPT_BIT_DEPTH].w = s->hw->cap->depth_list[1];
+				s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
+				s->opt[OPT_THRESHOLD].cap |= SANE_CAP_INACTIVE;
+			} else { /* there is a list to choose from ? */
+	DBG(17, "%s: non-binary mode and depth list available\n", __func__);
+				s->opt[OPT_BIT_DEPTH].cap &= ~SANE_CAP_INACTIVE;
+				s->val[OPT_BIT_DEPTH].w = mode_params[optindex].depth;
+				s->opt[OPT_THRESHOLD].cap |= SANE_CAP_INACTIVE; /* does not work in xsane ? */
 			}
 		}
 		reload = SANE_TRUE;
@@ -3072,6 +3251,13 @@ setvalue(SANE_Handle handle, SANE_Int option, void *value, SANE_Int *info)
 		sval->w = *((SANE_Word *) value);
 		mode_params[s->val[OPT_MODE].w].depth = sval->w;
 		reload = SANE_TRUE;
+		break;
+
+	case OPT_THRESHOLD:
+		sval->w = *((SANE_Word *) value);
+		DBG(17, "setting threshold to %f\n", SANE_UNFIX(sval->w));
+		/*DBG(17, "setting threshold to %d\n", sval->w);*/
+		/*reload = SANE_TRUE; what does this do?*/
 		break;
 
 	case OPT_RESOLUTION:
@@ -3109,7 +3295,7 @@ setvalue(SANE_Handle handle, SANE_Int option, void *value, SANE_Int *info)
 		sval->w = *((SANE_Word *) value);
 		break;
 
-/*	case OPT_BRIGHTNESS: */
+	/* case OPT_TRIALOPT: */
 	case OPT_PREVIEW:	/* needed? */
 		sval->w = *((SANE_Word *) value);
 		break;
@@ -3131,13 +3317,13 @@ sane_control_option(SANE_Handle handle, SANE_Int option, SANE_Action action,
 		    void *value, SANE_Int *info)
 {
 	KodakAio_Scanner *s = (KodakAio_Scanner *) handle;
-	DBG(2, "%s: action = %x, option = %d %s\n", __func__, action, option, s->opt[option].name);
-
 	if (option < 0 || option >= NUM_OPTIONS)
 	{
-		DBG(1, "%s: option num = %d (%s) out of range\n", __func__, option, s->opt[option].name);
+		DBG(1, "%s: option num = %d out of range (0..%d)\n", __func__, option, NUM_OPTIONS - 1);
 		return SANE_STATUS_INVAL;
 	}
+
+	DBG(5, "%s: action = %x, option = %d %s\n", __func__, action, option, s->opt[option].name);
 
 	if (info != NULL)
 		*info = 0;
@@ -3209,6 +3395,16 @@ sane_start(SANE_Handle handle)
 	 * them to s->params 
 Only set scanning params the first time, or after a cancel 
 try change 22/2/12 take lock scanner out of k_set_scanning_parameters */
+
+/* moved open_scanner here 27/12/14 from sane_open */
+	status = open_scanner(s);
+	if (status != SANE_STATUS_GOOD) {
+		free(s);
+		return status;
+	}
+/* end of open scanner section */
+
+
 		status = k_lock_scanner(s);
 		if (status != SANE_STATUS_GOOD) {
 			DBG(1, "could not lock scanner\n");
@@ -3299,24 +3495,24 @@ sane_read(SANE_Handle handle, SANE_Byte *data, SANE_Int max_length,
 	return status;
 }
 
-/*
- * void sane_cancel(SANE_Handle handle)
- *
- * Set the cancel flag to true. The next time the backend requests data
- * from the scanner the CAN message will be sent.
- */
 
 void
 sane_cancel(SANE_Handle handle)
 {
+	SANE_Status status;
 	KodakAio_Scanner *s = (KodakAio_Scanner *) handle;
 	DBG(2, "%s: called\n", __func__);
 
-/* used to set cancelling flag to tell sane_read to cancel
-changed 20/2/12
-	s->canceling = SANE_TRUE;
-*/
-	cmd_cancel_scan(s);
+	status = cmd_cancel_scan(s);
+	if (status != SANE_STATUS_GOOD)
+		DBG(1, "%s: cmd_cancel_scan failed: %s\n", __func__,
+		    sane_strstatus(status));
+
+/* moved from close scanner section 27/12/14 */
+	if (s->fd != -1)
+		close_scanner(s);
+/* end of section */
+
 }
 
 /*

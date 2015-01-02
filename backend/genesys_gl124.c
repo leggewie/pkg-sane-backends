@@ -301,123 +301,6 @@ static Sensor_Profile *get_sensor_profile(int sensor_type, int dpi, int half_ccd
   return &(sensors[idx]);
 }
 
-/** @brief motor profile
- * search for the database of motor profiles and get the best one. Each
- * profile is at full step and at a reference exposure. Use LiDE 110 table
- * by default.
- * @param motor_type motor id
- * @param exposure exposure time
- * @return a pointer to a Motor_Profile struct
- */
-static Motor_Profile *get_motor_profile(int motor_type, int exposure)
-{
-  unsigned int i;
-  int idx;
-
-  i=0;
-  idx=-1;
-  while(i<sizeof(motors)/sizeof(Motor_Profile))
-    {
-      /* exact match */
-      if(motors[i].motor_type==motor_type && motors[i].exposure==exposure)
-        {
-          return &(motors[i]);
-        }
-
-      /* closest match */
-      if(motors[i].motor_type==motor_type)
-        {
-          if(idx<0)
-            {
-              idx=i;
-            }
-          else
-            {
-              if(motors[i].exposure>=exposure
-              && motors[i].exposure<motors[idx].exposure)
-                {
-                  idx=i;
-                }
-            }
-        }
-      i++;
-    }
-
-  /* default fallback */
-  if(idx<0)
-    {
-      DBG (DBG_warn,"%s: using default motor profile\n",__FUNCTION__);
-      idx=0;
-    }
-
-  return &(motors[idx]);
-}
-
-/** @brief generate slope table
- * Generate the slope table to use for the scan using a reference slope
- * table.
- * @param slope pointer to the slope table to fill
- * @param steps pointer to return used step number
- * @param dpi   desired motor resolution
- * @param exposure exposure used
- * @param base_dpi base resolution of the motor
- * @param step_type step type used for scan
- * @param factor shrink factor for the slope
- * @param motor_type motor id
- */
-static int gl124_slope_table(uint16_t *slope,
-		             int       *steps,
-			     int       dpi,
-			     int       exposure,
-			     int       base_dpi,
-			     int       step_type,
-			     int       factor,
-                             int       motor_type)
-{
-int sum, i;
-uint16_t target,current;
-Motor_Profile *profile;
-
-	/* required speed */
-	target=((exposure * dpi) / base_dpi)>>step_type;
-	
-	/* fill result with target speed */
-        for(i=0;i<SLOPE_TABLE_SIZE;i++)
-          slope[i]=target;
-
-        profile=get_motor_profile(motor_type,exposure);
-
-	/* use profile to build table */
-        i=0;
-	sum=0;
-
-        /* first step is used unmodified */
-        current=profile->table[0];
-
-        /* loop on profile copying and apply step type */
-        while(i<SLOPE_TABLE_SIZE && current>=target)
-          {
-            slope[i]=current;
-            sum+=slope[i];
-            i++;
-            current=profile->table[i*factor]>>step_type;
-          }
-        if(i<3 && DBG_LEVEL >= DBG_warn)
-          {
-            DBG (DBG_warn,"%s: short slope table, failed to reach %d\n",__FUNCTION__,target);
-          }
-
-        /* ensure minimal slope size */
-        while(i<8)
-          {
-            sum+=slope[i];
-            i++;
-          }
-
-        /* return used steps and acceleration sum */
-        *steps=i;
-	return sum;
-}
 
 /* returns the max register bulk size */
 static int
@@ -732,7 +615,7 @@ gl124_init_registers (Genesys_Device * dev)
  * @param slope_table pointer to 16 bit values array of the slope table
  * @param steps number of elemnts in the slope table
  */
-static SANE_Status
+GENESYS_STATIC SANE_Status
 gl124_send_slope_table (Genesys_Device * dev, int table_nr,
 			uint16_t * slope_table, int steps)
 {
@@ -922,24 +805,6 @@ static int gl124_compute_exposure(Genesys_Device *dev, int xres, int half_ccd)
   return sensor->exposure;
 }
 
-/**@brief compute motor step type to use
- * compute the step type (full, half, quarter, ...) to use based
- * on target resolution
- * @param dev device description
- * @param exposure sensor exposure
- * @return 0 for full step
- *         1 for half step
- *         2 for quarter step
- *         3 for eighth step
- */
-static int gl124_compute_step_type(Genesys_Device *dev, int exposure)
-{
-Motor_Profile *profile;
-
-    profile=get_motor_profile(dev->model->motor_type,exposure);
-    return profile->step_type;
-}
-
 
 static SANE_Status
 gl124_init_motor_regs_scan (Genesys_Device * dev,
@@ -1033,14 +898,15 @@ gl124_init_motor_regs_scan (Genesys_Device * dev,
   sanei_genesys_set_double(reg,REG_SCANFED,4);
 
   /* scan and backtracking slope table */
-  gl124_slope_table(scan_table,
-                    &scan_steps,
-                    yres,
-                    scan_exposure_time,
-                    dev->motor.base_ydpi,
-                    scan_step_type,
-                    factor,
-                    dev->model->motor_type);
+  sanei_genesys_slope_table(scan_table,
+                            &scan_steps,
+                            yres,
+                            scan_exposure_time,
+                            dev->motor.base_ydpi,
+                            scan_step_type,
+                            factor,
+                            dev->model->motor_type,
+                            motors);
   RIE(gl124_send_slope_table (dev, SCAN_TABLE, scan_table, scan_steps));
   RIE(gl124_send_slope_table (dev, BACKTRACK_TABLE, scan_table, scan_steps));
 
@@ -1049,18 +915,22 @@ gl124_init_motor_regs_scan (Genesys_Device * dev,
 
   /* fast table */
   fast_dpi=yres;
+
+  /*
   if (scan_mode != SCAN_MODE_COLOR)
     {
       fast_dpi*=3;
     }
-  gl124_slope_table(fast_table,
-                    &fast_steps,
-                    fast_dpi,
-                    scan_exposure_time,
-                    dev->motor.base_ydpi,
-                    scan_step_type,
-                    factor,
-                    dev->model->motor_type);
+    */
+  sanei_genesys_slope_table(fast_table,
+                            &fast_steps,
+                            fast_dpi,
+                            scan_exposure_time,
+                            dev->motor.base_ydpi,
+                            scan_step_type,
+                            factor,
+                            dev->model->motor_type,
+                            motors);
   RIE(gl124_send_slope_table (dev, STOP_TABLE, fast_table, fast_steps));
   RIE(gl124_send_slope_table (dev, FAST_TABLE, fast_table, fast_steps));
 
@@ -1505,10 +1375,8 @@ gl124_init_optical_regs_scan (Genesys_Device * dev,
  *
  * this function sets up the scanner to scan in normal or single line mode
  */
-#ifndef UNIT_TESTING
-static
-#endif
-  SANE_Status
+GENESYS_STATIC
+SANE_Status
 gl124_init_scan_regs (Genesys_Device * dev,
                       Genesys_Register_Set * reg,
                       float xres,	/*dpi */
@@ -1519,6 +1387,8 @@ gl124_init_scan_regs (Genesys_Device * dev,
 		      float lines,
 		      unsigned int depth,
 		      unsigned int channels,
+		      __sane_unused__ int scan_method,
+                      int scan_mode,
 		      int color_filter,
                       unsigned int flags)
 {
@@ -1619,7 +1489,7 @@ gl124_init_scan_regs (Genesys_Device * dev,
   else
     {
       exposure_time = gl124_compute_exposure (dev, used_res, half_ccd);
-      scan_step_type = gl124_compute_step_type(dev, exposure_time);
+      scan_step_type = sanei_genesys_compute_step_type(motors, dev->model->motor_type, exposure_time);
     }
 
   DBG (DBG_info, "gl124_init_scan_regs : exposure_time=%d pixels\n", exposure_time);
@@ -1628,8 +1498,7 @@ gl124_init_scan_regs (Genesys_Device * dev,
   /*** optical parameters ***/
   /* in case of dynamic lineart, we use an internal 8 bit gray scan
    * to generate 1 lineart data */
-  if ((flags & SCAN_FLAG_DYNAMIC_LINEART)
-      && (dev->settings.scan_mode == SCAN_MODE_LINEART))
+  if ((flags & SCAN_FLAG_DYNAMIC_LINEART) && (scan_mode == SCAN_MODE_LINEART))
     {
       depth = 8;
     }
@@ -1693,7 +1562,7 @@ gl124_init_scan_regs (Genesys_Device * dev,
 					 dev->model->is_cis ? lincnt * channels : lincnt,
 					 dummy,
 					 move,
-					 dev->settings.scan_mode,
+					 scan_mode,
 					 mflags);
   if (status != SANE_STATUS_GOOD)
     return status;
@@ -2188,7 +2057,6 @@ gl124_slow_back_home (Genesys_Device * dev, SANE_Bool wait_until_home)
   uint8_t val;
   float resolution;
   int loop = 0;
-  int scan_mode;
 
   DBG (DBG_proc, "gl124_slow_back_home (wait_until_home = %d)\n",
        wait_until_home);
@@ -2243,24 +2111,30 @@ gl124_slow_back_home (Genesys_Device * dev, SANE_Bool wait_until_home)
   memcpy (local_reg, dev->reg, GENESYS_GL124_MAX_REGS * sizeof (Genesys_Register_Set));
   resolution=sanei_genesys_get_lowest_dpi(dev);
 
-  /* TODO add scan_mode to the API */
-  scan_mode= dev->settings.scan_mode;
-  dev->settings.scan_mode=SCAN_MODE_GRAY;
-  gl124_init_scan_regs (dev,
-			local_reg,
-			resolution,
-			resolution,
-			100,
-			30000,
-			100,
-			100,
-			8,
-			1,
-			0,
-			SCAN_FLAG_DISABLE_SHADING |
-			SCAN_FLAG_DISABLE_GAMMA |
-			SCAN_FLAG_IGNORE_LINE_DISTANCE);
-  dev->settings.scan_mode=scan_mode;
+  status = gl124_init_scan_regs (dev,
+                                 local_reg,
+                                 resolution,
+                                 resolution,
+                                 100,
+                                 30000,
+                                 100,
+                                 100,
+                                 8,
+                                 1,
+                                 dev->settings.scan_method,
+                                 SCAN_MODE_GRAY,
+                                 0,
+                                 SCAN_FLAG_DISABLE_SHADING |
+                                 SCAN_FLAG_DISABLE_GAMMA |
+                                 SCAN_FLAG_IGNORE_LINE_DISTANCE);
+  if (status != SANE_STATUS_GOOD)
+    {
+      DBG (DBG_error,
+           "gl124_slow_back_home: failed to set up registers: %s\n",
+           sane_strstatus (status));
+      DBGCOMPLETED;
+      return status;
+    }
 
   /* clear scan and feed count */
   RIE (sanei_genesys_write_register (dev, REG0D, REG0D_CLRLNCNT | REG0D_CLRMCNT));
@@ -2348,22 +2222,32 @@ gl124_feed (Genesys_Device * dev, unsigned int steps)
   memcpy (local_reg, dev->reg, GENESYS_GL124_MAX_REGS * sizeof (Genesys_Register_Set));
 
   resolution=sanei_genesys_get_lowest_ydpi(dev);
-  gl124_init_scan_regs (dev,
-			local_reg,
-			resolution,
-			resolution,
-			0,
-			steps,
-			100,
-			3,
-			8,
-			3,
-			dev->settings.color_filter,
-			SCAN_FLAG_DISABLE_SHADING |
-			SCAN_FLAG_DISABLE_GAMMA |
-                        SCAN_FLAG_FEEDING |
-			SCAN_FLAG_DISABLE_BUFFER_FULL_MOVE |
-			SCAN_FLAG_IGNORE_LINE_DISTANCE);
+  status = gl124_init_scan_regs (dev,
+                                 local_reg,
+                                 resolution,
+                                 resolution,
+                                 0,
+                                 steps,
+                                 100,
+                                 3,
+                                 8,
+                                 3,
+                                 dev->settings.scan_method,
+                                 SCAN_MODE_COLOR,
+                                 dev->settings.color_filter,
+                                 SCAN_FLAG_DISABLE_SHADING |
+                                 SCAN_FLAG_DISABLE_GAMMA |
+                                 SCAN_FLAG_FEEDING |
+                                 SCAN_FLAG_DISABLE_BUFFER_FULL_MOVE |
+                                 SCAN_FLAG_IGNORE_LINE_DISTANCE);
+  if (status != SANE_STATUS_GOOD)
+    {
+      DBG (DBG_error,
+           "gl124_feed: failed to set up registers: %s\n",
+           sane_strstatus (status));
+      DBGCOMPLETED;
+      return status;
+    }
 
   /* set exposure to zero */
   sanei_genesys_set_triple(local_reg,REG_EXPR,0);
@@ -2422,7 +2306,7 @@ gl124_search_start_position (Genesys_Device * dev)
   int pixels = 600;
   int dpi = 300;
 
-  DBG (DBG_proc, "gl124_search_start_position\n");
+  DBGSTART;
 
   memcpy (local_reg, dev->reg,
 	  GENESYS_GL124_MAX_REGS * sizeof (Genesys_Register_Set));
@@ -2430,8 +2314,19 @@ gl124_search_start_position (Genesys_Device * dev)
   /* sets for a 200 lines * 600 pixels */
   /* normal scan with no shading */
 
-  status = gl124_init_scan_regs (dev, local_reg, dpi, dpi, 0, 0,	/*we should give a small offset here~60 steps */
-				 600, dev->model->search_lines, 8, 1, 1,	/*green */
+  status = gl124_init_scan_regs (dev,
+                                 local_reg,
+                                 dpi,
+                                 dpi,
+                                 0,
+                                 0,	/*we should give a small offset here~60 steps */
+				 600,
+                                 dev->model->search_lines,
+                                 8,
+                                 1,
+                                 dev->settings.scan_method,
+                                 SCAN_MODE_GRAY,
+                                 1,	/*green */
 				 SCAN_FLAG_DISABLE_SHADING |
 				 SCAN_FLAG_DISABLE_GAMMA |
 				 SCAN_FLAG_IGNORE_LINE_DISTANCE |
@@ -2521,6 +2416,7 @@ gl124_search_start_position (Genesys_Device * dev)
     }
 
   free (data);
+  DBGCOMPLETED;
   return SANE_STATUS_GOOD;
 }
 
@@ -2553,6 +2449,8 @@ gl124_init_regs_for_coarse_calibration (Genesys_Device * dev)
 				 20,
 				 16,
 				 channels,
+                                 dev->settings.scan_method,
+                                 dev->settings.scan_mode,
 				 dev->settings.color_filter,
 				 SCAN_FLAG_DISABLE_SHADING |
 				 SCAN_FLAG_DISABLE_GAMMA |
@@ -2637,6 +2535,8 @@ gl124_init_regs_for_shading (Genesys_Device * dev)
 				 dev->calib_lines,
 				 16,
 				 dev->calib_channels,
+                                 dev->settings.scan_method,
+                                 SCAN_MODE_COLOR,
 				 0,
 				 SCAN_FLAG_DISABLE_SHADING |
 				 SCAN_FLAG_DISABLE_GAMMA |
@@ -2791,6 +2691,8 @@ gl124_init_regs_for_scan (Genesys_Device * dev)
 				 dev->settings.lines,
 				 depth,
 				 channels,
+                                 dev->settings.scan_method,
+                                 dev->settings.scan_mode,
                                  dev->settings.color_filter,
                                  flags);
 
@@ -2964,6 +2866,8 @@ move_to_calibration_area (Genesys_Device * dev)
                                  1,
                                  8,
                                  3,
+                                 dev->settings.scan_method,
+                                 SCAN_MODE_COLOR,
 				 dev->settings.color_filter,
 				 SCAN_FLAG_DISABLE_SHADING |
 				 SCAN_FLAG_DISABLE_GAMMA |
@@ -3062,6 +2966,8 @@ gl124_led_calibration (Genesys_Device * dev)
                                  1,
                                  depth,
                                  channels,
+                                 dev->settings.scan_method,
+                                 SCAN_MODE_COLOR,
 				 dev->settings.color_filter,
 				 SCAN_FLAG_DISABLE_SHADING |
 				 SCAN_FLAG_DISABLE_GAMMA |
@@ -3250,6 +3156,8 @@ gl124_offset_calibration (Genesys_Device * dev)
 				 lines,
 				 bpp,
 				 channels,
+                                 dev->settings.scan_method,
+                                 SCAN_MODE_COLOR,
 				 dev->settings.color_filter,
 				 SCAN_FLAG_DISABLE_SHADING |
 				 SCAN_FLAG_DISABLE_GAMMA |
@@ -3429,6 +3337,8 @@ gl124_coarse_gain_calibration (Genesys_Device * dev, int dpi)
                                  lines,
                                  bpp,
                                  channels,
+                                 dev->settings.scan_method,
+                                 SCAN_MODE_COLOR,
 				 dev->settings.color_filter,
 				 SCAN_FLAG_DISABLE_SHADING |
 				 SCAN_FLAG_DISABLE_GAMMA |
@@ -3558,6 +3468,8 @@ gl124_init_regs_for_warmup (Genesys_Device * dev,
 				 1,
 				 8,
 				 *channels,
+                                 dev->settings.scan_method,
+                                 SCAN_MODE_COLOR,
 				 dev->settings.color_filter,
 				 SCAN_FLAG_DISABLE_SHADING |
 				 SCAN_FLAG_DISABLE_GAMMA |
@@ -3878,7 +3790,8 @@ static Genesys_Command_Set gl124_cmd_set = {
   NULL,
   gl124_send_shading_data,
   gl124_calculate_current_setup,
-  gl124_boot
+  gl124_boot,
+  gl124_init_scan_regs
 };
 
 SANE_Status

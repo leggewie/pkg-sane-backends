@@ -2212,7 +2212,13 @@ sane_close (SANE_Handle handle)
   /* switch off lamp and close usb */
   if (dev->conf.allowsharing == SANE_TRUE)
     {
-      sanei_usb_claim_interface (dev->devnum, 0);
+      SANE_Status status = sanei_usb_claim_interface (dev->devnum, 0);
+      if (status != SANE_STATUS_GOOD)
+        {
+          DBG (DBG_warn, "sane_close: cannot claim usb interface: %s\n",
+               sane_strstatus(status));
+          DBG (DBG_warn, "sane_close: continuing anyway\n");
+        }
     }
   set_lamp_state (session, 0);
   sanei_usb_close (dev->devnum);
@@ -3194,14 +3200,6 @@ find_origin (struct Rts8891_Device *dev, SANE_Bool * changed)
       free(image);
       free(data);
       DBG (DBG_error, "find_origin: failed to scan\n");
-      return status;
-    }
-
-  if (status != SANE_STATUS_GOOD)
-    {
-      free(image);
-      free(data);
-      DBG (DBG_error, "find_origin: failed to wait for data\n");
       return status;
     }
 

@@ -67,6 +67,10 @@ putnbyte (unsigned char *pnt, unsigned int value, unsigned int nbytes)
 }
 
 /* ==================================================================== */
+/* extended status packet */
+#define get_ES_length(b)             getnbyte(b+0x04, 4)
+
+/* ==================================================================== */
 /* SCSI commands */
 
 #define set_SCSI_opcode(out, val)          out[0]=val
@@ -203,7 +207,9 @@ putnbyte (unsigned char *pnt, unsigned int value, unsigned int nbytes)
 /* READ/SEND page codes */
 #define SR_datatype_image		0x00
 #define SR_datatype_lut                 0x03
+#define SR_datatype_pixelsize  		0x80 /*DR-G1130*/
 #define SR_datatype_panel  		0x84
+#define SR_datatype_sensors  		0x8b
 #define SR_datatype_counters 		0x8c
 #define SR_datatype_endorser            0x90
 #define SR_datatype_fineoffset          0x90
@@ -233,6 +239,11 @@ putnbyte (unsigned char *pnt, unsigned int value, unsigned int nbytes)
 #define get_R_PANEL_bypass_mode(in)	getbitfield(in+1, 1, 2)
 #define get_R_PANEL_enable_led(in)	getbitfield(in+2, 1, 0)
 #define get_R_PANEL_counter(in)         getnbyte(in + 0x04, 4)
+
+/*sensors*/
+#define R_SENSORS_len                   0x01
+#define get_R_SENSORS_card(in)	        getbitfield(in, 1, 3)
+#define get_R_SENSORS_adf(in)	        getbitfield(in, 1, 0)
 
 /*counters*/
 #define R_COUNTERS_len                 0x80
@@ -334,6 +345,7 @@ putnbyte (unsigned char *pnt, unsigned int value, unsigned int nbytes)
 #define set_SSM_BUFF_async(sb, val)     setbitfield(sb+0x0a, 1, 6, val)
 #define set_SSM_BUFF_ald(sb, val)       setbitfield(sb+0x0a, 1, 5, val)
 #define set_SSM_BUFF_fb(sb, val)        setbitfield(sb+0x0a, 1, 4, val)
+#define set_SSM_BUFF_card(sb, val)      setbitfield(sb+0x0a, 1, 3, val)
 
 /* for DO (0x36) page */
 #define SSM_DO_none                     0
@@ -415,18 +427,39 @@ putnbyte (unsigned char *pnt, unsigned int value, unsigned int nbytes)
 #define set_CC3_exp_b_b(sb, val)     putnbyte(sb + 0x20, val, 2)
 
 /* ==================================================================== */
+/* Page codes used by GET/SET SCAN MODE 2 */
+#define SM2_pc_df                       0x00
+#define SM2_pc_ultra                    0x01
+#define SM2_pc_buffer                   0x02
+#define SM2_pc_dropout                  0x06
+
+/* ==================================================================== */
 /* SET SCAN MODE 2 */
 #define SET_SCAN_MODE2_code             0xe5
-#define SET_SCAN_MODE2_len              10
+#define SET_SCAN_MODE2_len              12
 
 #define set_SSM2_page_code(sb, val)     sb[0x02] = val
 #define set_SSM2_pay_len(sb, val)       sb[0x08] = val
 
 /* the payload */
 #define SSM2_PAY_len                     0x10
-#define set_SSM2_unk(sb, val)           sb[0x02] = val
-#define set_SSM2_unk2(sb, val)          sb[0x03] = val
-#define set_SSM2_unk3(sb, val)          sb[0x04] = val
+
+/* for DF (0x00) page */
+#define set_SSM2_DF_thick(sb, val)       setbitfield(sb+3, 1, 2, val)
+#define set_SSM2_DF_len(sb, val)         setbitfield(sb+3, 1, 0, val)
+
+/* for ULTRA (0x01) page */
+#define set_SSM2_ULTRA_top(sb, val)      putnbyte(sb + 0x07, val, 2)
+#define set_SSM2_ULTRA_bot(sb, val)      putnbyte(sb + 0x09, val, 2)
+
+/* for BUFFER (0x02) page */
+#define set_SSM2_BUFF_unk(sb, val)           sb[0x03] = val
+#define set_SSM2_BUFF_unk2(sb, val)          sb[0x06] = val
+#define set_SSM2_BUFF_sync(sb, val)          sb[0x09] = val
+
+/* for DROPOUT (0x06) page */
+#define set_SSM2_DO_do(sb, val)              sb[0x09] = val
+#define set_SSM2_DO_en(sb, val)              sb[0x0a] = val
 
 /* ==================================================================== */
 /* window descriptor macros for SET_WINDOW and GET_WINDOW */

@@ -1,8 +1,8 @@
 /* SANE - Scanner Access Now Easy.
 
+   Copyright (C) 2011-2014 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2007-2009 Nicolas Martin, <nicols-guest at alioth dot debian dot org>
    Copyright (C) 2006-2007 Wittawat Yamwong <wittawat@web.de>
-   Copyright (C) 2011-2013 Rolf Bensch <rolf at bensch hyphen online dot de>
 
    This file is part of the SANE package.
 
@@ -209,6 +209,21 @@
 #define MG5500_PID 0x1771
 #define MG7100_PID 0x1772
 
+/* 2014 new devices (untested) */
+#define MX470_PID 0x1774
+#define MX530_PID 0x1775
+#define MB5000_PID 0x1776
+#define MB5300_PID 0x1777
+#define MB2000_PID 0x1778
+#define MB2300_PID 0x1779
+#define E400_PID 0x177a
+#define E560_PID 0x177b
+#define MG7500_PID 0x177c
+#define MG6600_PID 0x177e
+#define MG5600_PID 0x177f
+#define MG2900_PID 0x1780
+#define E460_PID 0x1788
+
 
 /* Generation 4 XML messages that encapsulates the Pixma protocol messages */
 #define XML_START_1   \
@@ -284,6 +299,7 @@ typedef struct mp150_t
   unsigned stripe_shift;
   uint8_t tpu_datalen;
   uint8_t tpu_data[0x40];
+  uint8_t adf_state;            /* handle adf scanning */
 } mp150_t;
 
 /*
@@ -420,7 +436,7 @@ is_calibrated (pixma_t * s)
   mp150_t *mp = (mp150_t *) s->subdriver;
   if (mp->generation >= 3)
     {
-      return ((mp->current_status[0] & 0x01) == 1);
+      return ((mp->current_status[0] & 0x01) == 1 || (mp->current_status[0] & 0x02) == 2);
     }
   if (mp->generation == 1)
     {
@@ -454,6 +470,7 @@ static int
 abort_session (pixma_t * s)
 {
   mp150_t *mp = (mp150_t *) s->subdriver;
+  mp->adf_state = state_idle;           /* reset adf scanning */
   return pixma_exec_short_cmd (s, &mp->cb, cmd_abort_session);
 }
 
@@ -630,10 +647,14 @@ calc_shifting (pixma_t * s)
 
   /* If stripes shift needed (CCD devices), how many pixels shift */
   mp->stripe_shift = 0;
+  /* If color plane shift (CCD devices), how many pixels shift */
+  mp->color_shift = mp->shift[0] = mp->shift[1] = mp->shift[2] = 0;
+
   switch (s->cfg->pid)
     {
       case MP800_PID:
       case MP800R_PID:
+      case MP830_PID:
         if (s->param->xdpi == 2400)
           {
 	    if (is_scanning_from_tpu(s))
@@ -641,35 +662,15 @@ calc_shifting (pixma_t * s)
 	    else
 	      mp->stripe_shift = 3;
           }
-        break;
-
-      case MP830_PID:
-        if (s->param->xdpi == 2400) 
+        if (s->param->ydpi > 75)
           {
-            if (is_scanning_from_tpu(s))
-              mp->stripe_shift = 6;
-            else
-              mp->stripe_shift = 3;
-          }
-        break;
-
-      default:     /* Default, and all CIS devices */
-        break;
-    }
-  /* If color plane shift (CCD devices), how many pixels shift */
-  mp->color_shift = mp->shift[0] = mp->shift[1] = mp->shift[2] = 0;
-  if (s->param->ydpi > 75)
-    {
-      switch (s->cfg->pid)
-        {
-          case MP800_PID:
-          case MP800R_PID:
-          case MP830_PID:
             mp->color_shift = s->param->ydpi / ((s->param->ydpi < 1200) ? 150 : 75);
 
             if (is_scanning_from_tpu (s)) 
               mp->color_shift = s->param->ydpi / 75;
 
+            /* If you're trying to decipher this color-shifting code,
+               the following line is where the magic is revealed. */
             mp->shift[1] = mp->color_shift * get_cis_ccd_line_size (s);
             if (is_scanning_from_adf (s))
               {  /* ADF */
@@ -681,11 +682,11 @@ calc_shifting (pixma_t * s)
                 mp->shift[0] = 2 * mp->shift[1];
                 mp->shift[2] = 0;
               }
-            break;
+          }
+        break;
 
-          default:
-            break;
-        }
+      default:     /* Default, and all CIS devices */
+        break;
     }
   return (2 * mp->color_shift + mp->stripe_shift);
 }
@@ -940,7 +941,10 @@ handle_interrupt (pixma_t * s, int timeout)
    * rr: scan resolution
    * poll event with 'scanimage -A' */
   if (s->cfg->pid == MG6200_PID
-      || s->cfg->pid == MG6300_PID)
+      || s->cfg->pid == MG6300_PID
+      || s->cfg->pid == MX520_PID
+      || s->cfg->pid == MX720_PID
+      || s->cfg->pid == MX920_PID)
   /* button no. in buf[7]
    * size in buf[10] 01=A4; 02=Letter; 08=10x15; 09=13x18; 0b=auto
    * format in buf[11] 01=JPEG; 02=TIFF; 03=PDF; 04=Kompakt-PDF
@@ -1000,7 +1004,7 @@ static int
 wait_until_ready (pixma_t * s)
 {
   mp150_t *mp = (mp150_t *) s->subdriver;
-  int error, tmo = 60;
+  int error, tmo = 120;         /* some scanners need a long timeout */
 
   RET_IF_ERR ((mp->generation >= 3) ? query_status_3 (s)
                                     : query_status (s));
@@ -1135,11 +1139,17 @@ post_process_image_data (pixma_t * s, pixma_imagebuf_t * ib)
               && s->cfg->pid != MP220_PID
               && s->cfg->pid != MX360_PID
               && s->cfg->pid != MX370_PID
+              && s->cfg->pid != MX530_PID
               && s->cfg->pid != MX890_PID
+              && s->cfg->pid != MX720_PID
+              && s->cfg->pid != MX920_PID
               && s->cfg->pid != MG3100_PID
+              && s->cfg->pid != MG3500_PID
               && s->cfg->pid != MG2100_PID
               && s->cfg->pid != MG5300_PID
-              && s->cfg->pid != MG6300_PID)
+              && s->cfg->pid != MG5500_PID
+              && s->cfg->pid != MG6300_PID
+              && s->cfg->pid != MG7100_PID)
               reorder_pixels (mp->linebuf, sptr, c, n, m, s->param->wx, line_size);
           
           /* Crop line to selected borders */
@@ -1201,8 +1211,13 @@ mp150_open (pixma_t * s)
   if (s->cfg->pid == MP140_PID)
     mp->generation = 2;
     
+  PDBG (pixma_dbg (3, "*mp150_open***** This is a generation %d scanner.  *****\n", mp->generation));
+
   /* TPU info data setup */
   mp->tpu_datalen = 0;
+
+  /* adf scanning */
+  mp->adf_state = state_idle;
 
   if (mp->generation < 4)
     {
@@ -1281,21 +1296,9 @@ mp150_check_param (pixma_t * s, pixma_scan_param_t * sp)
   /*PDBG (pixma_dbg (4, "*mp150_check_param***** Final scan width and line-size: %i, %i *****\n", sp->wx, sp->line_size));*/
     
   /* Some exceptions here for particular devices */
-  /* Those devices can scan up to 14" with ADF, but A4 11.7" in flatbed */
-  if (( s->cfg->pid == MX850_PID ||
-        s->cfg->pid == MX860_PID ||
-        s->cfg->pid == MX870_PID ||
-        s->cfg->pid == MX880_PID ||
-        s->cfg->pid == MX320_PID ||
-        s->cfg->pid == MX330_PID ||
-        s->cfg->pid == MX340_PID ||
-        s->cfg->pid == MX350_PID ||
-        s->cfg->pid == MX360_PID ||
-        s->cfg->pid == MX410_PID ||
-        s->cfg->pid == MX420_PID ||
-        s->cfg->pid == MX7600_PID )
-       &&
-        sp->source == PIXMA_SOURCE_FLATBED)
+  /* Those devices can scan up to legal 14" with ADF, but A4 11.7" in flatbed */
+  /* PIXMA_CAP_ADF also works for PIXMA_CAP_ADFDUP */
+  if ((s->cfg->cap & PIXMA_CAP_ADF) && sp->source == PIXMA_SOURCE_FLATBED)
     sp->h = MIN (sp->h, 877 * sp->xdpi / 75);
     
   if (sp->source == PIXMA_SOURCE_TPU)
@@ -1349,7 +1352,8 @@ mp150_scan (pixma_t * s)
     return PIXMA_EBUSY;
 
   /* Generation 4: send XML dialog */
-  if (mp->generation == 4 && s->param->adf_pageid == 0)
+  /* adf: first page or idle */
+  if (mp->generation == 4 && mp->adf_state == state_idle)
     {
       if (!send_xml_dialog (s, XML_START_1))
         return PIXMA_EPROTO;
@@ -1367,15 +1371,38 @@ mp150_scan (pixma_t * s)
     {
       if ((error = query_status (s)) < 0)
         return error;
+
+      /* wait for inserted paper
+       * timeout: 10 sec */
       tmo = 10;
       while (!has_paper (s) && --tmo >= 0)
         {
+          if ((error = query_status (s)) < 0)
+            return error;
           WAIT_INTERRUPT (1000);
           PDBG (pixma_dbg
             (2, "No paper in ADF. Timed out in %d sec.\n", tmo));
         }
+
+      /* no paper inserted
+       * => abort session */
       if (!has_paper (s))
+      {
+        PDBG (pixma_dbg (4, "*mp150_scan***** no paper in ADF *****\n"));
+        error = abort_session (s);
+        if (error < 0)
+          return error;
+
+        /* Generation 4: send XML dialog */
+        /* adf: first page or idle */
+        if (mp->generation == 4 && mp->adf_state == state_idle)
+        {
+          if (!send_xml_dialog (s, XML_END))
+            return PIXMA_EPROTO;
+        }
+
         return PIXMA_ENO_PAPER;
+      }
     }
 
   if (has_ccd_sensor (s) && (mp->generation <= 2))
@@ -1406,8 +1433,10 @@ mp150_scan (pixma_t * s)
     }
 
   tmo = 10;
-  if (s->param->adf_pageid == 0 || mp->generation <= 2)
-    {
+  /* adf: first page or idle */
+  if (mp->generation <= 2 || mp->adf_state == state_idle)
+    { /* single sheet or first sheet from ADF */
+      PDBG (pixma_dbg (4, "*mp150_scan***** start scanning *****\n"));
       error = start_session (s);
       while (error == PIXMA_EBUSY && --tmo >= 0)
         {
@@ -1448,7 +1477,11 @@ mp150_scan (pixma_t * s)
         error = send_set_tpu_info (s);
     }
   else   /* ADF pageid != 0 and gen3 or above */
+  { /* next sheet from ADF */
+    PDBG (pixma_dbg (4, "*mp150_scan***** scan next sheet from ADF  *****\n"));
     pixma_sleep (1000000);
+  }
+
 
   if ((error >= 0) || (mp->generation >= 3))
     mp->state = state_warmup;
@@ -1462,6 +1495,10 @@ mp150_scan (pixma_t * s)
       mp150_finish_scan (s);
       return error;
     }
+
+  /* ADF scanning active */
+  if (is_scanning_from_adf (s))
+    mp->adf_state = state_scanning;
   return 0;
 }
 
@@ -1495,9 +1532,13 @@ mp150_fill_buffer (pixma_t * s, pixma_imagebuf_t * ib)
   do
     {
       if (s->cancel)
+      {
+        PDBG (pixma_dbg (4, "*mp150_fill_buffer***** s->cancel  *****\n"));
         return PIXMA_ECANCELED;
+      }
       if ((mp->last_block & 0x28) == 0x28)
-        {       /* end of image */
+        {  /* end of image */
+           PDBG (pixma_dbg (4, "*mp150_fill_buffer***** end of image  *****\n"));
            mp->state = state_finished;
            return 0;
         }
@@ -1506,6 +1547,8 @@ mp150_fill_buffer (pixma_t * s, pixma_imagebuf_t * ib)
       error = read_image_block (s, header, mp->imgbuf + mp->data_left_len);
       if (error < 0)
         {
+          PDBG (pixma_dbg (4, "*mp150_fill_buffer***** scanner error (%d): end scan  *****\n", error));
+          mp->last_block = 0x38;        /* end scan in mp150_finish_scan() */
           if (error == PIXMA_ECANCELED)
             {
                /* NOTE: I see this in traffic logs but I don't know its meaning. */
@@ -1569,6 +1612,7 @@ mp150_finish_scan (pixma_t * s)
        * abort_session and start_session between pages (last_block=0x28) */
       if (mp->generation <= 2 || !is_scanning_from_adf (s) || mp->last_block == 0x38)
         {
+          PDBG (pixma_dbg (4, "*mp150_finish_scan***** abort session  *****\n"));
           error = abort_session (s);  /* FIXME: it probably doesn't work in duplex mode! */
           if (error < 0)
             PDBG (pixma_dbg (1, "WARNING:abort_session() failed %d\n", error));
@@ -1580,6 +1624,9 @@ mp150_finish_scan (pixma_t * s)
                 PDBG (pixma_dbg (1, "WARNING:XML_END dialog failed \n"));
             }
         }
+      else
+        PDBG (pixma_dbg (4, "*mp150_finish_scan***** wait for next page from ADF  *****\n"));
+
         mp->state = state_idle;
       /* fall through */
     case state_idle:
@@ -1669,8 +1716,8 @@ const pixma_config_t pixma_mp150_devices[] = {
   DEVICE ("Canon PIXMA MP610", "MP610", MP610_PID, 4800, 0, 0, 638, 877, PIXMA_CAP_CIS),
 
   DEVICE ("Canon PIXMA MX300", "MX300", MX300_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
-  DEVICE ("Canon PIXMA MX310", "MX310", MX310_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
-  DEVICE ("Canon PIXMA MX700", "MX700", MX700_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA MX310", "MX310", MX310_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA MX700", "MX700", MX700_PID, 2400, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
   DEVICE ("Canon PIXMA MX850", "MX850", MX850_PID, 2400, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
   DEVICE ("Canon PIXMA MX7600", "MX7600", MX7600_PID, 4800, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
 
@@ -1699,7 +1746,7 @@ const pixma_config_t pixma_mp150_devices[] = {
   DEVICE ("Canon PIXMA MX360", "MX360", MX360_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
   DEVICE ("Canon PIXMA MX410", "MX410", MX410_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
   DEVICE ("Canon PIXMA MX420", "MX420", MX420_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
-  DEVICE ("Canon PIXMA MX880 Series", "MX880", MX880_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
+  DEVICE ("Canon PIXMA MX880 Series", "MX880", MX880_PID, 2400, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
 
   /* Generation 4: CIS */
   DEVICE ("Canon PIXMA MP640", "MP640", MP640_PID, 4800, 0, 0, 638, 877, PIXMA_CAP_CIS),
@@ -1726,27 +1773,27 @@ const pixma_config_t pixma_mp150_devices[] = {
   DEVICE ("Canon PIXMA E500",   "E500",   E500_PID,   1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
 
   /* Latest devices (2012) Generation 4 CIS */
-  DEVICE ("Canon PIXMA MX370 Series", "MX370", MX370_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
-  DEVICE ("Canon PIXMA MX430 Series", "MX430", MX430_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
-  DEVICE ("Canon PIXMA MX510 Series", "MX510", MX510_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
-  DEVICE ("Canon PIXMA MX710 Series", "MX710", MX710_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
-  DEVICE ("Canon PIXMA MX890 Series", "MX890", MX890_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
-  DEVICE ("Canon PIXMA E600 Series",  "E600",  E600_PID,  1200, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA MX370 Series", "MX370", MX370_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA MX430 Series", "MX430", MX430_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA MX510 Series", "MX510", MX510_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA MX710 Series", "MX710", MX710_PID, 2400, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
+  DEVICE ("Canon PIXMA MX890 Series", "MX890", MX890_PID, 2400, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
+  DEVICE ("Canon PIXMA E600 Series",  "E600",  E600_PID,  1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
   DEVICE ("Canon PIXMA MG4200", "MG4200", MG4200_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
 
   /* Latest devices (2013) Generation 4 CIS */
   DEVICE ("Canon PIXMA E510",  "E510",  E510_PID,  1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
-  DEVICE ("Canon PIXMA E610",  "E610",  E610_PID,  1200, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA E610",  "E610",  E610_PID,  1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
   DEVICE ("Canon PIXMA MP230", "MP230", MP230_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
   DEVICE ("Canon PIXMA MG2200 Series", "MG2200", MG2200_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
   DEVICE ("Canon PIXMA MG3200 Series", "MG3200", MG3200_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
   DEVICE ("Canon PIXMA MG5400 Series", "MG5400", MG5400_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS),
   DEVICE ("Canon PIXMA MG6300 Series", "MG6300", MG6300_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS),
-  DEVICE ("Canon PIXMA MX390 Series", "MX390", MX390_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
-  DEVICE ("Canon PIXMA MX450 Series", "MX450", MX450_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
-  DEVICE ("Canon PIXMA MX520 Series", "MX520", MX520_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
-  DEVICE ("Canon PIXMA MX720 Series", "MX720", MX720_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
-  DEVICE ("Canon PIXMA MX920 Series", "MX920", MX920_PID, 2400, 0, 600, 638, 877, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
+  DEVICE ("Canon PIXMA MX390 Series", "MX390", MX390_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA MX450 Series", "MX450", MX450_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA MX520 Series", "MX520", MX520_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA MX720 Series", "MX720", MX720_PID, 2400, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
+  DEVICE ("Canon PIXMA MX920 Series", "MX920", MX920_PID, 2400, 0, 600, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
   DEVICE ("Canon PIXMA MG2400 Series", "MG2400", MG2400_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
   DEVICE ("Canon PIXMA MG2500 Series", "MG2500", MG2500_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
   DEVICE ("Canon PIXMA MG3500 Series", "MG3500", MG3500_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
@@ -1754,6 +1801,21 @@ const pixma_config_t pixma_mp150_devices[] = {
   DEVICE ("Canon PIXMA MG6400 Series", "MG6400", MG6400_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
   DEVICE ("Canon PIXMA MG6500 Series", "MG6500", MG6500_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS),
   DEVICE ("Canon PIXMA MG7100 Series", "MG7100", MG7100_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS),
+
+  /* Latest devices (2014) Generation 4 CIS */
+  DEVICE ("Canon PIXMA MX470 Series", "MX470", MX470_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA MX530 Series", "MX530", MX530_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon MAXIFY MB5000 Series", "MB5000", MB5000_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
+  DEVICE ("Canon MAXIFY MB5300 Series", "MB5300", MB5300_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
+  DEVICE ("Canon MAXIFY MB2000 Series", "MB2000", MB2000_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
+  DEVICE ("Canon MAXIFY MB2300 Series", "MB2300", MB2300_PID, 1200, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADFDUP),
+  DEVICE ("Canon PIXMA E400",  "E400",  E400_PID,  600, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA E560",  "E560",  E560_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA MG7500 Series", "MG7500", MG7500_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA MG6600 Series", "MG6600", MG6600_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA MG5600 Series", "MG5600", MG5600_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA MG2900 Series", "MG2900", MG2900_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA E460 Series",  "E460",  E460_PID,  600, 0, 0, 638, 877, PIXMA_CAP_CIS),
 
   END_OF_DEVICE_LIST
 };

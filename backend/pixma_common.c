@@ -1,8 +1,8 @@
 /* SANE - Scanner Access Now Easy.
 
+   Copyright (C) 2011-2014 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2007-2008 Nicolas Martin, <nicols-guest at alioth dot debian dot org>
    Copyright (C) 2006-2007 Wittawat Yamwong <wittawat@web.de>
-   Copyright (C) 2011-2013 Rolf Bensch <rolf at bensch hyphen online dot de>
 
    This file is part of the SANE package.
 
@@ -318,7 +318,7 @@ pixma_get_time (time_t * sec, uint32_t * usec)
 uint8_t *
 pixma_r_to_ir (uint8_t * gptr, uint8_t * sptr, unsigned w, unsigned c)
 {
-  unsigned i, j, g;
+  unsigned i;
 
   /* PDBG (pixma_dbg (4, "*pixma_rgb_to_ir*****\n")); */
 
@@ -655,7 +655,10 @@ pixma_cmd_transaction (pixma_t * s, const void *cmd, unsigned cmdlen,
     {
       error = pixma_read (s->io, data, expected_len);
       if (error == PIXMA_ETIMEDOUT)
+      {
         PDBG (pixma_dbg (2, "No response yet. Timed out in %d sec.\n", tmo));
+        pixma_sleep (1000000);          /* 1s timeout */
+      }
     }
   while (error == PIXMA_ETIMEDOUT && --tmo != 0);
   if (error < 0)
@@ -1048,9 +1051,11 @@ pixma_check_scan_param (pixma_t * s, pixma_scan_param_t * sp)
   if (s->ops->check_param (s, sp) < 0)
     return PIXMA_EINVAL;
 
-  /* FIXME: I assume the same minimum width and height for every model. */
-  CLAMP2 (sp->x, sp->w, 13, s->cfg->width, sp->xdpi);
-  CLAMP2 (sp->y, sp->h, 8, s->cfg->height, sp->ydpi);
+  /* FIXME: I assume the same minimum width and height for every model.
+   * new scanners need minimum 16 px height
+   * minimum image size: 16 px x 16 px */
+  CLAMP2 (sp->x, sp->w, 16, s->cfg->width, sp->xdpi);
+  CLAMP2 (sp->y, sp->h, 16, s->cfg->height, sp->ydpi);
 
   switch (sp->source)
     {

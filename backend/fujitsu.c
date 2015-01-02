@@ -6,7 +6,7 @@
    Copyright (C) 2000 Randolph Bentson
    Copyright (C) 2001 Frederik Ramm
    Copyright (C) 2001-2004 Oliver Schirrmeister
-   Copyright (C) 2003-2011 m. allan noah
+   Copyright (C) 2003-2014 m. allan noah
 
    JPEG output and low memory usage support funded by:
      Archivista GmbH, www.archivista.ch
@@ -14,7 +14,7 @@
      O A S Oilfield Accounting Service Ltd, www.oas.ca
    Automatic length detection support funded by:
      Martin G. Miller, mgmiller at optonline.net
-   Software image enhancement routines funded by:
+   Software image enhancement routines and recent scanner support funded by:
      Fujitsu Computer Products of America, Inc. www.fcpa.com
 
    --------------------------------------------------------------------------
@@ -533,11 +533,44 @@
       v116 2013-03-23, MAN
          - call set_mode() in init_interlace
          - add swskip option
-      v117 2013-06-11, MAN
+      v117 2013-06-11, MAN (SANE 1.0.24)
          - default buffer-mode to off
          - improved error handling in sane_start
          - image width must be multiple of 8 when swcrop is used before binarization (iX500)
          - check hopper sensor before calling object_position(load) on iX500
+      v118 2013-12-09, MAN
+         - support fi-7160, fi-7260, fi-7180 and fi-7280
+         - remove unused var from do_scsi_cmd()
+         - added more request_sense options
+         - add adv_paper_protect option
+         - enable paper protection by default
+         - increase max_x_fb for fi-6240 and fi-6230
+      v119 2013-12-18, MAN
+         - call get_pixelsize after start_scan, not before
+         - extend get_pixelsize to request backside data
+         - stop using backup/restore_params
+         - don't use extended get_pixelsize on M3091 or M3092
+         - call software crop code on backside images too
+      v120 2014-01-29, MAN
+         - only call hopper_before_op code at batch start
+         - remove unused backup/restore_params
+      v121 2014-04-07, MAN
+         - add JFIF APP0 marker with resolution to jpeg images
+         - improve jpeg duplex parsing code
+         - simplify jpeg ifdefs
+         - add offtimer option for more recent scanners
+         - don't print 0 length line in hexdump
+      v122 2014-10-28, MAN
+         - add support for object_position halt
+         - call object_position halt in check_for_cancel when requested
+      v123 2014-11-06, MAN
+         - workaround Linux USB3 bugs by adding command counting code and
+           sending an even number of reads and writes during disconnect_fd
+      v124 2014-12-09, MAN
+         - support resolution controlled max page-height (fi-6/7xxx scanners)
+         - reorder scanner sections in init_model chronologically
+      v125 2014-12-16, MAN
+         - remove USB packet counting code from v123, fix sanei_usb instead
 
    SANE FLOW DIAGRAM
 
@@ -587,7 +620,7 @@
 #include "fujitsu.h"
 
 #define DEBUG 1
-#define BUILD 117
+#define BUILD 125
 
 /* values for SANE_DEBUG_FUJITSU env var:
  - errors           5
@@ -600,6 +633,12 @@
  - useless noise   35
 */
 
+/* ------------------------------------------------------------------------- */
+/* if JPEG support is not enabled in sane.h, we setup our own defines */
+#ifndef SANE_FRAME_JPEG
+#define SANE_FRAME_JPEG 0x0B
+#define SANE_JPEG_DISABLED 1
+#endif
 /* ------------------------------------------------------------------------- */
 #define STRING_FLATBED SANE_I18N("Flatbed")
 #define STRING_ADFFRONT SANE_I18N("ADF Front")
@@ -1577,9 +1616,8 @@ init_vpd (struct fujitsu *s)
 
           s->has_comp_JPG1 = get_IN_compression_JPG_BASE (in);
           DBG (15, "  compression JPG1: %d\n", s->has_comp_JPG1);
-#ifndef SANE_FRAME_JPEG
+#ifdef SANE_JPEG_DISABLED
           DBG (15, "  (Disabled)\n");
-          s->has_comp_JPG1 = 0;
 #endif
 
           s->has_comp_JPG2 = get_IN_compression_JPG_EXT (in);
@@ -1671,7 +1709,12 @@ init_vpd (struct fujitsu *s)
               DBG (15, "  rgb lut: %d\n", get_IN_rgb_lut(in));
               DBG (15, "  num lut dl: %d\n", get_IN_num_lut_dl(in));
 
+              s->has_off_mode = get_IN_erp_lot6_supp(in);
+              DBG (15, "  ErP Lot6 (power off timer): %d\n", s->has_off_mode);
               DBG (15, "  sync next feed: %d\n", get_IN_sync_next_feed(in));
+
+              s->has_op_halt = get_IN_op_halt(in);
+              DBG (15, "  object postion halt: %d\n", s->has_op_halt);
           }
 
           ret = SANE_STATUS_GOOD;
@@ -2012,6 +2055,10 @@ init_model (struct fujitsu *s)
   s->max_x = s->max_x_basic * 1200 / s->basic_x_res;
   s->max_y = s->max_y_basic * 1200 / s->basic_y_res;
 
+  /* setup the list with a single choice, in 1200dpi units, at max res */
+  s->max_y_by_res[0].res = s->max_y_res;
+  s->max_y_by_res[0].len = s->max_y;
+
   /* assume these are same as adf, override below */
   s->max_x_fb = s->max_x;
   s->max_y_fb = s->max_y;
@@ -2062,6 +2109,7 @@ init_model (struct fujitsu *s)
     s->has_vuid_3091 = 1;
     s->has_vuid_color = 0;
     s->has_vuid_mono = 0;
+    s->has_short_pixelsize = 1;
 
     s->color_interlace = COLOR_INTERLACE_3091;
     s->duplex_interlace = DUPLEX_INTERLACE_3091;
@@ -2106,6 +2154,38 @@ init_model (struct fujitsu *s)
     s->max_y_fb = 14032;
   }
 
+  else if (strstr (s->model_name, "fi-4750") ) {
+    /* weirdness */
+    s->broken_diag_serial = 1;
+  }
+
+  /* some firmware versions use capital f? */
+  else if (strstr (s->model_name, "Fi-4860")
+   || strstr (s->model_name, "fi-4860") ) {
+
+    /* weirdness */
+    s->broken_diag_serial = 1;
+
+    s->ppl_mod_by_mode[MODE_LINEART] = 32;
+    s->ppl_mod_by_mode[MODE_HALFTONE] = 32;
+    s->ppl_mod_by_mode[MODE_GRAYSCALE] = 4;
+    s->ppl_mod_by_mode[MODE_COLOR] = 4;
+  }
+
+  /* some firmware versions use capital f? */
+  else if (strstr (s->model_name, "Fi-4990")
+   || strstr (s->model_name, "fi-4990") ) {
+
+    /* weirdness */
+    s->duplex_interlace = DUPLEX_INTERLACE_NONE;
+    s->color_interlace = COLOR_INTERLACE_RRGGBB;
+
+    s->ppl_mod_by_mode[MODE_LINEART] = 32;
+    s->ppl_mod_by_mode[MODE_HALFTONE] = 32;
+    s->ppl_mod_by_mode[MODE_GRAYSCALE] = 4;
+    s->ppl_mod_by_mode[MODE_COLOR] = 4;
+  }
+
   else if (strstr (s->model_name,"fi-5110C")){
 
     /* missing from vpd */
@@ -2135,49 +2215,44 @@ init_model (struct fujitsu *s)
       s->adbits = 8;
   }
 
-  /* some firmware versions use capital f? */
-  else if (strstr (s->model_name, "Fi-4990")
-   || strstr (s->model_name, "fi-4990") ) {
+  else if (strstr (s->model_name,"S1500")){
 
-    /* weirdness */
-    s->duplex_interlace = DUPLEX_INTERLACE_NONE;
-    s->color_interlace = COLOR_INTERLACE_RRGGBB;
-
-    s->ppl_mod_by_mode[MODE_LINEART] = 32;
-    s->ppl_mod_by_mode[MODE_HALFTONE] = 32;
-    s->ppl_mod_by_mode[MODE_GRAYSCALE] = 4;
-    s->ppl_mod_by_mode[MODE_COLOR] = 4;
+    /*lies*/
+    s->has_MS_bg=0;
+    s->has_MS_prepick=0;
   }
 
-  else if (strstr (s->model_name, "fi-4750") ) {
-    /* weirdness */
-    s->broken_diag_serial = 1;
-  }
-
-  /* some firmware versions use capital f? */
-  else if (strstr (s->model_name, "Fi-4860")
-   || strstr (s->model_name, "fi-4860") ) {
+  /* also includes the 'Z' models */
+  else if (strstr (s->model_name,"fi-6130")
+   || strstr (s->model_name,"fi-6140")){
 
     /* weirdness */
-    s->broken_diag_serial = 1;
-
-    s->ppl_mod_by_mode[MODE_LINEART] = 32;
-    s->ppl_mod_by_mode[MODE_HALFTONE] = 32;
-    s->ppl_mod_by_mode[MODE_GRAYSCALE] = 4;
-    s->ppl_mod_by_mode[MODE_COLOR] = 4;
+    /* these machines have longer max paper at lower res */
+    s->max_y_by_res[1].res = 200;
+    s->max_y_by_res[1].len = 151512;
   }
 
   /* also includes the 'Z' models */
   else if (strstr (s->model_name,"fi-6230")
    || strstr (s->model_name,"fi-6240")){
 
+    /* weirdness */
+    /* these machines have longer max paper at lower res */
+    s->max_y_by_res[1].res = 200;
+    s->max_y_by_res[1].len = 151512;
+
     /* missing from vpd */
-    s->max_x_fb = 10488;
+    s->max_x_fb = 10764; /* was previously 10488 */
     s->max_y_fb = 14032; /* some scanners can be slightly more? */
   }
 
-  else if (strstr (s->model_name,"S1500")
-   || strstr (s->model_name,"fi-6110")){
+  else if (strstr (s->model_name,"fi-6110")){
+
+    /* weirdness */
+    /* these machines have longer max paper at lower res */
+    s->max_y_by_res[1].res = 200;
+    s->max_y_by_res[1].len = 151512;
+
     /*lies*/
     s->has_MS_bg=0;
     s->has_MS_prepick=0;
@@ -2210,6 +2285,42 @@ init_model (struct fujitsu *s)
 
     /* dont bother with this one */
     s->can_mode[MODE_HALFTONE] = 0;
+  }
+
+  else if (strstr (s->model_name,"fi-7180")
+   || strstr (s->model_name,"fi-7160")){
+
+    /* weirdness */
+    /* these machines have longer max paper at lower res */
+    s->max_y_by_res[1].res = 400;
+    s->max_y_by_res[1].len = 194268;
+    s->max_y_by_res[2].res = 300;
+    s->max_y_by_res[2].len = 260268;
+    s->max_y_by_res[3].res = 200;
+    s->max_y_by_res[3].len = 266268;
+
+    /* missing from vpd */
+    s->has_df_recovery=1;
+    s->has_adv_paper_prot=1;
+  }
+
+  else if (strstr (s->model_name,"fi-7280")
+   || strstr (s->model_name,"fi-7260")){
+
+    /* weirdness */
+    /* these machines have longer max paper at lower res */
+    s->max_y_by_res[1].res = 400;
+    s->max_y_by_res[1].len = 194268;
+    s->max_y_by_res[2].res = 300;
+    s->max_y_by_res[2].len = 260268;
+    s->max_y_by_res[3].res = 200;
+    s->max_y_by_res[3].len = 266268;
+
+    /* missing from vpd */
+    s->has_df_recovery=1;
+    s->has_adv_paper_prot=1;
+    s->max_x_fb = 10764;
+    s->max_y_fb = 14032; /* some scanners can be slightly more? */
   }
 
   DBG (10, "init_model: finish\n");
@@ -2277,6 +2388,7 @@ init_user (struct fujitsu *s)
 
   /* page height US-Letter */
   s->page_height = 11 * 1200;
+  set_max_y(s);
   if(s->page_height > s->max_y){
     s->page_height = s->max_y;
   }
@@ -2309,6 +2421,23 @@ init_user (struct fujitsu *s)
    * which causes the scanner to ingest multiple pages *
    * even when the user only wants one */
   s->buff_mode = MSEL_OFF;
+
+  /* useful features of newer scanners which we turn on,
+   * even though the scanner defaults to off */
+  if(s->has_paper_protect){
+    s->paper_protect = MSEL_ON;
+  }
+  if(s->has_staple_detect){
+    s->staple_detect = MSEL_ON;
+  }
+  if(s->has_df_recovery){
+    s->df_recovery = MSEL_ON;
+  }
+  if(s->has_adv_paper_prot){
+    s->adv_paper_prot = MSEL_ON;
+  }
+
+  s->off_time = 240;
 
   DBG (10, "init_user: finish\n");
 
@@ -3377,7 +3506,9 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->compress_list[i++]=STRING_NONE;
 
     if(s->has_comp_JPG1){
+#ifndef SANE_JPEG_DISABLED
       s->compress_list[i++]=STRING_JPEG;
+#endif
     }
 
     s->compress_list[i]=NULL;
@@ -3528,7 +3659,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
      opt->cap = SANE_CAP_INACTIVE;
   }
 
-  /*df recovery*/
+  /*df_recovery*/
   if(option==OPT_DF_RECOVERY){
     s->df_recovery_list[0] = STRING_DEFAULT;
     s->df_recovery_list[1] = STRING_OFF;
@@ -3548,7 +3679,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
       opt->cap = SANE_CAP_INACTIVE;
   }
 
-  /*paper protection*/
+  /*paper_protect*/
   if(option==OPT_PAPER_PROTECT){
     s->paper_protect_list[0] = STRING_DEFAULT;
     s->paper_protect_list[1] = STRING_OFF;
@@ -3563,6 +3694,26 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     opt->constraint.string_list = s->paper_protect_list;
     opt->size = maxStringSize (opt->constraint.string_list);
     if (s->has_MS_df && s->has_paper_protect)
+      opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
+    else
+      opt->cap = SANE_CAP_INACTIVE;
+  }
+
+  /*adv_paper_prot*/
+  if(option==OPT_ADV_PAPER_PROT){
+    s->adv_paper_prot_list[0] = STRING_DEFAULT;
+    s->adv_paper_prot_list[1] = STRING_OFF;
+    s->adv_paper_prot_list[2] = STRING_ON;
+    s->adv_paper_prot_list[3] = NULL;
+  
+    opt->name = "adv-paper-protect";
+    opt->title = "Advanced paper protection";
+    opt->desc = "Request scanner to predict jams in the ADF using improved sensors";
+    opt->type = SANE_TYPE_STRING;
+    opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
+    opt->constraint.string_list = s->adv_paper_prot_list;
+    opt->size = maxStringSize (opt->constraint.string_list);
+    if (s->has_MS_df && s->has_adv_paper_prot)
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
     else
       opt->cap = SANE_CAP_INACTIVE;
@@ -3693,7 +3844,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
       opt->cap = SANE_CAP_INACTIVE;
   }
 
-  /*sleep time*/
+  /*sleep_time*/
   if(option==OPT_SLEEP_TIME){
     s->sleep_time_range.min = 0;
     s->sleep_time_range.max = 60;
@@ -3707,6 +3858,25 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
     opt->constraint.range=&s->sleep_time_range;
     if(s->has_MS_sleep)
+      opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
+    else
+      opt->cap = SANE_CAP_INACTIVE;
+  }
+
+  /*off_time*/
+  if(option==OPT_OFF_TIME){
+    s->off_time_range.min = 0;
+    s->off_time_range.max = 960;
+    s->off_time_range.quant = 1;
+  
+    opt->name = "offtimer";
+    opt->title = "Off timer";
+    opt->desc = "Time in minutes until the internal power supply switches the scanner off. Will be rounded to nearest 15 minutes. Zero means never power off."; 
+    opt->type = SANE_TYPE_INT;
+    opt->unit = SANE_UNIT_NONE;
+    opt->constraint_type = SANE_CONSTRAINT_RANGE;
+    opt->constraint.range=&s->off_time_range;
+    if(s->has_off_mode)
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
     else
       opt->cap = SANE_CAP_INACTIVE;
@@ -3862,11 +4032,23 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
     opt->constraint.range = &s->swskip_range;
 
-    s->swskip_range.quant=1;
+    s->swskip_range.quant=SANE_FIX(0.10001);
     s->swskip_range.min=SANE_FIX(0);
     s->swskip_range.max=SANE_FIX(100);
 
     opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
+  }
+
+  /*halt scanner feeder when cancelling*/
+  if(option==OPT_HALT_ON_CANCEL){
+    opt->name = "halt-on-cancel";
+    opt->title = "Halt on Cancel";
+    opt->desc = "Request driver to halt the paper feed instead of eject during a cancel.";
+    opt->type = SANE_TYPE_BOOL;
+    if (s->has_op_halt)
+     opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
+    else
+     opt->cap = SANE_CAP_INACTIVE;
   }
 
   /* "Endorser" group ------------------------------------------------------ */
@@ -4689,6 +4871,20 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           }
           return SANE_STATUS_GOOD;
 
+        case OPT_ADV_PAPER_PROT:
+          switch (s->adv_paper_prot) {
+            case MSEL_DEFAULT:
+              strcpy (val, STRING_DEFAULT);
+              break;
+            case MSEL_ON:
+              strcpy (val, STRING_ON);
+              break;
+            case MSEL_OFF:
+              strcpy (val, STRING_OFF);
+              break;
+          }
+          return SANE_STATUS_GOOD;
+
         case OPT_STAPLE_DETECT:
           switch (s->staple_detect) {
             case MSEL_DEFAULT:
@@ -4780,6 +4976,10 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           *val_p = s->sleep_time;
           return SANE_STATUS_GOOD;
 
+        case OPT_OFF_TIME:
+          *val_p = s->off_time;
+          return SANE_STATUS_GOOD;
+
         case OPT_DUPLEX_OFFSET:
           *val_p = s->duplex_offset;
           return SANE_STATUS_GOOD;
@@ -4818,6 +5018,10 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
 
         case OPT_SWSKIP:
           *val_p = SANE_FIX(s->swskip);
+          return SANE_STATUS_GOOD;
+
+        case OPT_HALT_ON_CANCEL:
+          *val_p = s->halt_on_cancel;
           return SANE_STATUS_GOOD;
 
         /* Endorser Group */
@@ -5080,6 +5284,7 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
 
           s->resolution_x = val_c;
           s->resolution_y = val_c;
+          set_max_y(s);
 
           *info |= SANE_INFO_RELOAD_PARAMS | SANE_INFO_RELOAD_OPTIONS;
           return SANE_STATUS_GOOD;
@@ -5341,6 +5546,15 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
             s->paper_protect = MSEL_OFF;
           return SANE_STATUS_GOOD;
 
+        case OPT_ADV_PAPER_PROT:
+          if (!strcmp(val, STRING_DEFAULT))
+            s->adv_paper_prot = MSEL_DEFAULT;
+          else if (!strcmp(val, STRING_ON))
+            s->adv_paper_prot = MSEL_ON;
+          else if (!strcmp(val, STRING_OFF))
+            s->adv_paper_prot = MSEL_OFF;
+          return SANE_STATUS_GOOD;
+
         case OPT_STAPLE_DETECT:
           if (!strcmp(val, STRING_DEFAULT))
             s->staple_detect = MSEL_DEFAULT;
@@ -5403,6 +5617,14 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           s->sleep_time = val_c;
           return set_sleep_mode(s);
 
+        case OPT_OFF_TIME:
+          /* do our own constrain, because we want to round up */
+          s->off_time = (val_c + 14)/15*15;
+          if(s->off_time != val_c){
+            *info |= SANE_INFO_INEXACT;
+          }
+          return set_off_mode(s);
+
         case OPT_DUPLEX_OFFSET:
           s->duplex_offset = val_c;
           return SANE_STATUS_GOOD;
@@ -5437,6 +5659,10 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
 
         case OPT_SWSKIP:
           s->swskip = SANE_UNFIX(val_c);
+          return SANE_STATUS_GOOD;
+
+        case OPT_HALT_ON_CANCEL:
+          s->halt_on_cancel = val_c;
           return SANE_STATUS_GOOD;
 
         /* Endorser Group */
@@ -5547,6 +5773,50 @@ set_sleep_mode(struct fujitsu *s)
   DBG (10, "set_sleep_mode: finish\n");
 
   return ret;
+}
+
+static SANE_Status
+set_off_mode(struct fujitsu *s)
+{
+  SANE_Status ret = SANE_STATUS_GOOD;
+
+  unsigned char cmd[SEND_DIAGNOSTIC_len]; /*also big enough for READ_DIAG*/
+  size_t cmdLen = SEND_DIAGNOSTIC_len;
+
+  unsigned char out[SD_powoff_len];
+  size_t outLen = SD_powoff_len;
+
+  DBG (10, "set_off_mode: start\n");
+
+  if (!s->has_cmd_sdiag || !s->has_cmd_rdiag || !s->has_off_mode){
+    DBG (5, "set_off_mode: not supported, returning\n");
+    return ret;
+  }
+
+  memset(cmd,0,cmdLen);
+  set_SCSI_opcode(cmd, SEND_DIAGNOSTIC_code);
+  set_SD_slftst(cmd, 0);
+  set_SD_xferlen(cmd, outLen);
+ 
+  memcpy(out,SD_powoff_string,SD_powoff_stringlen);
+  set_SD_powoff_disable(out,!s->off_time);
+  set_SD_powoff_interval(out,s->off_time/15);
+
+  ret = do_cmd (
+    s, 1, 0, 
+    cmd, cmdLen,
+    out, outLen,
+    NULL, NULL
+  );
+
+  if (ret != SANE_STATUS_GOOD){
+    DBG (5, "set_off_mode: send diag error: %d\n", ret);
+    return ret;
+  }
+
+  DBG (10, "set_off_mode: finish\n");
+
+  return SANE_STATUS_GOOD;
 }
 
 static SANE_Status
@@ -6092,6 +6362,7 @@ mode_select_df (struct fujitsu *s)
   set_MSEL_df_paperprot(page,s->paper_protect);
   set_MSEL_df_stapledet(page,s->staple_detect);
   set_MSEL_df_recovery(page,s->df_recovery);
+  set_MSEL_df_paperprot2(page,s->adv_paper_prot);
 
   ret = do_cmd (
       s, 1, 0,
@@ -6408,7 +6679,6 @@ update_params (struct fujitsu * s)
   if (s->s_mode == MODE_COLOR) {
     params->depth = 8;
 
-#ifdef SANE_FRAME_JPEG
     /* jpeg requires 8x8 squares */
     if(s->compress == COMP_JPEG){
       params->format = SANE_FRAME_JPEG;
@@ -6416,20 +6686,16 @@ update_params (struct fujitsu * s)
       params->lines -= params->lines % 8;
     }
     else{
-#endif
       params->format = SANE_FRAME_RGB;
       params->pixels_per_line -= params->pixels_per_line
         % max(s->ppl_mod_by_mode[s->s_mode], s->ppl_mod_by_mode[s->u_mode]);
-#ifdef SANE_FRAME_JPEG
     }
-#endif
 
     params->bytes_per_line = params->pixels_per_line * 3;
   }
   else if (s->s_mode == MODE_GRAYSCALE) {
     params->depth = 8;
 
-#ifdef SANE_FRAME_JPEG
     /* jpeg requires 8x8 squares */
     if(s->compress == COMP_JPEG){
       params->format = SANE_FRAME_JPEG;
@@ -6437,13 +6703,10 @@ update_params (struct fujitsu * s)
       params->lines -= params->lines % 8;
     }
     else{
-#endif
       params->format = SANE_FRAME_GRAY;
       params->pixels_per_line -= params->pixels_per_line
         % max(s->ppl_mod_by_mode[s->s_mode], s->ppl_mod_by_mode[s->u_mode]);
-#ifdef SANE_FRAME_JPEG
     }
-#endif
 
     params->bytes_per_line = params->pixels_per_line;
   }
@@ -6523,70 +6786,6 @@ update_u_params (struct fujitsu * s)
   }
 
   DBG (10, "update_u_params: finish\n");
-  return ret;
-}
-
-/* make backup of param data, in case original is overwritten */
-SANE_Status
-backup_params (struct fujitsu * s)
-{
-  SANE_Status ret = SANE_STATUS_GOOD;
-  SANE_Parameters * params = &(s->s_params);
-  SANE_Parameters * params_bk = &(s->s_params_bk);
-
-  DBG (10, "backup_params: start\n");
-
-  params_bk->format = params->format;
-  params_bk->last_frame = params->last_frame;
-  params_bk->bytes_per_line = params->bytes_per_line;
-  params_bk->pixels_per_line = params->pixels_per_line;
-  params_bk->lines = params->lines;
-  params_bk->depth = params->depth;
-
-  /* also have to save the user params */
-  params = &(s->u_params);
-  params_bk = &(s->u_params_bk);
-
-  params_bk->format = params->format;
-  params_bk->last_frame = params->last_frame;
-  params_bk->bytes_per_line = params->bytes_per_line;
-  params_bk->pixels_per_line = params->pixels_per_line;
-  params_bk->lines = params->lines;
-  params_bk->depth = params->depth;
-
-  DBG (10, "backup_params: finish\n");
-  return ret;
-}
-
-/* restore backup of param data, in case original was overwritten */
-SANE_Status
-restore_params (struct fujitsu * s)
-{
-  SANE_Status ret = SANE_STATUS_GOOD;
-  SANE_Parameters * params = &(s->s_params);
-  SANE_Parameters * params_bk = &(s->s_params_bk);
-
-  DBG (10, "restore_params: start\n");
-
-  params->format = params_bk->format;
-  params->last_frame = params_bk->last_frame;
-  params->bytes_per_line = params_bk->bytes_per_line;
-  params->pixels_per_line = params_bk->pixels_per_line;
-  params->lines = params_bk->lines;
-  params->depth = params_bk->depth;
-
-  /* also have to restore the user params */
-  params = &(s->u_params);
-  params_bk = &(s->u_params_bk);
-
-  params->format = params_bk->format;
-  params->last_frame = params_bk->last_frame;
-  params->bytes_per_line = params_bk->bytes_per_line;
-  params->pixels_per_line = params_bk->pixels_per_line;
-  params->lines = params_bk->lines;
-  params->depth = params_bk->depth;
-
-  DBG (10, "restore_params: finish\n");
   return ret;
 }
 
@@ -6721,20 +6920,6 @@ sane_start (SANE_Handle handle)
           DBG (5, "sane_start: WARNING: cannot send_q_table %d\n", ret);
       }
 
-      /* try to read scan size from scanner */
-      ret = get_pixelsize(s,0);
-      if (ret != SANE_STATUS_GOOD) {
-        DBG (5, "sane_start: ERROR: cannot get pixelsize\n");
-        goto errors;
-      }
-
-      /* make backup copy of params because later functions overwrite */
-      ret = backup_params(s);
-      if (ret != SANE_STATUS_GOOD) {
-        DBG (5, "sane_start: ERROR: cannot backup params\n");
-        goto errors;
-      }
-
       /* start/stop endorser */
       ret = endorser(s);
       if (ret != SANE_STATUS_GOOD) {
@@ -6747,17 +6932,21 @@ sane_start (SANE_Handle handle)
       if (ret != SANE_STATUS_GOOD) {
         DBG (5, "sane_start: WARNING: cannot start lamp, ignoring\n");
       }
+
+      /* iX500 errors if op is called with no paper
+       * at the beginning of a batch, so we check */
+      if(s->hopper_before_op && s->source != SOURCE_FLATBED){
+        ret = get_hardware_status(s,0);
+        if(!s->hw_hopper){
+          ret = SANE_STATUS_NO_DOCS;
+          DBG (5, "sane_start: ERROR: hopper empty\n");
+          goto errors;
+        }
+      }
   }
   /* if already running, duplex needs to switch sides */
   else if(s->source == SOURCE_ADF_DUPLEX){
       s->side = !s->side;
-  }
-
-  /* restore backup copy of params at the start of each image */
-  ret = restore_params(s);
-  if (ret != SANE_STATUS_GOOD) {
-    DBG (5, "sane_start: ERROR: cannot restore params\n");
-    goto errors;
   }
 
   /* set clean defaults with new sheet of paper */
@@ -6788,10 +6977,29 @@ sane_start (SANE_Handle handle)
       s->buff_tx[1]=0;
 
       /* reset jpeg just in case... */
-      s->jpeg_stage = JPEG_STAGE_HEAD;
-      s->jpeg_ff_offset = 0;
+      s->jpeg_stage = JPEG_STAGE_NONE;
+      s->jpeg_ff_offset = -1;
       s->jpeg_front_rst = 0;
       s->jpeg_back_rst = 0;
+
+      ret = object_position (s, OP_Feed);
+      if (ret != SANE_STATUS_GOOD) {
+        DBG (5, "sane_start: ERROR: cannot load page\n");
+        goto errors;
+      }
+
+      ret = start_scan (s);
+      if (ret != SANE_STATUS_GOOD) {
+        DBG (5, "sane_start: ERROR: cannot start_scan\n");
+        goto errors;
+      }
+
+      /* try to read scan size from scanner */
+      ret = get_pixelsize(s,0);
+      if (ret != SANE_STATUS_GOOD) {
+        DBG (5, "sane_start: ERROR: cannot get pixelsize\n");
+        goto errors;
+      }
 
       /* store the number of front bytes */ 
       if ( s->source != SOURCE_ADF_BACK ){
@@ -6840,16 +7048,12 @@ sane_start (SANE_Handle handle)
     
           s->started=1;
       }
-
-      ret = object_position (s, SANE_TRUE);
+  }
+  else{
+      /* try to read scan size from scanner */
+      ret = get_pixelsize(s,0);
       if (ret != SANE_STATUS_GOOD) {
-        DBG (5, "sane_start: ERROR: cannot load page\n");
-        goto errors;
-      }
-
-      ret = start_scan (s);
-      if (ret != SANE_STATUS_GOOD) {
-        DBG (5, "sane_start: ERROR: cannot start_scan\n");
+        DBG (5, "sane_start: ERROR: cannot get pixelsize\n");
         goto errors;
       }
   }
@@ -7249,13 +7453,11 @@ set_window (struct fujitsu *s)
   set_WD_compress_type(desc1, COMP_NONE);
   set_WD_compress_arg(desc1, 0);
 
-#ifdef SANE_FRAME_JPEG
   /* some scanners support jpeg image compression, for color/gs only */
   if(s->s_params.format == SANE_FRAME_JPEG){
       set_WD_compress_type(desc1, COMP_JPEG);
       set_WD_compress_arg(desc1, s->compress_arg);
   }
-#endif
 
   /* the remainder of the block varies based on model and mode,
    * except for gamma and paper size, those are in the same place */
@@ -7435,7 +7637,8 @@ get_pixelsize(struct fujitsu *s, int actual)
     memset(cmd,0,cmdLen);
     set_SCSI_opcode(cmd, READ_code);
     set_R_datatype_code (cmd, R_datatype_pixelsize);
-    if(s->source == SOURCE_ADF_BACK){
+
+    if(s->side == SIDE_BACK){
       set_R_window_id (cmd, WD_wid_back);
     }
     else{
@@ -7453,7 +7656,7 @@ get_pixelsize(struct fujitsu *s, int actual)
 
       /* when we are called post-scan, the scanner may give
        * more accurate data in other fields */
-      if(actual && get_PSIZE_paper_w(in)){
+      if(actual && !s->has_short_pixelsize && get_PSIZE_paper_w(in)){
         s->s_params.pixels_per_line = get_PSIZE_paper_w(in);
         DBG(5,"get_pixelsize: Actual width\n");
       }
@@ -7469,7 +7672,7 @@ get_pixelsize(struct fujitsu *s, int actual)
       }
       /* when we are called post-scan, the scanner may give
        * more accurate data in other fields */
-      else if(actual && get_PSIZE_paper_l(in)){
+      else if(actual && !s->has_short_pixelsize && get_PSIZE_paper_l(in)){
         s->s_params.lines = get_PSIZE_paper_l(in);
         DBG(5,"get_pixelsize: Actual length\n");
       }
@@ -7489,7 +7692,7 @@ get_pixelsize(struct fujitsu *s, int actual)
       }
   
       /* some scanners can request that the driver clean img */
-      if(get_PSIZE_req_driv_valid(in)){
+      if(!s->has_short_pixelsize && get_PSIZE_req_driv_valid(in)){
         s->req_driv_crop = get_PSIZE_req_driv_crop(in);
         s->req_driv_lut = get_PSIZE_req_driv_lut(in);
         DBG(5,"get_pixelsize: scanner requests: crop=%d, lut=%d\n",
@@ -7530,38 +7733,23 @@ get_pixelsize(struct fujitsu *s, int actual)
  * Issues the SCSI OBJECT POSITION command if an ADF is in use.
  */
 static SANE_Status
-object_position (struct fujitsu *s, int i_load)
+object_position (struct fujitsu *s, int action)
 {
   SANE_Status ret = SANE_STATUS_GOOD;
 
   unsigned char cmd[OBJECT_POSITION_len];
   size_t cmdLen = OBJECT_POSITION_len;
 
-  DBG (10, "object_position: start\n");
+  DBG (10, "object_position: start %d\n", action);
 
-  if (s->source == SOURCE_FLATBED) {
+  if (s->source == SOURCE_FLATBED && action < OP_Halt) {
     DBG (10, "object_position: flatbed no-op\n");
     return SANE_STATUS_GOOD;
   }
 
-  if(s->hopper_before_op && i_load){
-    ret = get_hardware_status(s,0);
-    if(!s->hw_hopper){
-      return SANE_STATUS_NO_DOCS;
-    }
-  }
-
   memset(cmd,0,cmdLen);
   set_SCSI_opcode(cmd, OBJECT_POSITION_code);
-
-  if (i_load) {
-    DBG (15, "object_position: load\n");
-    set_OP_autofeed (cmd, OP_Feed);
-  }
-  else {
-    DBG (15, "object_position: eject\n");
-    set_OP_autofeed (cmd, OP_Discharge);
-  }
+  set_OP_action (cmd, action);
 
   ret = do_cmd (
     s, 1, 0,
@@ -7630,22 +7818,30 @@ check_for_cancel(struct fujitsu *s)
 {
   SANE_Status ret=SANE_STATUS_GOOD;
 
-  DBG (10, "check_for_cancel: start\n");
+  DBG (10, "check_for_cancel: start %d %d\n",s->started,s->cancelled);
 
   if(s->started && s->cancelled){
+
+    /* halt scan */
+    if(s->halt_on_cancel){
+      DBG (15, "check_for_cancel: halting\n");
+      ret = object_position (s, OP_Halt);
+    }
+    /* cancel scan */
+    else{
       DBG (15, "check_for_cancel: cancelling\n");
-
-      /* cancel scan */
       ret = scanner_control(s, SC_function_cancel);
-      if (ret == SANE_STATUS_GOOD) {
-        ret = SANE_STATUS_CANCELLED;
-      }
-      else{
-        DBG (5, "check_for_cancel: ERROR: cannot cancel\n");
-      }
+    }
 
-      s->started = 0;
-      s->cancelled = 0;
+    if (ret == SANE_STATUS_GOOD || ret == SANE_STATUS_CANCELLED) {
+      ret = SANE_STATUS_CANCELLED;
+    }
+    else{
+      DBG (5, "check_for_cancel: ERROR: cannot cancel\n");
+    }
+
+    s->started = 0;
+    s->cancelled = 0;
   }
   else if(s->cancelled){
     DBG (15, "check_for_cancel: already cancelled\n");
@@ -7723,7 +7919,6 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len, SANE_Int * len
     }
   } /* end 3091 */
 
-#ifdef SANE_FRAME_JPEG
   /* alternating jpeg duplex interlacing */
   else if(s->source == SOURCE_ADF_DUPLEX
     && s->s_params.format == SANE_FRAME_JPEG 
@@ -7735,11 +7930,10 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len, SANE_Int * len
       return ret;
     }
   } /* end alt jpeg */
-#endif
 
   /* alternating pnm duplex interlacing */
   else if(s->source == SOURCE_ADF_DUPLEX
-    && s->s_params.format <= SANE_FRAME_RGB
+    && s->s_params.format != SANE_FRAME_JPEG
     && s->duplex_interlace == DUPLEX_INTERLACE_ALT
   ){
 
@@ -7808,7 +8002,33 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len, SANE_Int * len
   return ret;
 }
 
-#ifdef SANE_FRAME_JPEG
+/* bare jpeg images dont contain resolution, but JFIF APP0 does, so we add */
+static SANE_Status
+inject_jfif_header(struct fujitsu *s, int side)
+{
+  SANE_Status ret=SANE_STATUS_GOOD;
+
+  unsigned char out[] = {
+    0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46,
+    0x00, 0x01, 0x02, 0x01, 0x00, 0x48, 0x00, 0x48,
+    0x00, 0x00
+  };
+  size_t outLen=JFIF_APP0_LENGTH;
+
+  DBG (10, "inject_jfif_header: start %d\n", side);
+
+  putnbyte(out + 12, s->resolution_x, 2);
+  putnbyte(out + 14, s->resolution_y, 2);
+
+  memcpy(s->buffers[side]+s->buff_rx[side], out, outLen);
+  s->buff_rx[side] += outLen;
+  s->bytes_rx[side] += outLen;
+
+  DBG (10, "inject_jfif_header: finish %d\n", ret);
+
+  return ret;
+}
+
 static SANE_Status
 read_from_JPEGduplex(struct fujitsu *s)
 {
@@ -7834,13 +8054,21 @@ read_from_JPEGduplex(struct fujitsu *s)
      * so we only get enough to fill whichever is smaller (and not yet done) */
     if(!s->eof_rx[SIDE_FRONT]){
       int avail = s->buff_tot[SIDE_FRONT] - s->buff_rx[SIDE_FRONT];
-      if(bytes > avail)
+      if(bytes > avail){
         bytes = avail;
+        /* leave space for JFIF header at start of image */
+        if(s->bytes_rx[SIDE_FRONT] < 2)
+          bytes -= JFIF_APP0_LENGTH;
+      }
     }
     if(!s->eof_rx[SIDE_BACK]){
       int avail = s->buff_tot[SIDE_BACK] - s->buff_rx[SIDE_BACK];
-      if(bytes > avail)
+      if(bytes > avail){
         bytes = avail;
+        /* leave space for JFIF header at start of image */
+        if(s->bytes_rx[SIDE_BACK] < 2)
+          bytes -= JFIF_APP0_LENGTH;
+      }
     }
   
     DBG(15, "read_from_JPEGduplex: fto:%d frx:%d bto:%d brx:%d pa:%d\n",
@@ -7901,7 +8129,7 @@ read_from_JPEGduplex(struct fujitsu *s)
     for(i=0;i<(int)inLen;i++){
 
         /* about to change stage */
-        if(in[i] == 0xff){
+        if(in[i] == 0xff && s->jpeg_ff_offset != 0){
             s->jpeg_ff_offset=0;
             continue;
         }
@@ -7909,9 +8137,21 @@ read_from_JPEGduplex(struct fujitsu *s)
         /* last byte was an ff, this byte will change stage */
         if(s->jpeg_ff_offset == 0){
 
-            /* headers (SOI/HuffTab/QTab/DRI), in both sides */
-            if(in[i] == 0xd8 || in[i] == 0xc4
-              || in[i] == 0xdb || in[i] == 0xdd){
+            /* first marker after SOI is not APP0, add one */
+            if(s->jpeg_stage == JPEG_STAGE_SOI && in[i] != 0xe0){
+                inject_jfif_header(s,SIDE_FRONT);
+                inject_jfif_header(s,SIDE_BACK);
+                s->jpeg_stage = JPEG_STAGE_HEAD;
+            }
+
+            /* SOI header, in both sides */
+            if(in[i] == 0xd8){
+                s->jpeg_stage = JPEG_STAGE_SOI;
+                DBG(15, "read_from_JPEGduplex: stage SOI\n");
+            }
+
+            /* headers (HuffTab/QTab/DRI), in both sides */
+            else if(in[i] == 0xc4 || in[i] == 0xdb || in[i] == 0xdd){
                 s->jpeg_stage = JPEG_STAGE_HEAD;
                 DBG(15, "read_from_JPEGduplex: stage head\n");
             }
@@ -7972,6 +8212,11 @@ read_from_JPEGduplex(struct fujitsu *s)
                 s->jpeg_stage = JPEG_STAGE_EOI;
                 DBG(15, "read_from_JPEGduplex: stage eoi %d %d\n",(int)inLen,i);
             }
+
+            /* unknown, warn */
+            else if(in[i] != 0xff){
+                DBG(15, "read_from_JPEGduplex: unknown %02x\n", in[i]);
+            }
         }
         s->jpeg_ff_offset++;
 
@@ -8025,7 +8270,8 @@ read_from_JPEGduplex(struct fujitsu *s)
         }
 
         /* copy these stages to front */
-        if(s->jpeg_stage == JPEG_STAGE_HEAD
+        if(s->jpeg_stage == JPEG_STAGE_SOI
+          || s->jpeg_stage == JPEG_STAGE_HEAD
           || s->jpeg_stage == JPEG_STAGE_SOF
           || s->jpeg_stage == JPEG_STAGE_SOS
           || s->jpeg_stage == JPEG_STAGE_EOI
@@ -8043,7 +8289,8 @@ read_from_JPEGduplex(struct fujitsu *s)
         /* copy these stages to back */
         if( s->jpeg_interlace == JPEG_INTERLACE_ALT
 	  &&
-	  ( s->jpeg_stage == JPEG_STAGE_HEAD
+	  ( s->jpeg_stage == JPEG_STAGE_SOI
+          || s->jpeg_stage == JPEG_STAGE_HEAD
           || s->jpeg_stage == JPEG_STAGE_SOF
           || s->jpeg_stage == JPEG_STAGE_SOS
           || s->jpeg_stage == JPEG_STAGE_EOI
@@ -8086,7 +8333,6 @@ read_from_JPEGduplex(struct fujitsu *s)
   
     return ret;
 }
-#endif
 
 static SANE_Status
 read_from_3091duplex(struct fujitsu *s)
@@ -8267,6 +8513,10 @@ read_from_scanner(struct fujitsu *s, int side)
     if(bytes % 2 && bytes < remain){
        bytes -= s->s_params.bytes_per_line;
     }
+
+    /* jpeg scans leave space for JFIF header at start of image */
+    if(s->s_params.format == SANE_FRAME_JPEG && s->bytes_rx[side] < 2)
+      bytes -= JFIF_APP0_LENGTH;
   
     DBG(15, "read_from_scanner: si:%d re:%d bs:%d by:%d av:%d\n",
       side, remain, s->buffer_size, bytes, avail);
@@ -8340,6 +8590,9 @@ read_from_scanner(struct fujitsu *s, int side)
     if(inLen){
         if(s->s_mode==MODE_COLOR && s->color_interlace == COLOR_INTERLACE_3091){
             copy_3091 (s, in, inLen, side);
+        }
+        else if(s->s_params.format == SANE_FRAME_JPEG){
+            copy_JPEG (s, in, inLen, side);
         }
         else{
             copy_buffer (s, in, inLen, side);
@@ -8454,6 +8707,48 @@ copy_3091(struct fujitsu *s, unsigned char * buf, int len, int side)
 }
 
 static SANE_Status
+copy_JPEG(struct fujitsu *s, unsigned char * buf, int len, int side)
+{
+  SANE_Status ret=SANE_STATUS_GOOD;
+  int i, seen = 0;
+ 
+  DBG (10, "copy_JPEG: start\n");
+
+  /* A jpeg image starts with the SOI marker, FF D8.
+   * This is optionally followed by the JFIF APP0 
+   * marker, FF E0. If that marker is not present,
+   * we add it, so we can insert the resolution */
+
+  if(!s->bytes_rx[side] && len >= 4
+    && buf[0] == 0xFF && buf[1] == 0xD8
+    && buf[2] == 0xFF && buf[3] != 0xE0
+  ){
+    /* SOI marker */
+    for (i=0; i<2; i++){
+      s->buffers[side][s->buff_rx[side]++] = buf[i];
+      s->bytes_rx[side]++;
+      seen++;
+    }
+
+    /* JFIF header after SOI */
+    inject_jfif_header(s,side);
+  }
+
+  memcpy(s->buffers[side]+s->buff_rx[side],buf+seen,len-seen);
+  s->buff_rx[side] += len-seen;
+  s->bytes_rx[side] += len-seen;
+
+  /* should never happen with jpeg */
+  if(s->bytes_rx[side] == s->bytes_tot[side]){
+    s->eof_rx[side] = 1;
+  }
+
+  DBG (10, "copy_JPEG: finish\n");
+
+  return ret;
+}
+
+static SANE_Status
 copy_buffer(struct fujitsu *s, unsigned char * buf, int len, int side)
 {
   SANE_Status ret=SANE_STATUS_GOOD;
@@ -8465,7 +8760,7 @@ copy_buffer(struct fujitsu *s, unsigned char * buf, int len, int side)
 
   /* invert image if scanner needs it for this mode */
   /* jpeg data does not use inverting */
-  if(s->s_params.format <= SANE_FRAME_RGB && s->reverse_by_mode[s->s_mode]){
+  if(s->s_params.format != SANE_FRAME_JPEG && s->reverse_by_mode[s->s_mode]){
     for(i=0; i<len; i++){
       buf[i] ^= 0xff;
     }
@@ -8895,6 +9190,14 @@ sense_handler (int fd, unsigned char * sensed_data, void *arg)
         DBG  (5, "Medium error: double feed\n");
         return SANE_STATUS_JAMMED;
       }
+      if (0x08 == ascq) {
+        DBG  (5, "Medium error: ADF setup error\n");
+        return SANE_STATUS_JAMMED;
+      }
+      if (0x09 == ascq) {
+        DBG  (5, "Medium error: Carrier sheet\n");
+        return SANE_STATUS_JAMMED;
+      }
       if (0x10 == ascq) {
         DBG  (5, "Medium error: no ink cartridge\n");
         return SANE_STATUS_IO_ERROR;
@@ -8907,12 +9210,36 @@ sense_handler (int fd, unsigned char * sensed_data, void *arg)
         DBG  (5, "Medium error: endorser error\n");
         return SANE_STATUS_IO_ERROR;
       }
+      if (0x20 == ascq) {
+        DBG  (5, "Medium error: Stop button\n");
+        return SANE_STATUS_NO_DOCS;
+      }
+      if (0x22 == ascq) {
+        DBG  (5, "Medium error: scanning halted\n");
+        return SANE_STATUS_CANCELLED;
+      }
+      if (0x30 == ascq) {
+        DBG  (5, "Medium error: Not enough paper\n");
+        return SANE_STATUS_NO_DOCS;
+      }
+      if (0x31 == ascq) {
+        DBG  (5, "Medium error: scanning disabled\n");
+        return SANE_STATUS_IO_ERROR;
+      }
+      if (0x32 == ascq) {
+        DBG  (5, "Medium error: scanning paused\n");
+        return SANE_STATUS_DEVICE_BUSY;
+      }
+      if (0x33 == ascq) {
+        DBG  (5, "Medium error: WiFi control error\n");
+        return SANE_STATUS_IO_ERROR;
+      }
       DBG  (5, "Medium error: unknown ascq\n");
       return SANE_STATUS_IO_ERROR;
       break;
 
     case 0x4:
-      if (0x80 != asc && 0x44 != asc && 0x47 != asc) {
+      if (0x80 != asc && 0x44 != asc) {
         DBG  (5, "Hardware error: unknown asc\n");
         return SANE_STATUS_IO_ERROR;
       }
@@ -8926,6 +9253,10 @@ sense_handler (int fd, unsigned char * sensed_data, void *arg)
       }
       if ((0x80 == asc) && (0x02 == ascq)) {
         DBG  (5, "Hardware error: heater fuse\n");
+        return SANE_STATUS_IO_ERROR;
+      }
+      if ((0x80 == asc) && (0x03 == ascq)) {
+        DBG  (5, "Hardware error: lamp fuse\n");
         return SANE_STATUS_IO_ERROR;
       }
       if ((0x80 == asc) && (0x04 == ascq)) {
@@ -8950,6 +9281,22 @@ sense_handler (int fd, unsigned char * sensed_data, void *arg)
       }
       if ((0x80 == asc) && (0x10 == ascq)) {
         DBG  (5, "Hardware error: endorser error\n");
+        return SANE_STATUS_IO_ERROR;
+      }
+      if ((0x80 == asc) && (0x11 == ascq)) {
+        DBG  (5, "Hardware error: endorser fuse\n");
+        return SANE_STATUS_IO_ERROR;
+      }
+      if ((0x80 == asc) && (0x80 == ascq)) {
+        DBG  (5, "Hardware error: interface board timeout\n");
+        return SANE_STATUS_IO_ERROR;
+      }
+      if ((0x80 == asc) && (0x81 == ascq)) {
+        DBG  (5, "Hardware error: interface board error 1\n");
+        return SANE_STATUS_IO_ERROR;
+      }
+      if ((0x80 == asc) && (0x82 == ascq)) {
+        DBG  (5, "Hardware error: interface board error 2\n");
         return SANE_STATUS_IO_ERROR;
       }
       DBG  (5, "Hardware error: unknown asc/ascq\n");
@@ -9098,7 +9445,6 @@ do_scsi_cmd(struct fujitsu *s, int runRS, int shortTime,
 )
 {
   int ret;
-  size_t actLen = 0;
 
   /*shut up compiler*/
   runRS=runRS;
@@ -9116,7 +9462,6 @@ do_scsi_cmd(struct fujitsu *s, int runRS, int shortTime,
   if (inBuff && inLen){
     DBG(25, "in: reading %d bytes\n", (int)*inLen);
     memset(inBuff,0,*inLen);
-    actLen = *inLen;
   }
 
   ret = sanei_scsi_cmd2(s->fd, cmdBuff, cmdLen, outBuff, outLen, inBuff, inLen);
@@ -9408,9 +9753,7 @@ must_fully_buffer(struct fujitsu *s)
 
   if(
     (s->swdeskew || s->swdespeck || s->swcrop || s->swskip)
-#ifdef SANE_FRAME_JPEG
     && s->s_params.format != SANE_FRAME_JPEG
-#endif
   ){
     return 1;
   }
@@ -9424,9 +9767,7 @@ static int
 must_downsample(struct fujitsu *s)
 {
   if(s->s_mode != s->u_mode
-#ifdef SANE_FRAME_JPEG
     && s->compress != COMP_JPEG
-#endif
   ){
     return 1;
   }
@@ -9492,6 +9833,23 @@ get_page_height(struct fujitsu *s)
   return height;
 }
 
+/* s->max_y gives the maximum height of paper which can be scanned 
+ * this actually varies by resolution, so a helper to change it */
+static int
+set_max_y(struct fujitsu *s) 
+{
+  int i;
+
+  for(i=0;i<4;i++){
+    if(!s->max_y_by_res[i].res)
+      break;
+    if(s->resolution_x <= s->max_y_by_res[i].res){
+      s->max_y = s->max_y_by_res[i].len;
+    }
+  }
+
+  return s->max_y;
+}
 
 /**
  * Convenience method to determine longest string size in a list.
@@ -9561,7 +9919,8 @@ hexdump (int level, char *comment, unsigned char *p, int l)
   }
 
   /* print last (partial) line */
-  DBG (level, "%s\n", line);
+  if (i)
+    DBG (level, "%s\n", line);
 }
 
 /**
@@ -9654,37 +10013,23 @@ buffer_crop(struct fujitsu *s, int side)
 
   DBG (10, "buffer_crop: start\n");
 
-  /*only find edges on first image from a page, or if first image had error */
-  if(s->side == SIDE_FRONT || s->source == SOURCE_ADF_BACK || s->crop_stat){
+  ret = sanei_magic_findEdges(
+    &s->s_params,s->buffers[side],s->resolution_x,s->resolution_y,
+    &s->crop_vals[0],&s->crop_vals[1],&s->crop_vals[2],&s->crop_vals[3]);
 
-    s->crop_stat = sanei_magic_findEdges(
-      &s->s_params,s->buffers[side],s->resolution_x,s->resolution_y,
-      &s->crop_vals[0],&s->crop_vals[1],&s->crop_vals[2],&s->crop_vals[3]);
-
-    if(s->crop_stat){
-      DBG (5, "buffer_crop: bad edges, bailing\n");
-      goto cleanup;
-    }
-  
-    DBG (15, "buffer_crop: t:%d b:%d l:%d r:%d\n",
-      s->crop_vals[0],s->crop_vals[1],s->crop_vals[2],s->crop_vals[3]);
-
-    /* we dont listen to the 'top' value, since fujitsu does not pad the top */
-    s->crop_vals[0] = 0;
-
-    /* if we will later binarize this image, make sure the width
-     * is a multiple of 8 pixels, by adjusting the right side */
-    if ( must_downsample(s) && s->u_mode < MODE_GRAYSCALE ){
-      s->crop_vals[3] -= (s->crop_vals[3]-s->crop_vals[2]) % 8;
-    }
+  if(ret){
+    DBG (5, "buffer_crop: bad edges, bailing\n");
+    ret = SANE_STATUS_GOOD;
+    goto cleanup;
   }
-  /* backside images can use a 'flipped' version of frontside data */
-  else{
-    int left  = s->crop_vals[2];
-    int right = s->crop_vals[3];
+  
+  DBG (15, "buffer_crop: t:%d b:%d l:%d r:%d\n",
+    s->crop_vals[0],s->crop_vals[1],s->crop_vals[2],s->crop_vals[3]);
 
-    s->crop_vals[2] = s->s_params.pixels_per_line - right;
-    s->crop_vals[3] = s->s_params.pixels_per_line - left;
+  /* if we will later binarize this image, make sure the width
+   * is a multiple of 8 pixels, by adjusting the right side */
+  if ( must_downsample(s) && s->u_mode < MODE_GRAYSCALE ){
+    s->crop_vals[3] -= (s->crop_vals[3]-s->crop_vals[2]) % 8;
   }
 
   /* now crop the image */
