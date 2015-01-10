@@ -30,9 +30,19 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
     fi
 
     # Move home from /home/saned to /var/lib/saned
-    if getent passwd | grep -q "^saned:" | grep "/home/saned"; then
-	echo "Moving homedir from /home/saned to /var/lib/saned"
-	usermod -d /var/lib/saned saned
+    if getent passwd | grep -q "^saned:" | grep -q "/home/saned"; then
+	echo "Test for running scanbd"
+	if ps -Af | grep -q "saned" | grep -q "scanbd"; then
+	    echo "Stop scanbd"
+	    invoke-rc.d --quiet scanbd stop
+	    echo "Move homedir from /home/saned to /var/lib/saned"
+	    usermod -d /var/lib/saned saned
+	    echo "Start scanbd"
+	    invoke-rc.d --quiet scanbd start
+	else
+	    echo "Move homedir from /home/saned to /var/lib/saned"
+	    usermod -d /var/lib/saned saned
+	fi
     fi
     if [ "$SANED_IN_SCANNER" = "true" ]; then
 	adduser --quiet saned scanner
