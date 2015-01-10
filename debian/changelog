@@ -1,11 +1,10 @@
 sane-backends (1.0.24-9) unstable; urgency=medium
 
   * debian/sane-utils.postinst:
-    - Correct typo and add missing "-q" at line 33
-      (Closes: #773826).
+    - Correct typo and add missing -q option to grep (Closes: #773826).
       Thanks to "Nelson A. de Oliveira" <naoliv@debian.org>.
-    - If scanbd is running add start/stop around the move of the 
-      home directory (Closes: #774941).
+    - Add start/stop around the move of the home directory
+      if scanbd is running during postinst (Closes: #774941).
       Thanks to "Olaf Meeuwissen" <olaf.meeuwissen@avasys.jp>.
   * debian/rules:
     - Add line to extract the version from debian/changelog.
