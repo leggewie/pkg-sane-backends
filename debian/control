@@ -86,7 +86,7 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends}
 Recommends: libsane-extras, sane-utils (>= ${binary:Version})
-Suggests: avahi-daemon, hplip, hpoj
+Suggests: avahi-daemon, hplip
 Replaces: libsane-extras (<< 1.0.18.14)
 Description: API library for scanners
  SANE stands for "Scanner Access Now Easy" and is an application
@@ -112,7 +112,7 @@ Architecture: any
 Depends:
  libavahi-client-dev,
  libcam-dev [kfreebsd-any],
- libgphoto2-2-dev,
+ libgphoto2-dev,
  libieee1284-3-dev [!hurd-i386],
  libjpeg-dev,
  libsane (= ${binary:Version}),

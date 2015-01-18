@@ -6,6 +6,10 @@ sane-backends (1.0.24-10) UNRELEASED; urgency=medium
   * Add link to TROUBLESHOOTING.debian into debian/README.debian.
   * New debian/patches/001-scanimage_manpage.patch:
     - Add remark for parameter to manpage (Closes: #418630).
+  * debian/control:
+    - On package libsane-dev change Depends from libgphoto2-2-dev to
+      libgphoto2-dev.
+    - On package libsane remove package hpoj from Suggests
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
 
