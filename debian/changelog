@@ -4,6 +4,8 @@ sane-backends (1.0.24-10) UNRELEASED; urgency=medium
     - Add part for "usbfs: interface 1 claimed by usblp while ‘scanimage’ sets
       config #1 (Closes: #726588).
   * Add link to TROUBLESHOOTING.debian into debian/README.debian.
+  * New debian/patches/001-scanimage_manpage.patch:
+    - Add remark for parameter to manpage (Closes: #418630).
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
 
