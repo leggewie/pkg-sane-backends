@@ -1,6 +1,6 @@
 sane-backends (1.0.24-10) UNRELEASED; urgency=medium
 
-  * New debian/libsane.TROUBLESHOOTING.debian:
+  * New debian/TROUBLESHOOTING.debian:
     - Add part for "usbfs: interface 1 claimed by usblp while ‘scanimage’ sets
       config #1 (Closes: #726588).
   * Add link to TROUBLESHOOTING.debian into debian/README.debian.
@@ -16,6 +16,8 @@ sane-backends (1.0.24-10) UNRELEASED; urgency=medium
       + libsane: libsane-extras (<< 1.0.18.14)
       + libsane-dev: libsane-extras-dev (<< 1.0.18.14)
       + libsane-dbg: libsane-extras-dbg (<< 1.0.18.14)
+  * debian/rules:
+    - Enable pnm backend for testing.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
 
