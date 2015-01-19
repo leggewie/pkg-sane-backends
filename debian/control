@@ -38,7 +38,6 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends}
 Suggests: avahi-daemon, unpaper
-Replaces: libsane (<< 1.0.11-4)
 Description: API library for scanners -- utilities
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
@@ -58,7 +57,6 @@ Section: libs
 Architecture: all
 Multi-Arch: foreign
 Depends: ${misc:Depends}
-Replaces: libsane (<< 1.0.22-4~)
 Description: API library for scanners -- documentation and support files
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
@@ -87,7 +85,6 @@ Depends:
  ${shlibs:Depends}
 Recommends: libsane-extras, sane-utils (>= ${binary:Version})
 Suggests: avahi-daemon, hplip
-Replaces: libsane-extras (<< 1.0.18.14)
 Description: API library for scanners
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
@@ -122,7 +119,6 @@ Depends:
  pkg-config,
  ${misc:Depends}
 Recommends: libsane-extras-dev
-Replaces: libsane-extras-dev (<< 1.0.18.14)
 Description: API development library for scanners [development files]
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
@@ -144,7 +140,6 @@ Architecture: any
 Multi-Arch: same
 Depends: libsane (= ${binary:Version}), ${misc:Depends}
 Recommends: libsane-extras-dbg
-Replaces: libsane-extras-dbg (<< 1.0.18.14)
 Description: API development library for scanners [debug symbols]
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any

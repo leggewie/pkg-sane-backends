@@ -10,6 +10,12 @@ sane-backends (1.0.24-10) UNRELEASED; urgency=medium
     - On package libsane-dev change Depends from libgphoto2-2-dev to
       libgphoto2-dev.
     - On package libsane remove package hpoj from Suggests
+    - Remove useless replaces because latest release in stable is 1.0.22-7:
+      + sane-utils: libsane (<< 1.0.11-4)
+      + libsane-common: libsane (<< 1.0.22-4~)
+      + libsane: libsane-extras (<< 1.0.18.14)
+      + libsane-dev: libsane-extras-dev (<< 1.0.18.14)
+      + libsane-dbg: libsane-extras-dbg (<< 1.0.18.14)
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
 
