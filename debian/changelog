@@ -18,8 +18,13 @@ sane-backends (1.0.24-10) UNRELEASED; urgency=medium
       + libsane-dbg: libsane-extras-dbg (<< 1.0.18.14)
   * debian/rules:
     - Enable pnm backend for testing.
+    - Remove override_dh_builddeb because compression xz is now standard.
   * debian/saned@.service:
     - Remove Alias from [Install] Section (Closes: #778268).
+  * sane-utils.[postinst|postrm]:
+    + Replace fixed path with a POSIX-compliant shell function to check
+      the existence of a command.
+
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
 

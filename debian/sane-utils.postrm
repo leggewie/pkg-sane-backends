@@ -2,8 +2,29 @@
 
 set -e
 
+#
+# POSIX-compliant shell function
+# to check for the existence of a command
+# Return 0 if found
+#
+pathfind() {
+    OLDIFS="$IFS"
+    IFS=:
+    for p in $PATH; do
+        if [ -x "$p/$*" ]; then
+            IFS="$OLDIFS"
+            return 0
+        fi
+    done
+    IFS="$OLDIFS"
+    return 1
+}
+
+
+
 if [ "$1" = purge ]; then
-    if [ -x /usr/sbin/update-inetd ]; then
+    pathfind update-inetd
+    if [ $? = 0 ]; then
 	update-inetd --remove sane-port
 	update-inetd --remove "#<off># sane-port"
     fi
