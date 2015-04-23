@@ -22,9 +22,14 @@ sane-backends (1.0.24-10) UNRELEASED; urgency=medium
   * debian/saned@.service:
     - Remove Alias from [Install] Section (Closes: #778268).
   * sane-utils.[postinst|postrm]:
-    + Replace fixed path with a POSIX-compliant shell function to check
+    - Replace fixed path with a POSIX-compliant shell function to check
       the existence of a command.
-
+  * Add autopkgtests:
+    - debian/control:
+      + Add Testsuite: autopkgtest.
+    - New debian/tests/control
+    - New debian/tests/start-net:
+      - Testing network interface activation with systemd.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
 
