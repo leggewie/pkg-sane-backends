@@ -49,7 +49,8 @@ override_dh_auto_configure:
 		--enable-translations \
 		--enable-avahi \
 		--enable-libusb_1_0 \
-		--enable-pnm-backend
+		--enable-pnm-backend \
+		--without-v4l
 
 override_dh_auto_build:
 	# generate POT file for translators

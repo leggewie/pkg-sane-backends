@@ -30,6 +30,11 @@ sane-backends (1.0.24-10) UNRELEASED; urgency=medium
     - New debian/tests/control
     - New debian/tests/start-net:
       - Testing network interface activation with systemd.
+  * debian/rules:
+    - Add configure parameter --without-vl4 to disable v4l
+      backend (Closes: #446015).
+      + The backend is writen for the kernel 2.4 and v4l. Now
+        we are at kernel 3.16 and v4l2.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
 
