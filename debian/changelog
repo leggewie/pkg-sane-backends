@@ -1,4 +1,4 @@
-sane-backends (1.0.24-10) UNRELEASED; urgency=medium
+sane-backends (1.0.24-10) unstable; urgency=medium
 
   * New debian/TROUBLESHOOTING.debian:
     - Add part for "usbfs: interface 1 claimed by usblp while ‘scanimage’ sets
@@ -6,9 +6,11 @@ sane-backends (1.0.24-10) UNRELEASED; urgency=medium
   * Add link to TROUBLESHOOTING.debian into debian/README.debian.
   * New debian/patches/001-scanimage_manpage.patch:
     - Add remark for parameter to manpage (Closes: #418630).
+  * New debian/patches/0005-mk_reproducible_results.patch:
+    - Make builds reproducible.
   * debian/control:
     - On package libsane-dev change Depends from libgphoto2-2-dev to
-      libgphoto2-dev.
+      libgphoto2-dev (auto-libgphoto2 transition).
     - On package libsane remove package hpoj from Suggests
     - Remove useless replaces because latest release in stable is 1.0.22-7:
       + sane-utils: libsane (<< 1.0.11-4)
@@ -35,6 +37,8 @@ sane-backends (1.0.24-10) UNRELEASED; urgency=medium
       backend (Closes: #446015).
       + The backend is writen for the kernel 2.4 and v4l. Now
         we are at kernel 3.16 and v4l2.
+  * Refresh patches:
+    - debian/patches/sane-desc.c_debian_mods.patch.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
 

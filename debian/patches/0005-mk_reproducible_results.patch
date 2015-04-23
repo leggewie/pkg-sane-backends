@@ -1,3 +1,8 @@
+Description: Make build reproducible.
+Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
+Last-Update: 2015-04-23
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 Index: trunk/tools/sane-desc.c
 ===================================================================
 --- trunk.orig/tools/sane-desc.c
