@@ -1,4 +1,4 @@
-sane-backends (1.0.24-10) unstable; urgency=medium
+sane-backends (1.0.24-10) unstable; urgency=low
 
   * New debian/TROUBLESHOOTING.debian:
     - Add part for "usbfs: interface 1 claimed by usblp while ‘scanimage’ sets
@@ -42,9 +42,12 @@ sane-backends (1.0.24-10) unstable; urgency=medium
   * Add symbols file:
     - debian/rules: rewrite override_dh_makeshlibs.
   * Comment out "set -e" at debian/sane-utils.postrm to prevent
-    piuparts errors.
+    piuparts errors
+  * debian/saned@.service:
+    - Change StandardInput=socket to StandardInput=null to enable
+      working over network (Closes: #782971).
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 25 Apr 2015 15:36:24 +0200
 
 sane-backends (1.0.24-9) unstable; urgency=medium
 
