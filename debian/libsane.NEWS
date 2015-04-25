@@ -1,3 +1,9 @@
+sane-backends (1.0.24-10) unstable; urgency=low
+
+ The v4l backend is disabled since this version.
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
+
 sane-backends (1.0.22-1) unstable; urgency=low
 
   Starting with this version, sane-backends requires the /dev filesystem to

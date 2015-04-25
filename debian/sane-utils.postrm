@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+#set -e
 
 #
 # POSIX-compliant shell function
@@ -19,7 +19,6 @@ pathfind() {
     IFS="$OLDIFS"
     return 1
 }
-
 
 
 if [ "$1" = purge ]; then
@@ -44,3 +43,5 @@ if [ "$1" = purge ]; then
 fi
 
 #DEBHELPER#
+
+exit 0

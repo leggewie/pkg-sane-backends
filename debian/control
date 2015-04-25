@@ -19,7 +19,6 @@ Build-Depends:
  libsystemd-dev [linux-any],
  libtiff-dev,
  libusb-1.0-0-dev [!hurd-i386],
- libv4l-dev [linux-any],
  pkg-config,
  po-debconf,
  texlive,
@@ -116,7 +115,6 @@ Depends:
  libsane (= ${binary:Version}),
  libtiff-dev,
  libusb-1.0-0-dev [!hurd-i386],
- libv4l-dev [linux-any],
  pkg-config,
  ${misc:Depends}
 Recommends: libsane-extras-dev
