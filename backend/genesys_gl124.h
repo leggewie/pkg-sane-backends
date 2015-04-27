@@ -620,11 +620,23 @@ static Sensor_Profile sensors[]={
 	{CIS_CANONLIDE110, 1200, 0, 10528, 0x1e, 0x9f, 0x55, 5168, 163,  101,  388,  574,  393, order_01  , 0x00, 0x08, 0x20, 0x22},
 	{CIS_CANONLIDE110, 2400, 0, 20864, 0x1e, 0x9f, 0x55, 5168, 163, 4679, 6839, 8401, 6859, order_0213, 0x00, 0x06, 0x20, 0x24},
 
+        /* LiDE 120 */
+	{CIS_CANONLIDE120,  600, 1,  2768, 0x0f, 0x9f, 0x55, 2584, 154,  101,  388,  574,  393, NULL      , 0x00, 0x0c, 0x20, 0x21},
+	{CIS_CANONLIDE120,  600, 0,  5360, 0x0f, 0x9f, 0x55, 5168, 163,  101,  388,  574,  393, NULL      , 0x00, 0x0a, 0x20, 0x21},
+	{CIS_CANONLIDE120, 1200, 0, 10528, 0x0f, 0x9f, 0x55, 5168, 163,  101,  388,  574,  393, order_01  , 0x00, 0x08, 0x20, 0x22},
+	{CIS_CANONLIDE120, 2400, 0, 20864, 0x0f, 0x9f, 0x55, 5168, 163, 4679, 6839, 8401, 6859, order_0213, 0x00, 0x06, 0x20, 0x24},
+
         /* LiDE 210 */
 	{CIS_CANONLIDE210,  600, 1,  2768, 0x1e, 0x9f, 0x55, 2584, 154,  101,  388,  574,  393, NULL      , 0x00, 0x0c, 0x20, 0x21},
 	{CIS_CANONLIDE210,  600, 0,  5360, 0x1e, 0x9f, 0x55, 5168, 163,  101,  388,  574,  393, NULL      , 0x00, 0x0a, 0x20, 0x21},
 	{CIS_CANONLIDE210, 1200, 0, 10528, 0x1e, 0x9f, 0x55, 5168, 163,  101,  388,  574,  393, order_01  , 0x00, 0x08, 0x20, 0x22},
 	{CIS_CANONLIDE210, 2400, 0, 20864, 0x1e, 0x9f, 0x55, 5168, 163, 4679, 6839, 8401, 6859, order_0213, 0x00, 0x06, 0x20, 0x24},
+
+        /* LiDE 220 */
+	{CIS_CANONLIDE220,  600, 1,  2768, 0x0f, 0x9f, 0x55, 2584, 154,  101,  388,  574,  393, NULL      , 0x00, 0x0c, 0x20, 0x21},
+	{CIS_CANONLIDE220,  600, 0,  5360, 0x0f, 0x9f, 0x55, 5168, 163,  101,  388,  574,  393, NULL      , 0x00, 0x0a, 0x20, 0x21},
+	{CIS_CANONLIDE220, 1200, 0, 10528, 0x0f, 0x9f, 0x55, 5168, 163,  101,  388,  574,  393, order_01  , 0x00, 0x08, 0x20, 0x22},
+	{CIS_CANONLIDE220, 2400, 0, 20864, 0x0f, 0x9f, 0x55, 5168, 163, 4679, 6839, 8401, 6859, order_0213, 0x00, 0x06, 0x20, 0x24},
 };
 
 
@@ -704,7 +716,7 @@ SANE_Status gl124_send_shading_data (Genesys_Device * dev, uint8_t * data, int s
 #ifndef UNIT_TESTING
 static
 #endif
-SANE_Status gl124_feed (Genesys_Device * dev, unsigned int steps);
+SANE_Status gl124_feed (Genesys_Device * dev, unsigned int steps, int reverse);
 
 GENESYS_STATIC SANE_Status
 gl124_stop_action (Genesys_Device * dev);

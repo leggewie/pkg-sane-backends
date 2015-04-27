@@ -382,6 +382,8 @@ Genesys_Color_Order;
 #define CCD_PLUSTEK3800  26
 #define CIS_CANONLIDE210 27
 #define CIS_CANONLIDE80  28
+#define CIS_CANONLIDE220 29
+#define CIS_CANONLIDE120 30
 
 #define GPO_UMAX         0
 #define GPO_ST12         1
@@ -705,6 +707,9 @@ typedef struct
 
   /**< value for brightness enhancement in the [-100..100] range */
   int brightness;
+  
+  /**< cahe entries expiration time */
+  int expiration_time;
 } Genesys_Settings;
 
 typedef struct Genesys_Current_Setup

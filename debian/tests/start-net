@@ -1,0 +1,29 @@
+#!/bin/sh
+set -ex
+
+# Simple test for sane-backends.
+# Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
+# dep8 restrictions: breaks-bestbed needs-root allow-stderr
+
+
+# Enable localhost
+sed -i '/localhost/d' /etc/sane.d/saned.conf
+echo localhost >>/etc/sane.d/saned.conf
+
+# Enable pnm
+sed -i 's/^#\(pnm\)$/\1/' /etc/sane.d/dll.conf
+
+# Enable saned.socket
+systemctl enable saned.socket
+
+#
+# test
+#
+CNT=`scanimage -d net -L | grep net: | wc -l`
+
+if [ ${CNT} -eq 2 ] ; then
+    exit 0
+else
+    exit 100
+fi
+

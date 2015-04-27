@@ -58,7 +58,7 @@
  * SANE backend for Genesys Logic GL646/GL841/GL842/GL843/GL846/GL847/GL124 based scanners
  */
 
-#define BUILD 2504
+#define BUILD 2506
 #define BACKEND_NAME genesys
 
 #include "genesys.h"
@@ -154,6 +154,15 @@ static const SANE_Range threshold_curve_range = {
 static const SANE_Range enhance_range = {
   -100,	/* minimum */
   100,		/* maximum */
+  1		/* quantization */
+};
+
+/**
+ * range for expiration time
+ */
+static const SANE_Range expiration_range = {
+  -1,	        /* minimum */
+  30000,	/* maximum */
   1		/* quantization */
 };
 
@@ -3044,11 +3053,15 @@ genesys_send_shading_coefficient (Genesys_Device * dev)
     case CIS_CANONLIDE100:
     case CIS_CANONLIDE200:
     case CIS_CANONLIDE110:
+    case CIS_CANONLIDE120:
     case CIS_CANONLIDE210:
+    case CIS_CANONLIDE220:
         /* TODO store this in a data struct so we avoid
          * growing this switch */
         if(dev->model->ccd_type!=CIS_CANONLIDE110
-        && dev->model->ccd_type!=CIS_CANONLIDE210)
+        && dev->model->ccd_type!=CIS_CANONLIDE210
+        && dev->model->ccd_type!=CIS_CANONLIDE120
+        && dev->model->ccd_type!=CIS_CANONLIDE220)
           target_code=0xdc00;
         else
           target_code=0xf000;
@@ -5307,6 +5320,9 @@ calc_parameters (Genesys_Scanner * s)
       s->dev->settings.brightness=0;
     }
 
+  /* cache expiration time */
+   s->dev->settings.expiration_time=s->val[OPT_EXPIRATION_TIME].w;
+
   return status;
 }
 
@@ -5894,6 +5910,17 @@ init_options (Genesys_Scanner * s)
       DISABLE (OPT_CALIBRATION_FILE);
     }
 #endif
+
+  /* expiration time for calibration cache entries */
+  s->opt[OPT_EXPIRATION_TIME].name = "expiration-time";
+  s->opt[OPT_EXPIRATION_TIME].title = SANE_I18N ("Calibration cache expiration time");
+  s->opt[OPT_EXPIRATION_TIME].desc = SANE_I18N ("Time (in minutes) before a cached calibration expires."
+     "A value of 0 means cache is not used used. A negative value means cache never expires.");
+  s->opt[OPT_EXPIRATION_TIME].type = SANE_TYPE_INT;
+  s->opt[OPT_EXPIRATION_TIME].unit = SANE_UNIT_NONE;
+  s->opt[OPT_EXPIRATION_TIME].constraint_type = SANE_CONSTRAINT_RANGE;
+  s->opt[OPT_EXPIRATION_TIME].constraint.range = &expiration_range;
+  s->val[OPT_EXPIRATION_TIME].w = 60;	/* 60 minutes by default */
 
   /* Powersave time (turn lamp off) */
   s->opt[OPT_LAMP_OFF_TIME].name = "lamp-off-time";
@@ -6915,8 +6942,8 @@ sane_open (SANE_String_Const devicename, SANE_Handle * handle)
   tmpstr=calibration_filename(s->dev);
   s->val[OPT_CALIBRATION_FILE].s = strdup (tmpstr);
   s->dev->calib_file = strdup (tmpstr);
-  DBG (DBG_info, "Calibration filename set to:\n");
-  DBG (DBG_info, ">%s<\n", s->dev->calib_file);
+  DBG (DBG_info, "%s: Calibration filename set to:\n", __FUNCTION__);
+  DBG (DBG_info, "%s: >%s<\n", __FUNCTION__, s->dev->calib_file);
   free(tmpstr);
 
   /* now open file, fetch calibration records */
@@ -7193,37 +7220,35 @@ static SANE_Status set_calibration_value (Genesys_Scanner * s, int option, void 
 {
   SANE_Status status=SANE_STATUS_GOOD;
   char *tmp;
-  Genesys_Calibration_Cache *cache;
   Genesys_Device *dev=s->dev;
+
+  DBGSTART;
 
   /* try to load file */
   tmp=dev->calib_file;
   dev->calib_file=val;
   status=sanei_genesys_read_calibration (dev);
 
-  /* file exists but is invalid */
+  /* file exists but is invalid, so fall back to previous cache file
+   * an re-read it */
   if (status!=SANE_STATUS_IO_ERROR && status!=SANE_STATUS_GOOD)
     {
       dev->calib_file=tmp;
+      status=sanei_genesys_read_calibration (dev);
       return status;
     }
 
-  /* we can set no file name value */
+  /* now we can set file name value */
   if (s->val[option].s)
     free (s->val[option].s);
   s->val[option].s = strdup (val);
   if (tmp)
     free (tmp);
   dev->calib_file = strdup (val);
+  DBG (DBG_info, "%s: Calibration filename set to:\n", __FUNCTION__);
+  DBG (DBG_info, "%s: >%s<\n", __FUNCTION__, s->dev->calib_file);
 
-  /* clear device calibration cache */
-  while(dev->calibration_cache!=NULL)
-    {
-      cache=dev->calibration_cache;
-      dev->calibration_cache=dev->calibration_cache->next;
-      free(cache);
-    }
-
+  DBGCOMPLETED;
   return SANE_STATUS_GOOD;
 }
 
@@ -7418,6 +7443,7 @@ set_option_value (Genesys_Scanner * s, int option, void *val,
       RIE(set_calibration_value (s, option, val));
       break;
     case OPT_LAMP_OFF_TIME:
+    case OPT_EXPIRATION_TIME:
       if (*(SANE_Word *) val != s->val[option].w)
 	{
 	  s->val[option].w = *(SANE_Word *) val;

@@ -472,8 +472,10 @@ e2_set_tpu2_area(struct Epson_Scanner *s, int x, int y, int unit)
 }
 
 void
-e2_add_depth(Epson_Device * dev, SANE_Word depth)
+e2_add_depth(Epson_Device *dev, SANE_Int depth)
 {
+	DBG(10, "%s: add (bpp): %d\n", __func__, depth);
+
 	if (depth > dev->maxDepth)
 		dev->maxDepth = depth;
 
@@ -765,7 +767,7 @@ e2_discover_capabilities(Epson_Scanner *s)
 	 * Check for the max. supported color depth and assign
 	 * the values to the bitDepthList.
 	 */
-	dev->depth_list = malloc(sizeof(SANE_Word) * 4);
+	dev->depth_list = malloc(sizeof(SANE_Int) * (4 + 1));
 	if (dev->depth_list == NULL) {
 		DBG(1, "out of memory (line %d)\n", __LINE__);
 		return SANE_STATUS_NO_MEM;
@@ -776,9 +778,12 @@ e2_discover_capabilities(Epson_Scanner *s)
 	/* maximum depth discovery */
 	DBG(3, "discovering max depth, NAKs are expected\n");
 
-	if (dev->maxDepth >= 16 || dev->maxDepth == 0) {
-		if (esci_set_data_format(s, 16) == SANE_STATUS_GOOD)
-			e2_add_depth(dev, 16);
+	/* add default depth */
+	e2_add_depth(dev, 8);
+
+	if (dev->maxDepth >= 12 || dev->maxDepth == 0) {
+		if (esci_set_data_format(s, 12) == SANE_STATUS_GOOD)
+			e2_add_depth(dev, 12);
 	}
 
 	if (dev->maxDepth >= 14 || dev->maxDepth == 0) {
@@ -786,13 +791,10 @@ e2_discover_capabilities(Epson_Scanner *s)
 			e2_add_depth(dev, 14);
 	}
 
-	if (dev->maxDepth >= 12 || dev->maxDepth == 0) {
-		if (esci_set_data_format(s, 12) == SANE_STATUS_GOOD)
-			e2_add_depth(dev, 12);
+	if (dev->maxDepth >= 16 || dev->maxDepth == 0) {
+		if (esci_set_data_format(s, 16) == SANE_STATUS_GOOD)
+			e2_add_depth(dev, 16);
 	}
-
-	/* add default depth */
-	e2_add_depth(dev, 8);
 
 	DBG(1, "maximum supported color depth: %d\n", dev->maxDepth);
 
@@ -1742,6 +1744,8 @@ e2_ext_read(struct Epson_Scanner *s)
 	SANE_Status status = SANE_STATUS_GOOD;
 	ssize_t buf_len = 0, read;
 
+	DBG(18, "%s: begin\n", __func__);
+
 	/* did we passed everything we read to sane? */
 	if (s->ptr == s->end) {
 
@@ -1765,10 +1769,12 @@ e2_ext_read(struct Epson_Scanner *s)
 		/* receive image data + error code */
 		read = e2_recv(s, s->buf, buf_len + 1, &status);
 
-		DBG(18, "%s: read %lu bytes\n", __func__, (unsigned long) read);
+		DBG(18, "%s: read %lu bytes, status: %d\n", __func__, (unsigned long) read, status);
 
-		if (read != buf_len + 1)
-			return SANE_STATUS_IO_ERROR;
+		if (status != SANE_STATUS_GOOD) {
+			e2_cancel(s);
+			return status;
+		}
 
 		if (e2_dev_model(dev, "GT-8200") || e2_dev_model(dev, "Perfection1650")) {
 			/* See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=597922#127 */

@@ -10,7 +10,7 @@ access to USB flatbed scanners based on the Genesys GL646, GL841, GL843, GL847 a
 At present, the following scanners are known to work with this backend:
 .PP 
 .RS
-Canon LiDE 35/40/50/60/100/110/200/210/700
+Canon LiDE 35/40/50/60/100/110/120/200/210/220/700
 .br
 Hewlett-Packard HP2300C/HP2400/HP3670/HP3690/G4010/G4050
 .br
@@ -55,10 +55,11 @@ If you plug the scanner in another machine or use it with another account, calib
 will have to be redone, unles you use the \-\-calibration\-file option.
 If no home directory is defined,
 USERAPPPROFILE will be used, then TMPDIR or TMP. If none of these directories exist, the backend will try
-to write in the current working directory. Flatbed scanners alos make use of the calibration file as a cache
+to write in the current working directory. Flatbed scanners also make use of the calibration file as a cache
 to avoid calibration before each scan. Calibration file name is the name of the scanner model if only
 one scanner is detected. In the case of several identical model, the file name will be the name
-of the logical USB device name.
+of the logical USB device name. The expiration time manages the time a calibration is valid in cache.
+A value of -1 means forever, 0 means no cache.
 
 .SH EXTRAS SCAN OPTIONS
 
@@ -121,6 +122,13 @@ next scan will happen.
 must exist, since it won't be created. This option is disabled if the backend is ran
 as root. It maybe used in case of sheet-fed scanners to share a calibration file for several
 users.
+.RE
+
+.B \-\-expiration\-time
+.RS
+        Specify the time (in minutes) a cached calibration is considered valid. If older than the given value, a new
+calibration is done. A value of -1 means no expiration and cached value are kept forever unless cleared by
+userwith the calibration clear option. A value of 0 means cache is disabled.
 .RE
 
 .PP
@@ -273,6 +281,9 @@ cncsolutions (http://www.cncsolutions.com.br) sponsored and supported the work o
 .br
 .TP
 Brian Paavo from Benthic Science Limited for donating a Canoscan LiDE 700F.
+.br
+.TP
+Dany Qumsiyeh for donating a Canoscan LiDE 210 and a LiDE 220.
 .br
 
 .SH "SEE ALSO"

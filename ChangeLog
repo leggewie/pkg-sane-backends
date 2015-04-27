@@ -1,3 +1,91 @@
+2015-04-12 Stéphane Voltz <stef.dev@free.fr>
+	* doc/sane-genesys.man backend/genesys.[ch] backend/genesys_low.c:
+	fix calibration cleared when calibration file loaded,
+	add expiration time option for cache.
+
+2015-04-07 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* backend/pixma_mp810.c: Canon Pixma MP990 TPU scan patch from Guillaume
+	  Courtois.
+	* doc/descriptions/pixma.desc: remove unmaintained websites
+	* backend/pixma.h, doc/descriptions/pixma.desc: Pixma backend version 0.17.17
+
+2015-04-03 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* backend/pixma_imageclass.c, doc/descriptions/pixma.desc,
+	  doc/sane-pixma.man: New Canon scanners i-SENSYS MF210 Series, MF220 Series,
+	  MF5900 Series, MF6100 Series and imageCLASS MF810/820. All scanners need
+	  further testing.
+	* backend/pixma.h, doc/descriptions/pixma.desc: Pixma backend version 0.17.16
+	* backend/pixma.[ch], backend/pixma_common.[ch], backend/pixma_imageclass.c,
+	  backend/pixma_io_sanei.c, backend/pixma_mp150.c, backend/pixma_mp7[35]0.c,
+	  backend/pixma_mp810.c: update copyright.
+
+2015-03-17 Stéphane Voltz <stef.dev@free.fr>
+	* backend/genesys.c, backend/genesys.conf.in,
+	backend/genesys_devices.c, backend/genesys_gl124.c,
+	backend/genesys_gl124.h, backend/genesys_low.h,
+	doc/descriptions/genesys.desc, doc/sane-genesys.man: add support for
+	Canon LiDE 120
+
+2015-03-14 RenÃ© Rebe <rene@exactcode.de>
+	* backend/avision.h backend/avision.c:
+	fixed 32-bit build regression due new feature_type and
+	reverted 4d38523bdacd18186857ee8a93daaa0f8721c89b
+
+2015-03-13 RenÃ© Rebe <rene@exactcode.de>
+	* doc/sane-avision.man, backend/avision.h, backend/avision.c:
+	fixed newer avision scanner duplex scanning, and removed unnecessary
+	feature_type2 clutter by using a uint64_t to share all bits
+
+2015-03-12 RenÃ© Rebe <rene@exactcode.de>
+	* doc/descriptions/avision.desc, backend/avision.c:
+	fixed multiple regressions (range initilaizer, clobbering
+	paper-length window bits, ...) introduced over the past years, added
+	support for newer ASIC gamma table size, added AV220D2+ ID
+2015-03-04 Stéphane Voltz <stef.dev@free.fr>
+	* doc/descriptions/genesys.desc: mark LiDE 120 as unsupported.
+
+2015-03-02 Stéphane Voltz <stef.dev@free.fr>
+	* backend/genesys_low.c, backend/genesys_gl124.[ch]:
+	improve parking reliability for LiDE 210
+
+2015-03-01 Stéphane Voltz <stef.dev@free.fr>
+	* backend/genesys_devices.c, backend/genesys_gl124.c:
+	final tuning for Canon LiDE 220
+
+2015-02-26 Stéphane Voltz <stef.dev@free.fr>
+	* backend/genesys.c, backend/genesys.conf.in,
+	backend/genesys_devices.c, backend/genesys_gl124.c,
+	backend/genesys_gl124.h, backend/genesys_low.h,
+	doc/descriptions/genesys.desc, doc/sane-genesys.man: add support for
+	Canon LiDE 220
+
+2015-02-21 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* backend/pixma_mp150.c: Canon PIXMA MG6400 Series doesn't need special
+	  image format post processing.
+	* doc/descriptions/pixma.desc, doc/sane-pixma.man:
+	  Canon PIXMA MG6400 Series is working, reported by Christian Spielberger.
+	* backend/pixma_mp150.c, doc/descriptions/pixma.desc, doc/sane-pixma.man:
+	  New scanners Canon PIXMA MX490 Series and E480 Series. All scanners need
+	  further testing.
+	* backend/pixma.h, doc/descriptions/pixma.desc: Pixma backend version 0.17.15
+
+2015-02-09 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* doc/descriptions/pixma.desc: Canon PIXMA MX920 Series supports Ethernet
+	  and WiFi interfaces.
+
+2015-02-06 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* doc/descriptions/pixma.desc, doc/sane-pixma.man:
+	  Canon PIXMA MG2500 Series is working, reported by Brenda Ruch.
+
+2015-01-20 Ilia Sotnikov <hostcc at gmail dot com>
+	* backend/hp5590.c:
+	Invert pixels in case of TMA Negatives source has been selected.
+	Thanks for Will Kranz who reported this.
+
+2015-01-17 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* doc/descriptions/pixma.desc, doc/sane-pixma.man:
+	  Canon PIXMA MG2200 Series is working (bug #314944).
+
 2014-12-31 Paul Newall <p dot newalls at ntlworld dot com>
 	* backend/kodakaio.c:
 	connection to device moved from sane_open to sane_start

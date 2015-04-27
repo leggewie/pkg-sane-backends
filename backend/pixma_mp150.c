@@ -1,6 +1,6 @@
 /* SANE - Scanner Access Now Easy.
 
-   Copyright (C) 2011-2014 Rolf Bensch <rolf at bensch hyphen online dot de>
+   Copyright (C) 2011-2015 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2007-2009 Nicolas Martin, <nicols-guest at alioth dot debian dot org>
    Copyright (C) 2006-2007 Wittawat Yamwong <wittawat@web.de>
 
@@ -223,6 +223,10 @@
 #define MG5600_PID 0x177f
 #define MG2900_PID 0x1780
 #define E460_PID 0x1788
+
+/* 2015 new devices (untested) */
+#define MX490_PID 0x1787
+#define E480_PID 0x1789
 
 
 /* Generation 4 XML messages that encapsulates the Pixma protocol messages */
@@ -1149,6 +1153,7 @@ post_process_image_data (pixma_t * s, pixma_imagebuf_t * ib)
               && s->cfg->pid != MG5300_PID
               && s->cfg->pid != MG5500_PID
               && s->cfg->pid != MG6300_PID
+              && s->cfg->pid != MG6400_PID
               && s->cfg->pid != MG7100_PID)
               reorder_pixels (mp->linebuf, sptr, c, n, m, s->param->wx, line_size);
           
@@ -1816,6 +1821,10 @@ const pixma_config_t pixma_mp150_devices[] = {
   DEVICE ("Canon PIXMA MG5600 Series", "MG5600", MG5600_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
   DEVICE ("Canon PIXMA MG2900 Series", "MG2900", MG2900_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
   DEVICE ("Canon PIXMA E460 Series",  "E460",  E460_PID,  600, 0, 0, 638, 877, PIXMA_CAP_CIS),
+
+  /* Latest devices (2015) Generation 4 CIS */
+  DEVICE ("Canon PIXMA MX490 Series", "MX490", MX490_PID, 600, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
+  DEVICE ("Canon PIXMA E480 Series",  "E480",  E480_PID,  600, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
 
   END_OF_DEVICE_LIST
 };

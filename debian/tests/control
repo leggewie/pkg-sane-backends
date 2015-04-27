@@ -1,0 +1,9 @@
+#
+# control file for autopkgtests
+# writen from Jörg Frings-Fürst <debian@jff-webhosting.net>
+#
+# 1. start-net
+#
+Tests: start-net
+Depends: sane-utils
+Restrictions: needs-root allow-stderr breaks-testbed

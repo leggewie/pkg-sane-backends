@@ -3,9 +3,11 @@ Description: Keep /usr/lib/sane as a fallback for SANE backends
  but keep /usr/lib/sane as a fallback for now.
 Author: Julien BLACHE <jblache@debian.org>
 
---- a/backend/dll.c
-+++ b/backend/dll.c
-@@ -430,7 +430,7 @@
+Index: experimental/backend/dll.c
+===================================================================
+--- experimental.orig/backend/dll.c
++++ experimental/backend/dll.c
+@@ -430,7 +430,7 @@ load (struct backend *be)
  
    if (path)
      {
@@ -14,7 +16,7 @@ Author: Julien BLACHE <jblache@debian.org>
        src = malloc (src_len);
        if (!src)
  	{
-@@ -438,12 +438,11 @@
+@@ -438,12 +438,11 @@ load (struct backend *be)
  	  return SANE_STATUS_NO_MEM;
  	}
        orig_src = src;
@@ -29,9 +31,11 @@ Author: Julien BLACHE <jblache@debian.org>
        if (!src)
  	{
  	  DBG (1, "load: strdup failed: %s\n", strerror (errno));
---- a/backend/Makefile.in
-+++ b/backend/Makefile.in
-@@ -1868,7 +1868,7 @@
+Index: experimental/backend/Makefile.in
+===================================================================
+--- experimental.orig/backend/Makefile.in
++++ experimental/backend/Makefile.in
+@@ -1887,7 +1887,7 @@ target_alias = @target_alias@
  top_build_prefix = @top_build_prefix@
  top_builddir = @top_builddir@
  top_srcdir = @top_srcdir@

@@ -977,7 +977,7 @@ init_options(Epson_Scanner *s)
 	s->opt[OPT_MODE].size = max_string_size(mode_list);
 	s->opt[OPT_MODE].constraint_type = SANE_CONSTRAINT_STRING_LIST;
 	s->opt[OPT_MODE].constraint.string_list = mode_list;
-	s->val[OPT_MODE].w = 0;	/* Binary */
+	s->val[OPT_MODE].w = 0;	/* Lineart */
 
 	/* disable infrared on unsupported scanners */
 	if (!e2_model(s, "GT-X800") && !e2_model(s, "GT-X700") && !e2_model(s, "GT-X900"))
@@ -988,14 +988,13 @@ init_options(Epson_Scanner *s)
 	s->opt[OPT_BIT_DEPTH].title = SANE_TITLE_BIT_DEPTH;
 	s->opt[OPT_BIT_DEPTH].desc = SANE_DESC_BIT_DEPTH;
 	s->opt[OPT_BIT_DEPTH].type = SANE_TYPE_INT;
-	s->opt[OPT_BIT_DEPTH].unit = SANE_UNIT_NONE;
+	s->opt[OPT_BIT_DEPTH].unit = SANE_UNIT_BIT;
 	s->opt[OPT_BIT_DEPTH].constraint_type = SANE_CONSTRAINT_WORD_LIST;
 	s->opt[OPT_BIT_DEPTH].constraint.word_list = s->hw->depth_list;
-	s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
-	s->val[OPT_BIT_DEPTH].w = s->hw->depth_list[1];	/* the first "real" element is the default */
+	s->val[OPT_BIT_DEPTH].w = 8; /* default to 8 bit */
 
-	if (s->hw->depth_list[0] == 1)	/* only one element in the list -> hide the option */
-		s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
+	/* default is Lineart, disable depth selection */
+	s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
 
 	/* halftone */
 	s->opt[OPT_HALFTONE].name = SANE_NAME_HALFTONE;
@@ -1535,6 +1534,8 @@ sane_close(SANE_Handle handle)
 	int i;
 	Epson_Scanner *s;
 
+	DBG(1, "* %s\n", __func__);
+
 	/*
 	 * XXX Test if there is still data pending from
 	 * the scanner. If so, then do a cancel
@@ -1909,6 +1910,8 @@ setvalue(SANE_Handle handle, SANE_Int option, void *value, SANE_Int *info)
 
 		sval->w = optindex;
 
+		DBG(17, "%s: setting mode to %d\n", __func__, optindex);
+
 		/* halftoning available only on bw scans */
 		if (s->hw->cmd->set_halftoning != 0)
 			setOptionState(s, mode_params[optindex].depth == 1,
@@ -1923,16 +1926,18 @@ setvalue(SANE_Handle handle, SANE_Int option, void *value, SANE_Int *info)
 
 		/* if binary, then disable the bit depth selection */
 		if (optindex == 0) {
+			DBG(17, "%s: disabling bit depth selection\n", __func__);
 			s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
 		} else {
-			if (s->hw->depth_list[0] == 1)
-				s->opt[OPT_BIT_DEPTH].cap |=
-					SANE_CAP_INACTIVE;
-			else {
-				s->opt[OPT_BIT_DEPTH].cap &=
-					~SANE_CAP_INACTIVE;
-				s->val[OPT_BIT_DEPTH].w =
-					mode_params[optindex].depth;
+			if (s->hw->depth_list[0] == 1) {
+				DBG(17, "%s: only one depth is available\n", __func__);
+				s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
+			} else {
+
+				DBG(17, "%s: enabling bit depth selection\n", __func__);
+
+				s->opt[OPT_BIT_DEPTH].cap &= ~SANE_CAP_INACTIVE;
+				s->val[OPT_BIT_DEPTH].w = mode_params[optindex].depth;
 			}
 		}
 
@@ -2077,7 +2082,10 @@ sane_start(SANE_Handle handle)
 	Epson_Device *dev = s->hw;
 	SANE_Status status;
 
-	DBG(5, "%s\n", __func__);
+	DBG(5, "* %s\n", __func__);
+
+	s->eof = SANE_FALSE;
+	s->canceling = SANE_FALSE;
 
 	/* check if we just have finished working with the ADF */
 	status = e2_check_adf(s);
@@ -2202,9 +2210,7 @@ sane_start(SANE_Handle handle)
 	if (s->buf == NULL)
 		return SANE_STATUS_NO_MEM;
 
-	s->eof = SANE_FALSE;
 	s->ptr = s->end = s->buf;
-	s->canceling = SANE_FALSE;
 
 	/* feed the first sheet in the ADF */
 	if (dev->ADF && dev->use_extension && dev->cmd->feed) {
@@ -2275,8 +2281,14 @@ sane_read(SANE_Handle handle, SANE_Byte *data, SANE_Int max_length,
 	SANE_Status status;
 	Epson_Scanner *s = (Epson_Scanner *) handle;
 
-	if (s->buf == NULL || s->canceling)
-		return SANE_STATUS_CANCELLED;
+	DBG(18, "* %s: eof: %d, canceling: %d\n",
+		__func__, s->eof, s->canceling);
+
+	/* sane_read called before sane_start? */
+	if (s->buf == NULL) {
+		DBG(1, "%s: buffer is NULL", __func__);
+		return SANE_STATUS_INVAL;
+	}
 
 	*length = 0;
 
@@ -2285,9 +2297,12 @@ sane_read(SANE_Handle handle, SANE_Byte *data, SANE_Int max_length,
 	else
 		status = e2_block_read(s);
 
-	if (status == SANE_STATUS_CANCELLED) {
+	/* The scanning operation might be canceled by the scanner itself
+	 * or the fronted program
+	 */
+	if (status == SANE_STATUS_CANCELLED || s->canceling) {
 		e2_scan_finish(s);
-		return status;
+		return SANE_STATUS_CANCELLED;
 	}
 
 	/* XXX if FS G and STATUS_IOERR, use e2_check_extended_status */
@@ -2298,9 +2313,9 @@ sane_read(SANE_Handle handle, SANE_Byte *data, SANE_Int max_length,
 
 	e2_copy_image_data(s, data, max_length, length);
 
-	DBG(18, "%d lines read, eof: %d, status: %d\n",
+	DBG(18, "%d lines read, eof: %d, canceling: %d, status: %d\n",
 		*length / s->params.bytes_per_line,
-		s->eof, status);
+		s->canceling, s->eof, status);
 
 	/* continue reading if appropriate */
 	if (status == SANE_STATUS_GOOD)
@@ -2322,6 +2337,8 @@ void
 sane_cancel(SANE_Handle handle)
 {
 	Epson_Scanner *s = (Epson_Scanner *) handle;
+
+	DBG(1, "* %s\n", __func__);
 
 	s->canceling = SANE_TRUE;
 }

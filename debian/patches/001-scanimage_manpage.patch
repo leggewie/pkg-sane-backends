@@ -1,0 +1,21 @@
+Description: Add remark to options.
+Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=418630
+Forwarded: 
+Last-Update: 2015-01-18
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: trunk/doc/scanimage.man
+===================================================================
+--- trunk.orig/doc/scanimage.man
++++ trunk/doc/scanimage.man
+@@ -73,6 +73,9 @@ To print all available options:
+   scanimage \-h
+ 
+ .SH OPTIONS
++\fBRemark:\fR Parameter are defined by the backends. So are \-\-mode Gray and \-\-mode Grayscale in use.
++Please read the backend documentation first.
++
+ Parameters are separated by a blank from single-character options (e.g.
+ \-d epson) and by a "=" from multi-character options (e.g. \-\-device\-name=epson).
+ 

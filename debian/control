@@ -19,12 +19,12 @@ Build-Depends:
  libsystemd-dev [linux-any],
  libtiff-dev,
  libusb-1.0-0-dev [!hurd-i386],
- libv4l-dev [linux-any],
  pkg-config,
  po-debconf,
  texlive,
  texlive-latex-extra,
  xutils-dev
+Testsuite: autopkgtest
 Homepage: http://www.sane-project.org
 Vcs-Git: git://anonscm.debian.org/collab-maint/sane-backends.git
 Vcs-Browser: http://anonscm.debian.org/cgit/collab-maint/sane-backends.git
@@ -38,7 +38,6 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends}
 Suggests: avahi-daemon, unpaper
-Replaces: libsane (<< 1.0.11-4)
 Description: API library for scanners -- utilities
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
@@ -58,7 +57,6 @@ Section: libs
 Architecture: all
 Multi-Arch: foreign
 Depends: ${misc:Depends}
-Replaces: libsane (<< 1.0.22-4~)
 Description: API library for scanners -- documentation and support files
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
@@ -86,8 +84,7 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends}
 Recommends: libsane-extras, sane-utils (>= ${binary:Version})
-Suggests: avahi-daemon, hplip, hpoj
-Replaces: libsane-extras (<< 1.0.18.14)
+Suggests: avahi-daemon, hplip
 Description: API library for scanners
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
@@ -112,17 +109,15 @@ Architecture: any
 Depends:
  libavahi-client-dev,
  libcam-dev [kfreebsd-any],
- libgphoto2-2-dev,
+ libgphoto2-dev,
  libieee1284-3-dev [!hurd-i386],
  libjpeg-dev,
  libsane (= ${binary:Version}),
  libtiff-dev,
  libusb-1.0-0-dev [!hurd-i386],
- libv4l-dev [linux-any],
  pkg-config,
  ${misc:Depends}
 Recommends: libsane-extras-dev
-Replaces: libsane-extras-dev (<< 1.0.18.14)
 Description: API development library for scanners [development files]
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
@@ -144,7 +139,6 @@ Architecture: any
 Multi-Arch: same
 Depends: libsane (= ${binary:Version}), ${misc:Depends}
 Recommends: libsane-extras-dbg
-Replaces: libsane-extras-dbg (<< 1.0.18.14)
 Description: API development library for scanners [debug symbols]
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any

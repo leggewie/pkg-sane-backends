@@ -11,10 +11,8 @@
 ; See doc/descriptions.txt for details.
 
 :backend "pixma"                  ; name of backend
-:version "0.17.14"                ; version of backend (or "unmaintained")
+:version "0.17.17"                ; version of backend (or "unmaintained")
 :manpage "sane-pixma"             ; name of manpage (if it exists)
-:url "http://home.arcor.de/wittawat/pixma/" ; 0.13.2 backend's web page
-:url "http://mp610.blogspot.com/"            ; the pixma backend blog
 ;:comment "Devices marked as experimantal are disabled by default. See the manual page for how to enable them."
 
 :devicetype :scanner              ; start of a list of devices....
@@ -33,6 +31,12 @@
 :model "PIXMA E460 Series"
 :interface "USB"
 :usbid "0x04a9" "0x1788"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA E480 Series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x1789"
 :status :untested
 :comment "Testers needed!"
 
@@ -75,8 +79,8 @@
 :model "PIXMA MG2200 Series"
 :interface "USB"
 :usbid "0x04a9" "0x1760"
-:status :untested
-:comment "Testers needed!"
+:status :complete
+:comment "All resolutions supported (up to 1200DPI)."
 
 :model "PIXMA MG2400 Series"
 :interface "USB"
@@ -87,8 +91,8 @@
 :model "PIXMA MG2500 Series"
 :interface "USB"
 :usbid "0x04a9" "0x176d"
-:status :untested
-:comment "Testers needed!"
+:status :complete
+:comment "All resolutions supported (up to 600DPI)."
 
 :model "PIXMA MG2900 Series"
 :interface "USB WiFi"
@@ -181,10 +185,10 @@
 :comment "All resolutions supported (up to 2400DPI)."
 
 :model "PIXMA MG6400 Series"
-:interface "USB"
+:interface "USB WiFi"
 :usbid "0x04a9" "0x1770"
-:status :untested
-:comment "Testers needed!"
+:status :complete
+:comment "All resolutions supported (up to 1200DPI)."
 
 :model "PIXMA MG6500 Series"
 :interface "USB"
@@ -631,6 +635,12 @@
 :status :untested
 :comment "Testers needed!"
 
+:model "PIXMA MX490 Series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x1787"
+:status :untested
+:comment "Testers needed!"
+
 :model "PIXMA MX510 Series"
 :interface "USB Ethernet"
 :usbid "0x04a9" "0x175c"
@@ -710,7 +720,7 @@
 :comment "All resolutions supported (up to 2400DPI). Flatbed, ADF simplex and Duplex supported."
 
 :model "PIXMA MX920 Series"
-:interface "USB"
+:interface "USB Ethernet WiFi"
 :usbid "0x04a9" "0x176b"
 :status :good
 :comment "All resolutions supported (up to 2400DPI). Flatbed, ADF simplex and Duplex supported."
@@ -738,6 +748,24 @@
 :usbid "0x04a9" "0x2775"
 :status :complete
 :comment "All resolutions supported (up to 600DPI)"
+
+:model "i-SENSYS MF210 Series"
+:interface "USB Ethernet WiFi"
+:usbid "0x04a9" "0x27a9"
+:status :untested
+:comment "Testers needed!"
+
+:model "i-SENSYS MF220 Series"
+:interface "USB Ethernet WiFi"
+:usbid "0x04a9" "0x27a8"
+:status :untested
+:comment "Testers needed!"
+
+:model "i-SENSYS MF810/820"
+:interface "USB Ethernet"
+:usbid "0x04a9" "0x27a6"
+:status :untested
+:comment "Testers needed!"
 
 :model "i-SENSYS MF3010"
 :interface "USB Ethernet"
@@ -910,6 +938,18 @@
 :model "i-SENSYS MF5880dn"
 :interface "USB"
 :usbid "0x04a9" "0x26f9"
+:status :untested
+:comment "Testers needed!"
+
+:model "i-SENSYS MF5900 Series"
+:interface "USB Ethernet"
+:usbid "0x04a9" "0x2743"
+:status :untested
+:comment "Testers needed!"
+
+:model "i-SENSYS MF6100 Series"
+:interface "USB Ethernet"
+:usbid "0x04a9" "0x278e"
 :status :untested
 :comment "Testers needed!"
 

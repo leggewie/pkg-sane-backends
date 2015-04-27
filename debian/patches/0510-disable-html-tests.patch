@@ -1,0 +1,35 @@
+Description: Disable html tests.
+ Disable some html tests because debian/patches/
+ sane-desc.c_debian_mods.patch change some links to
+ the doc directory.
+Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
+Forwarded: not-needed
+Last-Update: 2015-04-26
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: experimental/testsuite/tools/Makefile.am
+===================================================================
+--- experimental.orig/testsuite/tools/Makefile.am
++++ experimental/testsuite/tools/Makefile.am
+@@ -28,7 +28,7 @@ check: check.local
+ 
+ check.local: 
+ 	@echo "**** Testing $(SANEDESC) with $(TESTFILE)"
+-	@for mode in ascii html-backends-split html-mfgs xml statistics usermap db udev udev+acl udev+hwdb hwdb plist hal hal-new; \
++	@for mode in ascii xml statistics usermap db udev udev+acl udev+hwdb hwdb plist hal hal-new; \
+ 	do \
+ 	echo "PASS: sane-desc -m $$mode -s $(srcdir)/data"; \
+ 	  $(SANEDESC) -m $$mode -s $(srcdir)/data >$$mode.res ;\
+Index: experimental/testsuite/tools/Makefile.in
+===================================================================
+--- experimental.orig/testsuite/tools/Makefile.in
++++ experimental/testsuite/tools/Makefile.in
+@@ -499,7 +499,7 @@ check: check.local
+ 
+ check.local: 
+ 	@echo "**** Testing $(SANEDESC) with $(TESTFILE)"
+-	@for mode in ascii html-backends-split html-mfgs xml statistics usermap db udev udev+acl udev+hwdb hwdb plist hal hal-new; \
++	@for mode in ascii xml statistics usermap db udev udev+acl udev+hwdb hwdb plist hal hal-new; \
+ 	do \
+ 	echo "PASS: sane-desc -m $$mode -s $(srcdir)/data"; \
+ 	  $(SANEDESC) -m $$mode -s $(srcdir)/data >$$mode.res ;\
