@@ -19,6 +19,8 @@ sane-backends (1.0.24-10) unstable; urgency=high
       + libsane-dev: libsane-extras-dev (<< 1.0.18.14)
       + libsane-dbg: libsane-extras-dbg (<< 1.0.18.14)
     - Remove "libv4l-dev [linux-any]" from Build-Depends and Depends.
+    - Remove all [kfreebsd-any], [linux-any] and [!hurd-i386] because
+      kfreebsd* and hurd* are not available.
   * debian/rules:
     - Enable pnm backend for testing.
     - Remove override_dh_builddeb because compression xz is now standard.

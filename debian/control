@@ -11,14 +11,13 @@ Build-Depends:
  dh-systemd,
  gettext,
  libavahi-client-dev,
- libcam-dev [kfreebsd-any],
  libgphoto2-dev,
- libieee1284-3-dev [!hurd-i386],
+ libieee1284-3-dev,
  libjpeg-dev,
  libltdl3-dev,
- libsystemd-dev [linux-any],
+ libsystemd-dev,
  libtiff-dev,
- libusb-1.0-0-dev [!hurd-i386],
+ libusb-1.0-0-dev,
  pkg-config,
  po-debconf,
  texlive,
@@ -77,10 +76,10 @@ Architecture: any
 Multi-Arch: same
 Pre-Depends: ${misc:Pre-Depends}
 Depends:
- acl [linux-any],
+ acl,
  adduser,
  libsane-common (= ${source:Version}),
- udev [linux-any] | makedev [linux-any],
+ udev | makedev,
  ${misc:Depends},
  ${shlibs:Depends}
 Recommends: libsane-extras, sane-utils (>= ${binary:Version})

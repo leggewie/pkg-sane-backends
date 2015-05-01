@@ -1,6 +1,6 @@
-sane-backends (1.0.24-10) unstable; urgency=low
+sane-backends (1.0.24-10) unstable; urgency=high
 
- The v4l backend is disabled since this version.
+  The v4l backend is disabled since this version.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100
 
