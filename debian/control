@@ -107,13 +107,12 @@ Section: libdevel
 Architecture: any
 Depends:
  libavahi-client-dev,
- libcam-dev [kfreebsd-any],
  libgphoto2-dev,
- libieee1284-3-dev [!hurd-i386],
+ libieee1284-3-dev,
  libjpeg-dev,
  libsane (= ${binary:Version}),
  libtiff-dev,
- libusb-1.0-0-dev [!hurd-i386],
+ libusb-1.0-0-dev,
  pkg-config,
  ${misc:Depends}
 Recommends: libsane-extras-dev
