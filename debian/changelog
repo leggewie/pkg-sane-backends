@@ -45,6 +45,11 @@ sane-backends (1.0.24-10) unstable; urgency=high
   * debian/saned@.service:
     - Change StandardInput=socket to StandardInput=null to enable
       working over network (Closes: #782971).
+  * debian/libsane-common.preinst:
+    - Remove oldstyle rm_conffile() function.
+    - Remove obsolete transition from the old-style udev setup.
+    - Add remove obsolete /etc/sane.d/v4l.conf via dpkg-maintscript-helper
+      command rm_conffile.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 01 May 2015 09:14:07 +0200
 
