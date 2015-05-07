@@ -110,7 +110,6 @@ Section: libdevel
 Architecture: any
 Depends:
  libsane (= ${binary:Version}),
-# pkg-config,
  ${misc:Depends}
 Recommends: libsane-extras-dev
 Description: API development library for scanners [development files]
