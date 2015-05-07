@@ -41,7 +41,6 @@ override_dh_auto_configure:
 		--datadir=\$${prefix}/share \
 		--mandir=\$${prefix}/share/man \
 		--with-docdir=\$${prefix}/share/doc/libsane \
-		--with-snmp=no \
 		--disable-locking \
 		--enable-static \
 		--enable-pthread \
