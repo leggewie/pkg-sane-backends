@@ -109,15 +109,8 @@ Package: libsane-dev
 Section: libdevel
 Architecture: any
 Depends:
- libavahi-client-dev,
- libcam-dev [kfreebsd-any],
- libgphoto2-dev,
- libieee1284-3-dev [!hurd-i386],
- libjpeg-dev,
  libsane (= ${binary:Version}),
- libtiff-dev,
- libusb-1.0-0-dev [!hurd-i386],
- pkg-config,
+# pkg-config,
  ${misc:Depends}
 Recommends: libsane-extras-dev
 Description: API development library for scanners [development files]

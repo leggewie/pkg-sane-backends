@@ -22,6 +22,7 @@ sane-backends (1.0.24-10) unstable; urgency=high
     - To enable net snmp add libsnmp-dev to Build-Depends.
     - To autodetect network scanners in kodakaio add libcups2-dev
       to Build-Depends.
+    - Remove unnecessary *-dev and pkg-config from Depends of libsane-dev.
   * debian/rules:
     - Enable pnm backend for testing.
     - Remove override_dh_builddeb because compression xz is now standard.
