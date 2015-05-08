@@ -1,3 +1,11 @@
+sane-backends (1.0.24-11) unstable; urgency=medium
+
+  * Add Pre-Depends dpkg (>= 1.17.5) to package libsane-common to
+    prevent not found error of rm_conf at upgrade (Closes: #784763).
+  * At debian/libsane-common.preinst correct dpkg-maintscript-helper call.
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 08 May 2015 22:02:11 +0200
+
 sane-backends (1.0.24-10) unstable; urgency=high
 
   * New debian/TROUBLESHOOTING.debian:
