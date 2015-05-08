@@ -3,7 +3,7 @@ sane-backends (1.0.24-10) unstable; urgency=high
   * New debian/TROUBLESHOOTING.debian:
     - Add part for "usbfs: interface 1 claimed by usblp while
       ‘scanimage’ sets config #1 (Closes: #726588).
-  * Add link to TROUBLESHOOTING.debian into debian/README.debian.
+  * Add reference to TROUBLESHOOTING.debian in debian/README.debian.
   * New debian/patches/001-scanimage_manpage.patch:
     - Add remark for parameter to manpage (Closes: #418630).
   * New debian/patches/0005-mk_reproducible_results.patch:
@@ -11,27 +11,27 @@ sane-backends (1.0.24-10) unstable; urgency=high
   * debian/control:
     - On package libsane-dev change Depends from libgphoto2-2-dev to
       libgphoto2-dev (auto-libgphoto2 transition) (Closes: #783822).
-    - On package libsane remove package hpoj from Suggests
+    - On package libsane remove package hpoj from Suggests.
     - Remove useless replaces because latest release in stable is 1.0.22-7:
-      + sane-utils: libsane (<< 1.0.11-4)
-      + libsane-common: libsane (<< 1.0.22-4~)
-      + libsane: libsane-extras (<< 1.0.18.14)
-      + libsane-dev: libsane-extras-dev (<< 1.0.18.14)
-      + libsane-dbg: libsane-extras-dbg (<< 1.0.18.14)
+       + sane-utils: libsane (<< 1.0.11-4)
+       + libsane-common: libsane (<< 1.0.22-4~)
+       + libsane: libsane-extras (<< 1.0.18.14)
+       + libsane-dev: libsane-extras-dev (<< 1.0.18.14)
+       + libsane-dbg: libsane-extras-dbg (<< 1.0.18.14)
     - Remove "libv4l-dev [linux-any]" from Build-Depends and Depends.
-    - To enable net snmp add libsnmp-dev to Build-Depends.
-    - To autodetect network scanners in kodakaio add libcups2-dev
+    - To enable net SNMP, add libsnmp-dev to Build-Depends.
+    - To autodetect network scanners in kodakaio, add libcups2-dev
       to Build-Depends.
     - Remove unnecessary *-dev and pkg-config from Depends of libsane-dev.
   * debian/rules:
     - Enable pnm backend for testing.
-    - Remove override_dh_builddeb because compression xz is now standard.
+    - Remove override_dh_builddeb because xz compression is now standard.
     - Add configure parameter --without-vl4 to disable v4l backend:
-      + The backend was written for the kernel 2.4 and v4l, now
+      + The backend was written for kernel 2.4 and v4l, now
         we are at kernel 3.16 and v4l2 (Closes: #446015).
-    - Remove configure parameter -with-snmp=no to enable net snmp.
+    - Remove configure parameter -with-snmp=no to enable net SNMP.
   * debian/saned@.service:
-    - Remove Alias from [Install] Section (Closes: #778268).
+    - Remove Alias from [Install] section (Closes: #778268).
   * sane-utils.[postinst|postrm]:
     - Replace fixed path with a POSIX-compliant shell function to check
       the existence of a command.
@@ -51,10 +51,10 @@ sane-backends (1.0.24-10) unstable; urgency=high
   * debian/libsane-common.preinst:
     - Remove oldstyle rm_conffile() function.
     - Remove obsolete transition from the old-style udev setup.
-    - Add remove obsolete /etc/sane.d/v4l.conf via dpkg-maintscript-helper
-      command rm_conffile.
+    - Add removal for obsolete /etc/sane.d/v4l.conf via
+      dpkg-maintscript-helper command rm_conffile.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 01 May 2015 09:14:07 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 08 May 2015 11:01:35 +0200
 
 sane-backends (1.0.24-9) unstable; urgency=medium
 
