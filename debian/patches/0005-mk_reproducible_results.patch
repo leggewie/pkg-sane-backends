@@ -1,6 +1,6 @@
 Description: Make build reproducible.
 Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
-Last-Update: 2015-04-23
+Last-Update: 2015-05-21
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 Index: trunk/tools/sane-desc.c
@@ -20,3 +20,47 @@ Index: trunk/tools/sane-desc.c
    printf ("</font>\n");
    printf ("</body> </html>\n");
  }
+Index: trunk/Makefile.in
+===================================================================
+--- trunk.orig/Makefile.in
++++ trunk/Makefile.in
+@@ -254,7 +254,7 @@ DLLTOOL = @DLLTOOL@
+ DL_LIBS = @DL_LIBS@
+ DSYMUTIL = @DSYMUTIL@
+ DUMPBIN = @DUMPBIN@
+-DVIPS = @DVIPS@
++DVIPS = @DVIPS@ -N
+ DYNAMIC_FLAG = @DYNAMIC_FLAG@
+ ECHO_C = @ECHO_C@
+ ECHO_N = @ECHO_N@
+@@ -276,7 +276,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
+ INSTALL_SCRIPT = @INSTALL_SCRIPT@
+ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+ JPEG_LIBS = @JPEG_LIBS@
+-LATEX = @LATEX@
++LATEX = @LATEX@ --output-comment=""
+ LD = @LD@
+ LDFLAGS = @LDFLAGS@
+ LIBOBJS = @LIBOBJS@
+Index: trunk/doc/Makefile.in
+===================================================================
+--- trunk.orig/doc/Makefile.in
++++ trunk/doc/Makefile.in
+@@ -190,7 +190,7 @@ DLLTOOL = @DLLTOOL@
+ DL_LIBS = @DL_LIBS@
+ DSYMUTIL = @DSYMUTIL@
+ DUMPBIN = @DUMPBIN@
+-DVIPS = @DVIPS@
++DVIPS = @DVIPS@ -N
+ DYNAMIC_FLAG = @DYNAMIC_FLAG@
+ ECHO_C = @ECHO_C@
+ ECHO_N = @ECHO_N@
+@@ -212,7 +212,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
+ INSTALL_SCRIPT = @INSTALL_SCRIPT@
+ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+ JPEG_LIBS = @JPEG_LIBS@
+-LATEX = TEXINPUTS="$(srcdir):$$TEXINPUTS" @LATEX@
++LATEX = TEXINPUTS="$(srcdir):$$TEXINPUTS" @LATEX@ --output-comment=""
+ LD = @LD@
+ LDFLAGS = @LDFLAGS@
+ LIBOBJS = @LIBOBJS@
