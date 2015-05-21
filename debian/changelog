@@ -1,3 +1,10 @@
+sane-backends (1.0.24-12) UNRELEASED; urgency=medium
+
+  * debian/sane-utils.postinst:
+    - Fix home directory move (Closes: #785709).
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 21 May 2015 08:25:53 +0200
+
 sane-backends (1.0.24-11) unstable; urgency=medium
 
   * debian/control:
@@ -5,7 +12,7 @@ sane-backends (1.0.24-11) unstable; urgency=medium
       dpkg needs to be installed for the rm_conffile command to work
       (Closes: #784763).
   * debian/libsane-common.preinst:
-     - Fix syntax for calling dpkg-maintscript-helper.
+    - Fix syntax for calling dpkg-maintscript-helper.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 08 May 2015 22:02:11 +0200
 
