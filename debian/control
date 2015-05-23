@@ -110,7 +110,6 @@ Description: API library for scanners
 Package: libsane-dev
 Section: libdevel
 Architecture: any
-Multi-Arch: same
 Depends:
  libsane (= ${binary:Version}),
  ${misc:Depends}

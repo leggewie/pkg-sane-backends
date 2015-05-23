@@ -6,8 +6,6 @@ sane-backends (1.0.24-12) unstable; urgency=medium
     - Build sane.ps without comments containing date/time.
   * New debian/patches/0105-artec_missing_home_environment.patch:
     - Test the environment variable HOME before use (Closes: #786452).
-  * debian/control:
-    - Add "Multi-Arch: same" to package libsane-dev (Closes: #786560).
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 22 May 2015 09:12:57 +0200
 
