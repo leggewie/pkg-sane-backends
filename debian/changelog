@@ -5,13 +5,13 @@ sane-backends (1.0.24-12) unstable; urgency=medium
   * debian/patches/0005-mk_reproducible_results.patch:
     - Build sane.ps without comments containing date/time.
   * New debian/patches/0105-artec_missing_home_environment.patch:
-    - Test the environment variable HOME before use (Closes: #786452).
+    - Test the environment variable $HOME before use (Closes: #786452).
   * debian/control:
-    - Add "Multi-Arch: same" to package libsane-dev to make 
+    - Add "Multi-Arch: same" to package libsane-dev to make
       it co-installable (Closes: #786560).
   * New debian/sane-utils.links:
     - Add a link from /dev/null to /lib/systemd/system/saned.service
-      to prevent start over fallback /etc/init.d/saned.
+      to prevent start via fallback script /etc/init.d/saned.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Mon, 25 May 2015 09:23:16 +0200
 
