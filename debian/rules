@@ -92,6 +92,9 @@ override_dh_install:
 	#
 	mkdir -p $(CURDIR)/debian//sane-utils/usr/share/man/man5/
 	cp $(CURDIR)/doc/sane-umax_pp.man $(CURDIR)/debian/sane-utils/usr/share/man/man5/umax_pp.5
+	#
+	mv ${CURDIR}/debian/libsane-dev/usr/bin/sane-config ${CURDIR}/debian/libsane-dev/usr/bin/sane-config.${DEB_HOST_MULTIARCH}
+
 
 override_dh_installdocs:
 	dh_installdocs

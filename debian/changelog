@@ -1,3 +1,17 @@
+sane-backends (1.0.24-13) UNRELEASED; urgency=medium
+
+  * debian/rules:
+    - Move architecture dependent file sane-config to 
+      sane-config.${DEB_HOST_MULTIARCH} (Closes: #786923).
+  * debian/control:
+    - Add "dh-exec (>=0.3)" to Build-depends. Dh-exec is required
+      for the new libsane-dev.links.
+  * New debian/libsane-dev.links:
+    - Create link from sane-config.${DEB_HOST_MULTIARCH} to
+      sane-config.
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 27 May 2015 09:51:34 +0200
+
 sane-backends (1.0.24-12) unstable; urgency=medium
 
   * debian/sane-utils.postinst:
