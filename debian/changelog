@@ -9,6 +9,8 @@ sane-backends (1.0.24-13) UNRELEASED; urgency=medium
   * New debian/libsane-dev.links:
     - Create link from sane-config.${DEB_HOST_MULTIARCH} to
       sane-config.
+  * New debian/upstream/metadata:
+    - Add some DEP-12 upstream metadata.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 27 May 2015 09:51:34 +0200
 
