@@ -8,6 +8,26 @@ saned_eh () {
     echo "saned couldn't start; check your inetd configuration and README.Debian"
 }
 
+#
+# POSIX-compliant shell function
+# to check for the existence of a command
+# Return 0 if found
+#
+pathfind() {
+    OLDIFS="$IFS"
+    IFS=:
+    for p in $PATH; do
+        if [ -x "$p/$*" ]; then
+            IFS="$OLDIFS"
+            return 0
+        fi
+    done
+    IFS="$OLDIFS"
+    return 1
+}
+
+
+
 if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
     db_get sane-utils/saned_run
     RUN_SANED="$RET"
@@ -16,7 +36,8 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
     SANED_IN_SCANNER="$RET"
 
     # Add saned service, disabled by default
-    if [ -x /usr/sbin/update-inetd ]; then
+    pathfind update-inetd
+    if [ $? = 0 ]; then
 	update-inetd --add "#<off># sane-port\tstream\ttcp\tnowait\tsaned:saned\t/usr/sbin/saned saned"
     fi
 
@@ -30,9 +51,19 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
     fi
 
     # Move home from /home/saned to /var/lib/saned
-    if getent passwd | grep -q "^saned:" | grep "/home/saned"; then
-	echo "Moving homedir from /home/saned to /var/lib/saned"
-	usermod -d /var/lib/saned saned
+    if getent passwd | grep -q "^saned:" | grep -q "/home/saned"; then
+	echo "Test for running scanbd"
+	if ps -Af | grep -q "saned" | grep -q "scanbd"; then
+	    echo "Stop scanbd"
+	    invoke-rc.d --quiet scanbd stop
+	    echo "Move homedir from /home/saned to /var/lib/saned"
+	    usermod -d /var/lib/saned saned
+	    echo "Start scanbd"
+	    invoke-rc.d --quiet scanbd start
+	else
+	    echo "Move homedir from /home/saned to /var/lib/saned"
+	    usermod -d /var/lib/saned saned
+	fi
     fi
     if [ "$SANED_IN_SCANNER" = "true" ]; then
 	adduser --quiet saned scanner

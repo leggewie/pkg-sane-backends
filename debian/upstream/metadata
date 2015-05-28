@@ -1,0 +1,6 @@
+Bug-Database: https://alioth.debian.org/tracker/?atid=410366&group_id=30186&func=browse
+Bug-Submit: https://alioth.debian.org/tracker/?func=add&group_id=30186&atid=410366
+Contact: http://sane-project.org/mailing-lists.html
+Name: sane-backends
+Repository: git://git.debian.org/sane/sane-backends.git
+Repository-Browse: http://git.debian.org/?p=sane/sane-backends.git

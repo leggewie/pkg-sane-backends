@@ -152,6 +152,8 @@ this command should produce output similar to this:
 
 sane-find-scanner will help you discover your USB scanner, too.
 
+For some more help can read TROUBLESHOOTING.debian in the doc directory.
+
 
 REPORTING BUGS
 --------------
