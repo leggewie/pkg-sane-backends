@@ -50,10 +50,10 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
 	adduser --home /var/lib/saned  --quiet --system --no-create-home --group saned || true
     fi
 
-    # Move home from /home/saned to /var/lib/saned
-    if getent passwd | grep -q "^saned:" | grep -q "/home/saned"; then
+    # Move home from /home/saned to /var/lib/saned (since 1.0.24-6)
+    if getent passwd | grep "^saned:" | grep -q "/home/saned"; then
 	echo "Test for running scanbd"
-	if ps -Af | grep -q "saned" | grep -q "scanbd"; then
+	if ps -Af | grep "saned" | grep -q "scanbd"; then
 	    echo "Stop scanbd"
 	    invoke-rc.d --quiet scanbd stop
 	    echo "Move homedir from /home/saned to /var/lib/saned"

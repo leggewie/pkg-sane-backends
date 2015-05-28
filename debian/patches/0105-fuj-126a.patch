@@ -1,0 +1,68 @@
+Description: Test patch for testing Fujitsu adjust brightness and threshold.
+ ++++ only for testing ++++
+Author: m. allan noah <kitno455@gmail.com>
+Bug: https://alioth.debian.org/tracker/?func=detail&atid=410366&aid=315069&group_id=30186
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=740256
+Last-Update: 2015-05-28
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+diff --git a/backend/fujitsu.c b/backend/fujitsu.c
+index 7f008d0..5e97810 100644
+--- a/backend/fujitsu.c
++++ b/backend/fujitsu.c
+@@ -620,7 +620,7 @@
+ #include "fujitsu.h"
+ 
+ #define DEBUG 1
+-#define BUILD 125
++#define BUILD 126
+ 
+ /* values for SANE_DEBUG_FUJITSU env var:
+  - errors           5
+@@ -2271,6 +2271,7 @@ init_model (struct fujitsu *s)
+ 
+     /* weirdness */
+     s->need_q_table = 1;
++    s->late_lut = 1;
+     s->need_diag_preread = 1;
+     s->ppl_mod_by_mode[MODE_COLOR] = 2;
+     s->hopper_before_op = 1;
+@@ -6899,6 +6900,13 @@ sane_start (SANE_Handle handle)
+       if (ret != SANE_STATUS_GOOD)
+         DBG (5, "sane_start: WARNING: cannot send_endorser %d\n", ret);
+ 
++      /* send lut if scanner has no hardware brightness/contrast */
++      if (!s->late_lut && (!s->brightness_steps || !s->contrast_steps)){
++        ret = send_lut(s);
++        if (ret != SANE_STATUS_GOOD)
++          DBG (5, "sane_start: WARNING: cannot early send_lut %d\n", ret);
++      }
++    
+       /* set window command */
+       ret = set_window(s);
+       if (ret != SANE_STATUS_GOOD) {
+@@ -6907,10 +6915,10 @@ sane_start (SANE_Handle handle)
+       }
+     
+       /* send lut if scanner has no hardware brightness/contrast */
+-      if (!s->brightness_steps || !s->contrast_steps){
++      if (s->late_lut && (!s->brightness_steps || !s->contrast_steps)){
+         ret = send_lut(s);
+         if (ret != SANE_STATUS_GOOD)
+-          DBG (5, "sane_start: WARNING: cannot send_lut %d\n", ret);
++          DBG (5, "sane_start: WARNING: cannot late send_lut %d\n", ret);
+       }
+     
+       /* some scanners need the q table sent, even when not scanning jpeg */
+diff --git a/backend/fujitsu.h b/backend/fujitsu.h
+index e1f7d68..6ce1a56 100644
+--- a/backend/fujitsu.h
++++ b/backend/fujitsu.h
+@@ -332,6 +332,7 @@ struct fujitsu
+   int broken_diag_serial;   /* some scanners are just plain borked */
+   int need_q_table;         /* some scanners wont work without these */
+   int need_diag_preread;    
++  int late_lut;    
+   int hopper_before_op;     /* some scanners dont like OP when hopper empty */
+   int no_wait_after_op;     /* some scanners dont like TUR after OP */
+ 
