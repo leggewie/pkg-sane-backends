@@ -18,7 +18,6 @@ Build-Depends:
  libieee1284-3-dev [!hurd-i386],
  libjpeg-dev,
  libltdl3-dev,
- libsnmp-dev,
  libsystemd-dev [linux-any],
  libtiff-dev,
  libusb-1.0-0-dev [!hurd-i386],

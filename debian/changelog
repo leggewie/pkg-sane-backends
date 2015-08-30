@@ -3,6 +3,9 @@ sane-backends (1.0.24-14) UNRELEASED; urgency=medium
   * debian/TROUBLESHOOTING.Debian:
     - Add section if device file system does not support ACLs
       (Closes: #789593).
+  * debian/control:
+    - To prevent error messages at startup disable snmp through
+      remove libsnmp-dev from Build-Depends (Closes: #787567).
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 28 Jun 2015 10:12:36 +0200
 
