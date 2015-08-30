@@ -8,7 +8,10 @@ case "$1" in
 #
 # remove obsolete file
 #
-	rm -f /urs/bin/sane-config.*
+	rm -f /usr/bin/sane-config.*
+	if [ -h /usr/bin/sane-config ] then
+	    rm -f /usr/bin/sane-config
+	fi
 	;;
     *)
         echo "preinst called with unknown argument \`$1'" >&2
