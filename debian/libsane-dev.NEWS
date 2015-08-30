@@ -1,6 +1,6 @@
 sane-backends (1.0.24-14) UNRELEASED; urgency=medium
 
-  Starting with this release sane-config are moved to 
-  sane-config.${DEB_HOST_MULTIARCH}.
+  Starting with this release sane-config are moved to
+  the new package libsane-bin.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 18 Jan 2015 11:46:18 +0100

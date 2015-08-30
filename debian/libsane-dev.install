@@ -1,7 +1,5 @@
-usr/bin/sane-config
 usr/include/
 usr/lib/*/*.a
 usr/lib/*/*.so
 usr/lib/*/sane/*.a
 usr/lib/*/sane/*.so
-usr/share/man/man1/sane-config.1

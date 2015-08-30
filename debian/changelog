@@ -6,11 +6,15 @@ sane-backends (1.0.24-14) UNRELEASED; urgency=medium
   * debian/control:
     - To prevent error messages at startup disable snmp through
       remove libsnmp-dev from Build-Depends (Closes: #787567).
-  * To prevent installation errors (Closes: #786923):
-    - Remove debian/libsane-dev.links
-    - New libsane-dev.NEWS.
   * debian/sane-utils.lintian-overrides:
     - Add maintainer-script-should-not-use-adduser-system-without-home.
+  * Architecture dependent binaries(Closes: #786923):
+    - debian/control:
+      + New package libsane-bin:
+        Move architecture-dependent binaries from libsane-dev to libsane-bin.
+    - debian/rules:
+      + Delete command to move sane-config to 
+        sane-config.${DEB_HOST_MULTIARCH}.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 28 Jun 2015 10:12:36 +0200
 

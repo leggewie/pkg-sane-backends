@@ -113,6 +113,7 @@ Architecture: any
 Multi-Arch: same
 Depends:
  libsane (= ${binary:Version}),
+ libsane-bin (>= 1.0.24-14),
  ${misc:Depends}
 Recommends: libsane-extras-dev
 Description: API development library for scanners [development files]
@@ -128,6 +129,25 @@ Description: API development library for scanners [development files]
  .
  This package contains the files needed to build your applications
  using SANE.
+
+Package: libsane-bin
+Section: libdevel
+Architecture: any
+Multi-Arch: foreign
+Replaces: libsane-dev (<< 1.0.24-14)
+Breaks: libsane-dev (<< 1.0.24-14)
+Description: API development library for scanners [sane-config binary]
+ SANE stands for "Scanner Access Now Easy" and is an application
+ programming interface (API) that provides standardized access to any
+ raster image scanner hardware (flatbed scanner, hand-held scanner,
+ video- and still-cameras, frame-grabbers, etc.). The SANE standard is
+ free and its discussion and development are open to everybody. The
+ current source code is written to support several operating systems,
+ including GNU/Linux, OS/2, Win32 and various Unices and is available
+ under the GNU General Public License (commercial applications and
+ backends are welcome, too, however).
+ .
+ This package contains the sane-config binary.
 
 Package: libsane-dbg
 Section: debug
