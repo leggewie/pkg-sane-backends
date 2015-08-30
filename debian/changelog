@@ -9,6 +9,8 @@ sane-backends (1.0.24-14) UNRELEASED; urgency=medium
   * To prevent installation errors (Closes: #786923):
     - Remove debian/libsane-dev.links
     - New libsane-dev.NEWS.
+  * debian/sane-utils.lintian-overrides:
+    - Add maintainer-script-should-not-use-adduser-system-without-home.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 28 Jun 2015 10:12:36 +0200
 
