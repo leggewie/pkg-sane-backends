@@ -12,6 +12,7 @@ sane-backends (1.0.24-14) unstable; urgency=medium
     - debian/control:
       + New package libsane-bin:
         Move architecture-dependent binaries from libsane-dev to libsane-bin.
+      + Remove useless Build-Depend "dh-exec (>=0.3)".
     - debian/rules:
       + Delete command to move sane-config to
         sane-config.${DEB_HOST_MULTIARCH}.
@@ -19,7 +20,7 @@ sane-backends (1.0.24-14) unstable; urgency=medium
       + Remove sane-config.*.
       + Remove link to sane-config.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 30 Aug 2015 18:57:06 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 30 Aug 2015 19:02:57 +0200
 
 sane-backends (1.0.24-13) unstable; urgency=medium
 

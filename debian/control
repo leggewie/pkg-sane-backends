@@ -8,7 +8,6 @@ Build-Depends:
  autoconf,
  chrpath,
  debhelper (>= 9),
- dh-exec (>=0.3),
  dh-systemd,
  gettext,
  libavahi-client-dev,
@@ -136,6 +135,7 @@ Architecture: any
 Multi-Arch: foreign
 Replaces: libsane-dev (<< 1.0.24-14)
 Breaks: libsane-dev (<< 1.0.24-14)
+Depends: ${misc:Depends}
 Description: API development library for scanners [sane-config binary]
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
