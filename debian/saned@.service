@@ -6,7 +6,7 @@ Requires=saned.socket
 ExecStart=/usr/sbin/saned
 User=saned
 Group=saned
-StandardInput=socket
+StandardInput=null
 StandardOutput=syslog
 StandardError=syslog
 Environment=SANE_CONFIG_DIR=/etc/sane.d
@@ -14,4 +14,3 @@ Environment=SANE_CONFIG_DIR=/etc/sane.d
 
 [Install]
 Also=saned.socket
-Alias=saned
