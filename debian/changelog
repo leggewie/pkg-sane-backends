@@ -1,24 +1,23 @@
 sane-backends (1.0.24-14) unstable; urgency=medium
 
   * debian/TROUBLESHOOTING.Debian:
-    - Add section if device file system does not support ACLs
-      (Closes: #789593).
+    - Add troubleshooting section for cases where the device file
+      system does not support ACLs (Closes: #789593).
   * debian/control:
-    - To prevent error messages at startup disable snmp through
-      remove libsnmp-dev from Build-Depends (Closes: #787567).
+    - To prevent error messages on startup, disable snmp by
+      removing libsnmp-dev from Build-Depends (Closes: #787567).
   * debian/sane-utils.lintian-overrides:
     - Add maintainer-script-should-not-use-adduser-system-without-home.
-  * Architecture dependent binaries (Closes: #786923):
+  * Architecture-dependent binaries (Closes: #786923):
     - debian/control:
       + New package libsane-bin:
         Move architecture-dependent binaries from libsane-dev to libsane-bin.
-      + Remove useless Build-Depend "dh-exec (>=0.3)".
+      + Remove useless build dependency "dh-exec (>=0.3)".
     - debian/rules:
-      + Delete command to move sane-config to
-        sane-config.${DEB_HOST_MULTIARCH}.
+      + Delete command to move sane-config to sane-config.${DEB_HOST_MULTIARCH}.
     - New debian/libsane-dev.preinst:
-      + Remove sane-config.*.
-      + Remove link to sane-config.
+      + Remove /usr/bin/sane-config.*.
+      + Remove symbolic link to /usr/bin/sane-config.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 30 Aug 2015 19:02:57 +0200
 
