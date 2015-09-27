@@ -1,3 +1,18 @@
+sane-backends (1.0.25+git20150528-2) experimental; urgency=medium
+
+  * Architecture-dependent binaries (Closes: #786923):
+    - debian/control:
+      + New package libsane-bin:
+        Move architecture-dependent binaries from libsane-dev to libsane-bin.
+      + Remove useless build dependency "dh-exec (>=0.3)".
+    - debian/rules:
+      + Delete command to move sane-config to sane-config.${DEB_HOST_MULTIARCH}.
+    - New debian/libsane-dev.preinst:
+      + Remove /usr/bin/sane-config.*.
+      + Remove symbolic link to /usr/bin/sane-config.
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 28 May 2015 17:15:51 +0200
+
 sane-backends (1.0.25+git20150528-1) experimental; urgency=medium
 
   * Build from daily snapshot sane-backends-git20150528.tar.gz.

@@ -1,3 +1,0 @@
-#! /usr/bin/dh-exec
-
-usr/bin/sane-config.${DEB_HOST_MULTIARCH} usr/bin/sane-config

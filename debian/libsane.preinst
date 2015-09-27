@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+
+if [ "$1" = upgrade ]; then
+#
+# remove obsolete udev
+#
+    if [ -l /lib/udev/rules.d/60-libsane.rules ]; then
+	rm -f /lib/udev/rules.d/60-libsane.rules
+    fi
+fi
+
+#DEBHELPER#
