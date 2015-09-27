@@ -1,5 +1,18 @@
-sane-backends (1.0.25+git20150528-2) experimental; urgency=medium
+sane-backends (1.0.25+git20150927-1) experimental; urgency=medium
 
+  * Build from daily snapshot sane-backends-git20150927.tar.gz.
+  * Refresh patches:
+    - debian/patches/001-scanimage_manpage.patch
+    - debian/patches/frontend_libs.patch
+    - debian/patches/multiarch_dll_search_path.patch
+    - debian/patches/ppc64el.patch
+    - debian/patches/0510-disable-html-tests.patch
+    - debian/patches/libsane_deps.patch
+    - debian/patches/multiarch_manpages_libdir.patch
+    - debian/patches/unneeded_doc.patch
+  * Remove applied patches from debian/patches:
+    - 0500-systemd_configure.patch
+    - 0105-fuj-126a.patch
   * Architecture-dependent binaries (Closes: #798657):
     - debian/control:
       + New package libsane-bin:

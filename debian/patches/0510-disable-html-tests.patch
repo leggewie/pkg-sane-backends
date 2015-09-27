@@ -24,7 +24,7 @@ Index: experimental/testsuite/tools/Makefile.in
 ===================================================================
 --- experimental.orig/testsuite/tools/Makefile.in
 +++ experimental/testsuite/tools/Makefile.in
-@@ -499,7 +499,7 @@ check: check.local
+@@ -501,7 +501,7 @@ check: check.local
  
  check.local: 
  	@echo "**** Testing $(SANEDESC) with $(TESTFILE)"

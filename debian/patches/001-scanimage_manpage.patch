@@ -5,11 +5,11 @@ Forwarded:
 Last-Update: 2015-01-18
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
-Index: trunk/doc/scanimage.man
+Index: experimental/doc/scanimage.man
 ===================================================================
---- trunk.orig/doc/scanimage.man
-+++ trunk/doc/scanimage.man
-@@ -73,6 +73,9 @@ To print all available options:
+--- experimental.orig/doc/scanimage.man
++++ experimental/doc/scanimage.man
+@@ -74,6 +74,9 @@ To print all available options:
    scanimage \-h
  
  .SH OPTIONS

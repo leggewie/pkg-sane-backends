@@ -11,7 +11,7 @@ Index: experimental/backend/dll.c
  
    if (path)
      {
--      src_len = strlen (path) + strlen (STRINGIFY (LIBDIR)) + 1 + 1;
+-      src_len = strlen (path) + strlen (LIBDIR) + 1 + 1;
 +      src_len = strlen (path) + strlen (DEB_DLL_LIBDIR) + 1 + 1;
        src = malloc (src_len);
        if (!src)
@@ -20,12 +20,12 @@ Index: experimental/backend/dll.c
  	  return SANE_STATUS_NO_MEM;
  	}
        orig_src = src;
--      snprintf (src, src_len, "%s:%s", path, STRINGIFY (LIBDIR));
+-      snprintf (src, src_len, "%s:%s", path, LIBDIR);
 +      snprintf (src, src_len, "%s:%s", path, DEB_DLL_LIBDIR);
      }
    else
      {
--      src = STRINGIFY (LIBDIR);
+-      src = LIBDIR;
 -      src = strdup (src);
 +      src = strdup (DEB_DLL_LIBDIR);
        if (!src)
@@ -35,11 +35,11 @@ Index: experimental/backend/Makefile.in
 ===================================================================
 --- experimental.orig/backend/Makefile.in
 +++ experimental/backend/Makefile.in
-@@ -1887,7 +1887,7 @@ target_alias = @target_alias@
+@@ -1911,7 +1911,7 @@ target_alias = @target_alias@
  top_build_prefix = @top_build_prefix@
  top_builddir = @top_builddir@
  top_srcdir = @top_srcdir@
--AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -DLIBDIR="$(libdir)/sane"
+-AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -DLIBDIR="\"$(libdir)/sane\""
 +AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -DLIBDIR="$(libdir)/sane" -DDEB_DLL_LIBDIR="\"$(libdir)/sane:$(prefix)/lib/sane\""
  AM_LDFLAGS = @STRICT_LDFLAGS@
  # The -rpath option is added because we are creating _LTLIBRARIES based

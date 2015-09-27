@@ -14,7 +14,7 @@ Index: experimental/backend/Makefile.in
 ===================================================================
 --- experimental.orig/backend/Makefile.in
 +++ experimental/backend/Makefile.in
-@@ -2692,10 +2692,9 @@ libsane_dll_la_LIBADD = $(COMMON_LIBS) l
+@@ -2723,10 +2723,9 @@ libsane_dll_la_LIBADD = $(COMMON_LIBS) l
  nodist_libsane_la_SOURCES = dll-s.c
  libsane_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=dll
  libsane_la_LDFLAGS = $(DIST_LIBS_LDFLAGS)

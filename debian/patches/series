@@ -21,8 +21,8 @@ nousbtest.patch
 ppc64el.patch
 #hp5370c.patch
 #out_of_bounds.patch
-0500-systemd_configure.patch
+#0500-systemd_configure.patch
 #0100-usb3-corrections.patch
 001-scanimage_manpage.patch
 0510-disable-html-tests.patch
-0105-fuj-126a.patch
+#0105-fuj-126a.patch
