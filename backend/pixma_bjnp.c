@@ -1802,6 +1802,8 @@ static void add_scanner(SANE_Int *dev_no,
            determine_scanner_serial (scanner_host, device[*dev_no].mac_address, serial);
            attach_bjnp (uri, makemodel,
                         serial, pixma_devices);
+           PDBG (bjnp_dbg (LOG_NOTICE, "add_scanner: New scanner at %s added!\n",
+	                 uri));
           }
         break;
       case BJNP_STATUS_ALREADY_ALLOCATED:
@@ -1875,7 +1877,8 @@ sanei_bjnp_find_devices (const char **conf_devices,
 
   memset( broadcast_addr, 0, sizeof( broadcast_addr) );
   memset( &scanner_sa, 0 ,sizeof( scanner_sa ) );
-  PDBG (bjnp_dbg (LOG_INFO, "sanei_bjnp_find_devices:\n"));
+  PDBG (bjnp_dbg (LOG_INFO, "sanei_bjnp_find_devices, pixma backend version: %d.%d.%d\n", 
+	PIXMA_VERSION_MAJOR, PIXMA_VERSION_MINOR, PIXMA_VERSION_BUILD));
   bjnp_no_devices = 0;
 
   for (i=0; i < BJNP_SOCK_MAX; i++)
@@ -2108,8 +2111,10 @@ sanei_bjnp_open (SANE_String_Const devname, SANE_Int * dn)
   PDBG (bjnp_dbg (LOG_INFO, "sanei_bjnp_open(%s, %d):\n", devname, *dn));
 
   result = bjnp_allocate_device (devname, dn, NULL);
-  if ( (result != BJNP_STATUS_GOOD) && (result != BJNP_STATUS_ALREADY_ALLOCATED ) )
+  if ( (result != BJNP_STATUS_GOOD) && (result != BJNP_STATUS_ALREADY_ALLOCATED ) ) {
     return SANE_STATUS_INVAL; 
+  }
+  return SANE_STATUS_GOOD;
 }
 
 /** Close a BJNP device.

@@ -240,7 +240,7 @@ static int K_SNMP_Timeout = 3000; /* used for any auto detection method */
 static int K_Scan_Data_Timeout = 10000;
 static int K_Request_Timeout = 5000;
 
-static int bitposn=0; /* used to pack bits into bytes in lineart mode */
+/* static int bitposn=0; was used to pack bits into bytes in lineart mode */
 
 /* This file is used to store directly the raster returned by the scanner for debugging
 If RawScanPath has no length it will not be created */
@@ -632,7 +632,7 @@ static SANE_String_Const source_list[] = {
 };
 
 static const SANE_Range percent_range_fixed = {SANE_FIX(0.0), SANE_FIX(100.0), SANE_FIX(1.0)};
-static const SANE_Range percent_range_int = {0, 100, 1};
+/*static const SANE_Range percent_range_int = {0, 100, 1};*/
 
 /* prototypes */
 static SANE_Status attach_one_usb(SANE_String_Const devname);
@@ -719,7 +719,7 @@ That is probably if the scanner disconnected the network connection
 	}
 	else if((fds[0].revents & POLLIN) && !(fds[0].revents & (POLLERR | POLLHUP | POLLNVAL))) {
 		while (read < wanted) {
-			DBG(50, "reading: read %d, wanted %d\n",read, wanted);
+			DBG(50, "reading: read %lu, wanted %lu\n",read, wanted);
 			size = sanei_tcp_read(s->fd, buf + read, wanted - read);
 			if (size == 0) {
 				DBG(1, "No data read. Scanner may have disconnected\n");
@@ -1029,12 +1029,13 @@ and returns appropriate status
 	return status;
 }
 
+/* unused function
 static ssize_t 
 kodakaio_rxflush(KodakAio_Scanner *s)
-/*
+
 Tries to get 64 byte reply
 and returns number of bytes read
-*/
+
 {
 	SANE_Status status;
 	unsigned char rxbuf[64];
@@ -1047,6 +1048,7 @@ and returns number of bytes read
 	DBG(5, "%s: flushed, %d bytes\n", __func__,  (int)n);
 	return n;
 }
+*/
 
 /*
  *   high-level communication commands 

@@ -240,6 +240,21 @@ e2_dev_post_init(struct Epson_Device *dev)
 		e2_add_resolution(dev, dev->optical_res);
 	}
 
+	/* add missing resolutions for known scanners */
+
+	if (e2_dev_model(dev, "GT-X800") || e2_dev_model(dev, "GT-X700")) {
+
+		DBG(1, "known scanner, integrating resolution list\n");
+		e2_add_resolution(dev, 4800);
+		e2_add_resolution(dev, 6400);
+		e2_add_resolution(dev, 9600);
+		e2_add_resolution(dev, 12800);
+
+		last = dev->res_list[dev->res_list_size - 1];
+	}
+
+	/* guess for the others */
+
 	if (dev->dpi_range.max > last && dev->dpi_range.max != dev->optical_res) {
 
 		int val = last + last;
@@ -581,7 +596,7 @@ e2_discover_capabilities(Epson_Scanner *s)
 
 	/*
 	 * Extended status flag request (ESC f).
-	 * this also requests the scanner device name from the the scanner.
+	 * this also requests the scanner device name from the scanner.
 	 * It seems unsupported on the network transport (CX11NF/LP-A500).
 	 */
 
@@ -720,7 +735,7 @@ e2_discover_capabilities(Epson_Scanner *s)
 		}
 
                 /* TPU2 */
-		if (e2_model(s, "GT-X800") || e2_model(s, "GT-X900")) {
+		if (e2_model(s, "GT-X800") || e2_model(s, "GT-X900") || e2_model(s, "GT-X980")) {
 			if (le32atoh(&buf[68]) > 0 ) {
 				e2_set_tpu2_area(s,
 					  	 le32atoh(&buf[68]),
@@ -1272,7 +1287,7 @@ e2_setup_block_mode(Epson_Scanner * s)
 	DBG(1, "max req size: %d, line count: %d\n", maxreq, s->lcount);
 
 	/* XXX investigate this */
-	if (s->lcount < 3 && (e2_model(s, "GT-X800") || e2_model(s, "GT-X900"))) {
+	if (s->lcount < 3 && (e2_model(s, "GT-X800") || e2_model(s, "GT-X900") || e2_model(s, "GT-X980"))) {
 		s->lcount = 21;
 		DBG(17,
 		    "%s: set lcount = %i bigger than sanei_scsi_max_request_size\n",

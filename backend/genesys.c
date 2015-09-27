@@ -2,7 +2,7 @@
 
    Copyright (C) 2003, 2004 Henning Meier-Geinitz <henning@meier-geinitz.de>
    Copyright (C) 2004, 2005 Gerhard Jaeger <gerhard@gjaeger.de>
-   Copyright (C) 2004-2013 Stéphane Voltz <stef.dev@free.fr>
+   Copyright (C) 2004-2015 Stéphane Voltz <stef.dev@free.fr>
    Copyright (C) 2005-2009 Pierre Willenbrock <pierre@pirsoft.dnsalias.org>
    Copyright (C) 2006 Laurent Charpentier <laurent_pubs@yahoo.com>
    Copyright (C) 2007 Luke <iceyfor@gmail.com>
@@ -58,7 +58,7 @@
  * SANE backend for Genesys Logic GL646/GL841/GL842/GL843/GL846/GL847/GL124 based scanners
  */
 
-#define BUILD 2506
+#define BUILD 2508
 #define BACKEND_NAME genesys
 
 #include "genesys.h"
@@ -744,7 +744,7 @@ sanei_genesys_create_gamma_table (uint16_t * gamma_table, int size,
 
   if(gamma_table==NULL)
     {
-      DBG (DBG_proc, "sanei_genesys_create_gamma_table: gamma tbale is NULL\n");
+      DBG (DBG_proc, "sanei_genesys_create_gamma_table: gamma table is NULL\n");
       return;
     }
   DBG (DBG_proc,
@@ -3890,7 +3890,7 @@ genesys_warmup_lamp (Genesys_Device * dev)
 	{
 	  first_average /= pixel;
 	  second_average /= pixel;
-	  difference = abs (first_average - second_average);
+	  difference = fabs (first_average - second_average);
 	  DBG (DBG_info,
 	       "genesys_warmup_lamp: average = %.2f, diff = %.3f\n",
 	       100 * ((second_average) / (256 * 256)),
@@ -3917,7 +3917,7 @@ genesys_warmup_lamp (Genesys_Device * dev)
 	    }
 	  DBG (DBG_info, "genesys_warmup_lamp: average 1 = %.2f, average 2 = %.2f\n", first_average, second_average);
           /* if delta below 15/255 ~= 5.8%, lamp is considred warm enough */
-	  if (abs (first_average - second_average) < 15
+	  if (fabs (first_average - second_average) < 15
 	      && second_average > 55)
 	    break;
 	}
@@ -5749,7 +5749,7 @@ init_options (Genesys_Scanner * s)
   s->opt[OPT_DESPECK].unit = SANE_UNIT_NONE;
   s->opt[OPT_DESPECK].constraint_type = SANE_CONSTRAINT_RANGE;
   s->opt[OPT_DESPECK].constraint.range = &swdespeck_range;
-  s->opt[OPT_DESPECK].cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
+  s->opt[OPT_DESPECK].cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED | SANE_CAP_INACTIVE;
   s->val[OPT_DESPECK].w = 1;
 
   /* crop by software */
@@ -5914,8 +5914,8 @@ init_options (Genesys_Scanner * s)
   /* expiration time for calibration cache entries */
   s->opt[OPT_EXPIRATION_TIME].name = "expiration-time";
   s->opt[OPT_EXPIRATION_TIME].title = SANE_I18N ("Calibration cache expiration time");
-  s->opt[OPT_EXPIRATION_TIME].desc = SANE_I18N ("Time (in minutes) before a cached calibration expires."
-     "A value of 0 means cache is not used used. A negative value means cache never expires.");
+  s->opt[OPT_EXPIRATION_TIME].desc = SANE_I18N ("Time (in minutes) before a cached calibration expires. "
+     "A value of 0 means cache is not used. A negative value means cache never expires.");
   s->opt[OPT_EXPIRATION_TIME].type = SANE_TYPE_INT;
   s->opt[OPT_EXPIRATION_TIME].unit = SANE_UNIT_NONE;
   s->opt[OPT_EXPIRATION_TIME].constraint_type = SANE_CONSTRAINT_RANGE;

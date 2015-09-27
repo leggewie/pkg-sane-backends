@@ -1,3 +1,117 @@
+2015-09-26 Rolf Bensch <rolf at bensch hyphen online dot de>
+    * backend/pixma.h, doc/descriptions/pixma.desc: Pixma backend version 0.17.23
+
+2015-06-22 Louis Lagendijk <louis dot lagendijk at gmail dot com>
+	* doc/saned.man: updated to clarify systemd integration and 
+	configuration for thecase where saned is compiled with  systemd
+	glue.
+
+2015-09-18 Rolf Bensch <rolf at bensch hyphen online dot de>
+    * backend/pixma_imageclass.c: for all adf scanners restrict maximum page
+      height at flatbed scans
+
+2015-09-16 Stéphane Voltz <stef.dev@free.fr>
+	* backend/niash.c: merged pu/protect-niash-option-access-315132 and
+	ifdef'ed unused code
+
+2015-09-16 Stéphane Voltz <stef.dev@free.fr>
+	* backend/pieusb.c: include sane/config.h first
+
+2015-09-14 Stéphane Voltz <stef.dev@free.fr>
+	* backend/bh.c: replace mktemp by mkstemp #300134
+
+2015-09-13 Paul Newall <p dot newalls at ntlworld dot com>
+	* backend/kodakaio.c:
+	redundant variable bitposn and redundant function kodakaio_rxflush
+	commented out.
+
+2015-09-09 Stéphane Voltz <stef.dev@free.fr>
+	* doc/sane-genesys.man, doc/descriptions/genesys.desc: No LiDE 120
+	support.
+
+2015-09-08 m. allan noah <kitno455 at gmail dot com>
+	* backend/artec_eplus48u.c: fix HOME env bug #315071 (from Jörg Frings-Fürst)
+
+2015-09-03 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* backend/pixma_mp810.c: Canon Pixma MP990 needs specific reordering pixels
+	  for 4800 dpi, patch from Guillaume Courtois.
+	* backend/pixma.h, doc/descriptions/pixma.desc: Pixma backend version 0.17.22
+
+2015-08-20 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* README.linux: add mandatory and optional development environment to
+	  install description
+	* frontend/scanimage.c: remove atexit() function. In some cases atexit()
+	  doesn't work with libusb-compat.
+
+2015-08-10 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* backend/pixma_io_sanei.c: EOF is a bjnp timeout error.
+	* backend/pixma.h, doc/descriptions/pixma.desc: Pixma backend version 0.17.21
+
+2015-08-10 Stéphane Voltz <stef.dev@free.fr>
+	* backend/abaton.c, backend/agfafocus.c, backend/apple.c,
+	backend/bh.c, backend/coolscan.c, backend/dmc.c, backend/ricoh.c,
+	backend/s9036.c, backend/sp15c.[ch], backend/tamarack.c:
+	fix for memleak in sane_get_devices (bugs #300132 #300131 #300130 #300129
+	#300127 #300126 #300124 #300122 #300121 #300120)
+
+2015-08-10 Klaus Kämpf <kkaempf@suse.com>
+	* backend/pieusb.c, doc/descriptions/pieusb.desc, doc/sane-pieusb.man,
+          backend/pieusb_buffer.c, backend/pieusb_scancmd.c, backend/pieusb_specific.c,
+          backend/pieusb_usb.c:
+	  New scanners PIE PowerSlide 3600,3650,4000,5000 / Reflecta DigitDia 3600,
+          4000, 5000, 6000; ProScan 7200; CrystalScan 7200. These scanners need
+          further testing.
+
+2015-08-08 Stéphane Voltz <stef.dev@free.fr>
+	* backend/test.c: fix memleaks (#313553)
+	* configure.in, configure: don not harcode -I/usr/local/include
+	(#315060)
+
+	open/close tests.
+2015-08-07 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* README.linux: update development packages list. OpenSuse needs
+	  libusb-compat-devel. Sane doesn't support libusb 1.0.
+	* backend/pixma_io_sanei.c: EOF isn't an usb timeout error; this fixes usb
+	  communication problems, e.g. with OpenSuse.
+	* backend/pixma.h, doc/descriptions/pixma.desc: Pixma backend version 0.17.20
+
+2015-08-06 Stéphane Voltz <stef.dev@free.fr>
+	*  backend/genesys_devices.c, backend/genesys_gl841.c, backend/genesys_low.c:
+	fix GPIO setup for LiDE 33/40/50, add more usleep() for GL847
+	scanning issues. Some GL841 LEDADD improvements.
+
+2015-07-31 Stéphane Voltz <stef.dev@free.fr>
+	* frontend/tstbackend.c: add an option to do tests scans during
+	open/close tests.
+	* backend/genesys.c, backend/genesys_low.c: fixes for
+	- #315104
+	- #315105
+	And a timing issue on USB3 hardware debugged and tracked by John S.
+	Weber <jweber53@gmail.com>
+
+2015-07-29 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* backend/pixma_mp150.c, doc/descriptions/pixma.desc, doc/sane-pixma.man:
+	  New scanner Canon PIXMA MG3600 Series. This scanner needs further testing.
+	* backend/pixma_mp150.c: Canon PIXMA MG7500 Series doesn't need special
+	  image format post processing.
+	* doc/descriptions/pixma.desc, doc/sane-pixma.man:
+	  Canon PIXMA MG7500 Series is working, reported by Jonathan Anderson.
+	* backend/pixma.h, doc/descriptions/pixma.desc: Pixma backend version 0.17.19
+
+2015-07-24 Rolf Bensch <rolf at bensch hyphen online dot de>
+	* doc/descriptions/pixma.desc, doc/sane-pixma.man:
+	  Canon PIXMA MX470 Series is working, bug #314894.
+
+2015-06-27 Louis Lagendijk <louis dot lagendijk at gmail dot com>
+	* backend/pixma_bjnp.c: added missing return in case of no error
+
+2015-06-27 Louis Lagendijk <louis dot lagendijk at gmail dot com>
+	* backend/pixma_bjnp.c Added backend version in bjnp debug output
+
+2015-06-11 Stéphane Voltz <stef.dev@free.fr>
+	* backend/genesys.c backend/genesys_gl124.h: LiDE 120 support
+	improvement.
+
 2015-05-18 Rolf Bensch <rolf at bensch hyphen online dot de>
 	* backend/pixma_imageclass.c, doc/descriptions/pixma.desc, doc/sane-pixma.man:
 	  New scanner Canon i-SENSYS MF8300 Series, reported by Florian Nierhaus.

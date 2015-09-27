@@ -1,5 +1,6 @@
 /* scanimage -- command line scanning utility
    Uses the SANE library.
+   Copyright (C) 2015 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 1996, 1997, 1998 Andreas Beck and David Mosberger
    
    Copyright (C) 1999 - 2009 by the SANE Project -- See AUTHORS and ChangeLog
@@ -41,6 +42,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#ifdef HAVE_LIBPNG
+#include <png.h>
+#endif
+
+#ifdef HAVE_LIBJPEG
+#include <jpeglib.h>
+#endif
+
 #include "../include/_stdint.h"
 
 #include "../include/sane/sane.h"
@@ -53,10 +62,6 @@
 
 #ifndef PATH_MAX
 #define PATH_MAX 1024
-#endif
-
-#ifndef HAVE_ATEXIT
-# define atexit(func)	on_exit(func, 0)	/* works for SunOS, at least */
 #endif
 
 typedef struct
@@ -107,6 +112,8 @@ static struct option basic_options[] = {
 
 #define OUTPUT_PNM      0
 #define OUTPUT_TIFF     1
+#define OUTPUT_PNG      2
+#define OUTPUT_JPEG     3
 
 #define BASE_OPTSTRING	"d:hi:Lf:B::nvVTAbp"
 #define STRIP_HEIGHT	256	/* # lines we increment image height */
@@ -135,7 +142,7 @@ static int accept_only_md5_auth = 0;
 static const char *icc_profile = NULL;
 
 static void fetch_options (SANE_Device * device);
-static void scanimage_exit (void);
+static void scanimage_exit (int);
 
 static SANE_Word tl_x = 0;
 static SANE_Word tl_y = 0;
@@ -687,7 +694,7 @@ parse_scalar (const SANE_Option_Descriptor * opt, const char *str,
       fprintf (stderr,
 	       "%s: option --%s: bad option value (rest of option: %s)\n",
 	       prog_name, opt->name, str);
-      exit (1);
+      scanimage_exit (1);
     }
   str = end;
 
@@ -796,7 +803,7 @@ parse_vector (const SANE_Option_Descriptor * opt, const char *str,
 	    {
 	      fprintf (stderr, "%s: option --%s: closing bracket missing "
 		       "(rest of option: %s)\n", prog_name, opt->name, str);
-	      exit (1);
+	      scanimage_exit (1);
 	    }
 	  str = end + 1;
 	}
@@ -808,20 +815,20 @@ parse_vector (const SANE_Option_Descriptor * opt, const char *str,
 	  fprintf (stderr,
 		   "%s: option --%s: index %d out of range [0..%ld]\n",
 		   prog_name, opt->name, index, (long) vector_length - 1);
-	  exit (1);
+	  scanimage_exit (1);
 	}
 
       /* read value */
       str = parse_scalar (opt, str, &value);
       if (!str)
-	exit (1);
+        scanimage_exit (1);
 
       if (*str && *str != '-' && *str != ',')
 	{
 	  fprintf (stderr,
 		   "%s: option --%s: illegal separator (rest of option: %s)\n",
 		   prog_name, opt->name, str);
-	  exit (1);
+	  scanimage_exit (1);
 	}
 
       /* store value: */
@@ -874,7 +881,7 @@ fetch_options (SANE_Device * device)
   if (opt == NULL)
     {
       fprintf (stderr, "Could not get option descriptor for option 0\n");
-      exit (1);
+      scanimage_exit (1);
     }
 
   status = sane_control_option (device, 0, SANE_ACTION_GET_VALUE,
@@ -883,7 +890,7 @@ fetch_options (SANE_Device * device)
     {
       fprintf (stderr, "Could not get value for option 0: %s\n",
                sane_strstatus (status));
-      exit (1);
+      scanimage_exit (1);
     }
 
   /* build the full table of long options */
@@ -894,7 +901,7 @@ fetch_options (SANE_Device * device)
       if (opt == NULL)
 	{
 	  fprintf (stderr, "Could not get option descriptor for option %d\n",i);
-	  exit (1);
+	  scanimage_exit (1);
 	}
 
       /* create command line option only for settable options */
@@ -1013,7 +1020,7 @@ set_option (SANE_Handle device, int optnum, void *valuep)
     {
       fprintf (stderr, "%s: setting of option --%s failed (%s)\n",
 	       prog_name, opt->name, sane_strstatus (status));
-      exit (1);
+      scanimage_exit (1);
     }
 
   if ((info & SANE_INFO_INEXACT) && opt->size == sizeof (SANE_Word))
@@ -1048,7 +1055,7 @@ process_backend_option (SANE_Handle device, int optnum, const char *optarg)
     {
       fprintf (stderr, "%s: attempted to set inactive option %s\n",
 	       prog_name, opt->name);
-      exit (1);
+      scanimage_exit (1);
     }
 
   if ((opt->cap & SANE_CAP_AUTOMATIC) && optarg &&
@@ -1061,7 +1068,7 @@ process_backend_option (SANE_Handle device, int optnum, const char *optarg)
 	  fprintf (stderr,
 		   "%s: failed to set option --%s to automatic (%s)\n",
 		   prog_name, opt->name, sane_strstatus (status));
-	  exit (1);
+	  scanimage_exit (1);
 	}
       return;
     }
@@ -1081,7 +1088,7 @@ process_backend_option (SANE_Handle device, int optnum, const char *optarg)
 	    {
 	      fprintf (stderr, "%s: option --%s: bad option value `%s'\n",
 		       prog_name, opt->name, optarg);
-	      exit (1);
+	      scanimage_exit (1);
 	    }
 	}
       break;
@@ -1097,7 +1104,7 @@ process_backend_option (SANE_Handle device, int optnum, const char *optarg)
 	  if (!vector)
 	    {
 	      fprintf (stderr, "%s: out of memory\n", prog_name);
-	      exit (1);
+	      scanimage_exit (1);
 	    }
 	}
       parse_vector (opt, optarg, vector, vector_length);
@@ -1109,7 +1116,7 @@ process_backend_option (SANE_Handle device, int optnum, const char *optarg)
       if (!valuep)
 	{
 	  fprintf (stderr, "%s: out of memory\n", prog_name);
-	  exit (1);
+	  scanimage_exit (1);
 	}
       strncpy (valuep, optarg, opt->size);
       ((char *) valuep)[opt->size - 1] = 0;
@@ -1156,6 +1163,79 @@ write_pnm_header (SANE_Frame format, int width, int height, int depth, FILE *ofp
 #endif
 }
 
+#ifdef HAVE_LIBPNG
+static void
+write_png_header (SANE_Frame format, int width, int height, int depth, FILE *ofp, png_structp* png_ptr, png_infop* info_ptr)
+{
+  int color_type;
+
+  *png_ptr = png_create_write_struct
+       (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  if (!*png_ptr) {
+    fprintf(stderr, "png_create_write_struct failed\n");
+    exit(1);
+  }
+  *info_ptr = png_create_info_struct(*png_ptr);
+  if (!*info_ptr) {
+    fprintf(stderr, "png_create_info_struct failed\n");
+    exit(1);
+  }
+  png_init_io(*png_ptr, ofp);
+
+  switch (format)
+    {
+    case SANE_FRAME_RED:
+    case SANE_FRAME_GREEN:
+    case SANE_FRAME_BLUE:
+    case SANE_FRAME_RGB:
+      color_type = PNG_COLOR_TYPE_RGB;
+      break;
+
+    default:
+      color_type = PNG_COLOR_TYPE_GRAY;
+      break;
+    }
+
+  png_set_IHDR(*png_ptr, *info_ptr, width, height,
+    depth, color_type, PNG_INTERLACE_NONE,
+    PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+  png_write_info(*png_ptr, *info_ptr);
+}
+#endif
+
+#ifdef HAVE_LIBJPEG
+static void
+write_jpeg_header (SANE_Frame format, int width, int height, FILE *ofp, struct jpeg_compress_struct *cinfo, struct jpeg_error_mgr *jerr)
+{
+  cinfo->err = jpeg_std_error(jerr);
+  jpeg_create_compress(cinfo);
+  jpeg_stdio_dest(cinfo, ofp);
+
+  cinfo->image_width = width;
+  cinfo->image_height = height;
+  switch (format)
+    {
+    case SANE_FRAME_RED:
+    case SANE_FRAME_GREEN:
+    case SANE_FRAME_BLUE:
+    case SANE_FRAME_RGB:
+      cinfo->in_color_space = JCS_RGB;
+      cinfo->input_components = 3;
+      break;
+
+    default:
+      cinfo->in_color_space = JCS_GRAYSCALE;
+      cinfo->input_components = 1;
+      break;
+    }
+
+  jpeg_set_defaults(cinfo);
+  jpeg_set_quality(cinfo, 75, TRUE);
+  jpeg_start_compress(cinfo, TRUE);
+}
+#endif
+
 static void *
 advance (Image * image)
 {
@@ -1199,6 +1279,18 @@ scan_it (FILE *ofp)
   };
   SANE_Word total_bytes = 0, expected_bytes;
   SANE_Int hang_over = -1;
+#ifdef HAVE_LIBPNG
+  int pngrow = 0;
+  png_bytep pngbuf = NULL;
+  png_structp png_ptr;
+  png_infop info_ptr;
+#endif
+#ifdef HAVE_LIBJPEG
+  int jpegrow = 0;
+  JSAMPLE *jpegbuf = NULL;
+  struct jpeg_compress_struct cinfo;
+  struct jpeg_error_mgr jerr;
+#endif
 
   do
     {
@@ -1237,12 +1329,12 @@ scan_it (FILE *ofp)
 		fprintf (stderr, "%s: scanning image of size %dx%d pixels at "
 			 "%d bits/pixel\n",
 			 prog_name, parm.pixels_per_line, parm.lines,
-			 8 * parm.bytes_per_line / parm.pixels_per_line);
+			 parm.depth * (SANE_FRAME_RGB == parm.format ? 3 : 1));
 	      else
 		fprintf (stderr, "%s: scanning image %d pixels wide and "
 			 "variable height at %d bits/pixel\n",
 			 prog_name, parm.pixels_per_line,
-			 8 * parm.bytes_per_line / parm.pixels_per_line);
+			 parm.depth * (SANE_FRAME_RGB == parm.format ? 3 : 1));
 	    }
 
 	  fprintf (stderr, "%s: acquiring %s frame\n", prog_name,
@@ -1272,21 +1364,44 @@ scan_it (FILE *ofp)
 		  offset = 0;
 		}
 	      else
-		{
-		  if (output_format == OUTPUT_TIFF)
+		  switch(output_format)
+		  {
+		  case OUTPUT_TIFF:
 		    sanei_write_tiff_header (parm.format,
 					     parm.pixels_per_line, parm.lines,
 					     parm.depth, resolution_value,
 					     icc_profile, ofp);
-		  else
+		    break;
+		  case OUTPUT_PNM:
 		    write_pnm_header (parm.format, parm.pixels_per_line,
 				      parm.lines, parm.depth, ofp);
-		}
+		    break;
+#ifdef HAVE_LIBPNG
+		  case OUTPUT_PNG:
+		    write_png_header (parm.format, parm.pixels_per_line,
+				      parm.lines, parm.depth, ofp, &png_ptr, &info_ptr);
+		    break;
+#endif
+#ifdef HAVE_LIBJPEG
+		  case OUTPUT_JPEG:
+		    write_jpeg_header (parm.format, parm.pixels_per_line,
+				      parm.lines, ofp, &cinfo, &jerr);
+		    break;
+#endif
+		  }
 	      break;
 
             default:
 	      break;
 	    }
+#ifdef HAVE_LIBPNG
+	  if(output_format == OUTPUT_PNG)
+	    pngbuf = malloc(parm.bytes_per_line);
+#endif
+#ifdef HAVE_LIBJPEG
+	  if(output_format == OUTPUT_JPEG)
+	    jpegbuf = malloc(parm.bytes_per_line);
+#endif
 
 	  if (must_buffer)
 	    {
@@ -1400,6 +1515,59 @@ scan_it (FILE *ofp)
 	    }
 	  else			/* ! must_buffer */
 	    {
+#ifdef HAVE_LIBPNG
+	      if (output_format == OUTPUT_PNG)
+	        {
+		  int i = 0;
+		  int left = len;
+		  while(pngrow + left >= parm.bytes_per_line)
+		    {
+		      memcpy(pngbuf + pngrow, buffer + i, parm.bytes_per_line - pngrow);
+		      if(parm.depth == 1)
+			{
+			  int j;
+			  for(j = 0; j < parm.bytes_per_line; j++)
+			    pngbuf[j] = ~pngbuf[j];
+			}
+		      png_write_row(png_ptr, pngbuf);
+		      i += parm.bytes_per_line - pngrow;
+		      left -= parm.bytes_per_line - pngrow;
+		      pngrow = 0;
+		    }
+		  memcpy(pngbuf + pngrow, buffer + i, left);
+		  pngrow += left;
+		}
+	      else
+#endif
+#ifdef HAVE_LIBJPEG
+	      if (output_format == OUTPUT_JPEG)
+	        {
+		  int i = 0;
+		  int left = len;
+		  while(jpegrow + left >= parm.bytes_per_line)
+		    {
+		      memcpy(jpegbuf + jpegrow, buffer + i, parm.bytes_per_line - jpegrow);
+		      if(parm.depth == 1)
+			{
+			  int col1, col8;
+			  JSAMPLE *buf8 = malloc(parm.bytes_per_line * 8);
+			  for(col1 = 0; col1 < parm.bytes_per_line; col1++)
+			    for(col8 = 0; col8 < 8; col8++)
+			      buf8[col1 * 8 + col8] = jpegbuf[col1] & (1 << (8 - col8 - 1)) ? 0 : 0xff;
+		          jpeg_write_scanlines(&cinfo, &buf8, 1);
+			  free(buf8);
+			} else {
+		          jpeg_write_scanlines(&cinfo, &jpegbuf, 1);
+			}
+		      i += parm.bytes_per_line - jpegrow;
+		      left -= parm.bytes_per_line - jpegrow;
+		      jpegrow = 0;
+		    }
+		  memcpy(jpegbuf + jpegrow, buffer + i, left);
+		  jpegrow += left;
+		}
+	      else
+#endif
 	      if ((output_format == OUTPUT_TIFF) || (parm.depth != 16))
 		fwrite (buffer, 1, len, ofp);
 	      else
@@ -1454,13 +1622,29 @@ scan_it (FILE *ofp)
     {
       image.height = image.y;
 
-      if (output_format == OUTPUT_TIFF)
+      switch(output_format) {
+      case OUTPUT_TIFF:
 	sanei_write_tiff_header (parm.format, parm.pixels_per_line,
 				 image.height, parm.depth, resolution_value,
 				 icc_profile, ofp);
-      else
+      break;
+      case OUTPUT_PNM:
 	write_pnm_header (parm.format, parm.pixels_per_line,
                           image.height, parm.depth, ofp);
+      break;
+#ifdef HAVE_LIBPNG
+      case OUTPUT_PNG:
+	write_png_header (parm.format, parm.pixels_per_line,
+                          image.height, parm.depth, ofp, &png_ptr, &info_ptr);
+      break;
+#endif
+#ifdef HAVE_LIBJPEG
+      case OUTPUT_JPEG:
+	write_jpeg_header (parm.format, parm.pixels_per_line,
+	parm.lines, ofp, &cinfo, &jerr);
+      break;
+#endif
+      }
 
 #if !defined(WORDS_BIGENDIAN)
       /* multibyte pnm file may need byte swap to LE */
@@ -1480,11 +1664,31 @@ scan_it (FILE *ofp)
 
 	fwrite (image.data, 1, image.height * image.width, ofp);
     }
+#ifdef HAVE_LIBPNG
+    if(output_format == OUTPUT_PNG)
+	png_write_end(png_ptr, info_ptr);
+#endif
+#ifdef HAVE_LIBJPEG
+    if(output_format == OUTPUT_JPEG)
+	jpeg_finish_compress(&cinfo);
+#endif
 
   /* flush the output buffer */
   fflush( ofp );
 
 cleanup:
+#ifdef HAVE_LIBPNG
+  if(output_format == OUTPUT_PNG) {
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+    free(pngbuf);
+  }
+#endif
+#ifdef HAVE_LIBJPEG
+  if(output_format == OUTPUT_JPEG) {
+    jpeg_destroy_compress(&cinfo);
+    free(jpegbuf);
+  }
+#endif
   if (image.data)
     free (image.data);
 
@@ -1565,12 +1769,12 @@ test_it (void)
   if (parm.lines >= 0)
     fprintf (stderr, "%s: scanning image of size %dx%d pixels at "
 	     "%d bits/pixel\n", prog_name, parm.pixels_per_line, parm.lines,
-	     8 * parm.bytes_per_line / parm.pixels_per_line);
+	     parm.depth * (SANE_FRAME_RGB == parm.format ? 3 : 1));
   else
     fprintf (stderr, "%s: scanning image %d pixels wide and "
 	     "variable height at %d bits/pixel\n",
 	     prog_name, parm.pixels_per_line,
-	     8 * parm.bytes_per_line / parm.pixels_per_line);
+	     parm.depth * (SANE_FRAME_RGB == parm.format ? 3 : 1));
   fprintf (stderr, "%s: acquiring %s frame, %d bits/sample\n", prog_name,
 	   parm.format <= SANE_FRAME_BLUE ? format_name[parm.format]:"Unknown",
            parm.depth);
@@ -1648,7 +1852,7 @@ get_resolution (void)
 }
 
 static void
-scanimage_exit (void)
+scanimage_exit (int status)
 {
   if (device)
     {
@@ -1666,6 +1870,7 @@ scanimage_exit (void)
     free (option_number);
   if (verbose > 1)
     fprintf (stderr, "scanimage: finished\n");
+  exit (status);
 }
 
 /** @brief print device options to stdout
@@ -1720,8 +1925,6 @@ main (int argc, char **argv)
   char *full_optstring;
   SANE_Int version_code;
   FILE *ofp = NULL;
-
-  atexit (scanimage_exit);
 
   buffer_size = (32 * 1024);	/* default size */
 
@@ -1803,6 +2006,24 @@ main (int argc, char **argv)
 	case OPTION_FORMAT:
 	  if (strcmp (optarg, "tiff") == 0)
 	    output_format = OUTPUT_TIFF;
+	  else if (strcmp (optarg, "png") == 0)
+	    {
+#ifdef HAVE_LIBPNG
+	      output_format = OUTPUT_PNG;
+#else
+	      fprintf(stderr, "PNG support not compiled in\n");
+	      exit(1);
+#endif
+	    }
+	  else if (strcmp (optarg, "jpeg") == 0)
+	    {
+#ifdef HAVE_LIBJPEG
+	      output_format = OUTPUT_JPEG;
+#else
+	      fprintf(stderr, "JPEG support not compiled in\n");
+	      exit(1);
+#endif
+	    }
 	  else
 	    output_format = OUTPUT_PNM;
 	  break;
@@ -1819,7 +2040,7 @@ main (int argc, char **argv)
 	      {
 		fprintf (stderr, "%s: sane_get_devices() failed: %s\n",
 			 prog_name, sane_strstatus (status));
-		exit (1);
+		scanimage_exit (1);
 	      }
 
 	    if (ch == 'L')
@@ -1916,7 +2137,7 @@ main (int argc, char **argv)
 
 	    if (defdevname)
 	      printf ("default device is `%s'\n", defdevname);
-	    exit (0);
+	    scanimage_exit (0);
 	  }
 
 	case 'V':
@@ -1924,7 +2145,7 @@ main (int argc, char **argv)
 		  VERSION, SANE_VERSION_MAJOR (version_code),
 		  SANE_VERSION_MINOR (version_code),
 		  SANE_VERSION_BUILD (version_code));
-	  exit (0);
+	  scanimage_exit (0);
 
 	default:
 	  break;		/* ignore device specific options for now */
@@ -1941,7 +2162,7 @@ standard output.\n\
 Parameters are separated by a blank from single-character options (e.g.\n\
 -d epson) and by a \"=\" from multi-character options (e.g. --device-name=epson).\n\
 -d, --device-name=DEVICE   use a given scanner device (e.g. hp:/dev/scanner)\n\
-    --format=pnm|tiff      file format of output file\n\
+    --format=pnm|tiff|png|jpeg  file format of output file\n\
 -i, --icc-profile=PROFILE  include this ICC profile into TIFF file\n", prog_name);
       printf ("\
 -L, --list-devices         show available scanner devices\n\
@@ -1949,8 +2170,8 @@ Parameters are separated by a blank from single-character options (e.g.\n\
                            can be specified: %%d (device name), %%v (vendor),\n\
                            %%m (model), %%t (type), %%i (index number), and\n\
                            %%n (newline)\n\
--b, --batch[=FORMAT]       working in batch mode, FORMAT is `out%%d.pnm' or\n\
-                           `out%%d.tif' by default depending on --format\n");
+-b, --batch[=FORMAT]       working in batch mode, FORMAT is `out%%d.pnm' `out%%d.tif'\n\
+                           `out%%d.png' or `out%%d.jpg' by default depending on --format\n");
       printf ("\
     --batch-start=#        page number to start naming files with\n\
     --batch-count=#        how many pages to scan in batch mode\n\
@@ -1985,12 +2206,12 @@ Parameters are separated by a blank from single-character options (e.g.\n\
 	    {
 	      fprintf (stderr, "%s: sane_get_devices() failed: %s\n",
 		       prog_name, sane_strstatus (status));
-	      exit (1);
+	      scanimage_exit (1);
 	    }
 	  if (!device_list[0])
 	    {
 	      fprintf (stderr, "%s: no SANE devices found\n", prog_name);
-	      exit (1);
+	      scanimage_exit (1);
 	    }
 	  devname = device_list[0]->name;
 	}
@@ -2012,7 +2233,7 @@ Parameters are separated by a blank from single-character options (e.g.\n\
       if (help)
 	device = 0;
       else
-	exit (1);
+        scanimage_exit (1);
     }
 
   if (device)
@@ -2025,7 +2246,7 @@ Parameters are separated by a blank from single-character options (e.g.\n\
 	{
 	  fprintf (stderr, "%s: unable to get option count descriptor\n",
 		   prog_name);
-	  exit (1);
+	  scanimage_exit (1);
 	}
 
       /* We got a device, find out how many options it has */
@@ -2035,7 +2256,7 @@ Parameters are separated by a blank from single-character options (e.g.\n\
 	{
 	  fprintf (stderr, "%s: unable to determine option count\n",
 		   prog_name);
-	  exit (1);
+	  scanimage_exit (1);
 	}
 
       /* malloc global option lists */
@@ -2047,7 +2268,7 @@ Parameters are separated by a blank from single-character options (e.g.\n\
 	{
 	  fprintf (stderr, "%s: out of memory in main()\n",
 		   prog_name);
-	  exit (1);
+	  scanimage_exit (1);
 	}
 
       /* load global option lists */
@@ -2078,7 +2299,7 @@ Parameters are separated by a blank from single-character options (e.g.\n\
 	if (!full_optstring)
 	  {
 	    fprintf (stderr, "%s: out of memory\n", prog_name);
-	    exit (1);
+	    scanimage_exit (1);
 	  }
 
 	strcpy (full_optstring, BASE_OPTSTRING);
@@ -2099,7 +2320,7 @@ Parameters are separated by a blank from single-character options (e.g.\n\
 	    {
 	    case ':':
 	    case '?':
-	      exit (1);		/* error message is printed by getopt_long() */
+	      scanimage_exit (1);		/* error message is printed by getopt_long() */
 
 	    case 'd':
 	    case 'h':
@@ -2139,7 +2360,7 @@ Parameters are separated by a blank from single-character options (e.g.\n\
 	  fprintf (stderr, "%s: argument without option: `%s'; ", prog_name,
 		   argv[argc - 1]);
 	  fprintf (stderr, "try %s --help\n", prog_name);
-	  exit (1);
+	  scanimage_exit (1);
 	}
 
       free (full_optstring);
@@ -2172,7 +2393,7 @@ Parameters are separated by a blank from single-character options (e.g.\n\
 	{
 	  printf ("\nAll options specific to device `%s':\n", devname);
 	  print_options(device, num_dev_options, SANE_TRUE);
-          exit (0);
+	  scanimage_exit (0);
 	}
     }
 
@@ -2205,11 +2426,11 @@ List of available devices:", prog_name);
 	    }
 	}
       fputc ('\n', stdout);
-      exit (0);
+      scanimage_exit (0);
     }
 
   if (dont_scan)
-    exit (0);
+    scanimage_exit (0);
 
   if (output_format != OUTPUT_PNM)
     resolution_value = get_resolution ();
@@ -2229,10 +2450,24 @@ List of available devices:", prog_name);
 
       if (batch && NULL == format)
 	{
-	  if (output_format == OUTPUT_TIFF)
+	  switch(output_format) {
+	  case OUTPUT_TIFF:
 	    format = "out%d.tif";
-	  else
+	    break;
+	  case OUTPUT_PNM:
 	    format = "out%d.pnm";
+	    break;
+#ifdef HAVE_LIBPNG
+	  case OUTPUT_PNG:
+	    format = "out%d.png";
+	    break;
+#endif
+#ifdef HAVE_LIBJPEG
+	  case OUTPUT_JPEG:
+	    format = "out%d.jpg";
+	    break;
+#endif
+	  }
 	}
 
       if (!batch)
@@ -2245,7 +2480,7 @@ List of available devices:", prog_name);
 
       else if(isatty(fileno(ofp))){
 	fprintf (stderr,"%s: output is not a file, exiting\n", prog_name);
-        exit (1);
+	scanimage_exit (1);
       }
 
       buffer = malloc (buffer_size);
@@ -2388,5 +2623,7 @@ List of available devices:", prog_name);
   else
     status = test_it ();
 
+  scanimage_exit (status);
+  /* the line below avoids compiler warnings */
   return status;
 }
