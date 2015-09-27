@@ -24,7 +24,7 @@ USB_LIBS = @USB_LIBS@
 SCSI_LIBS = @SCSI_LIBS@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 
-AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -DLIBDIR="$(libdir)/sane"
+AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -DLIBDIR="\"$(libdir)/sane\""
 
 V_MAJOR = @V_MAJOR@
 V_MINOR = @V_MINOR@
@@ -83,14 +83,14 @@ BACKEND_CONFS= abaton.conf agfafocus.conf apple.conf artec.conf \
 	       canon_pp.conf cardscan.conf coolscan2.conf coolscan3.conf \
 	       coolscan.conf dc210.conf dc240.conf dc25.conf \
 	       dell1600n_net.conf dmc.conf epjitsu.conf epson2.conf \
-	       epson.conf fujitsu.conf genesys.conf gphoto2.conf \
+	       epson.conf epsonds.conf fujitsu.conf genesys.conf gphoto2.conf \
 	       gt68xx.conf hp3900.conf hp4200.conf hp5400.conf \
 	       hp.conf hpsj5s.conf hs2p.conf ibm.conf kodak.conf kodakaio.conf\
 	       leo.conf lexmark.conf ma1509.conf magicolor.conf \
 	       matsushita.conf microtek2.conf microtek.conf mustek.conf \
 	       mustek_pp.conf mustek_usb.conf nec.conf net.conf \
 	       p5.conf \
-	       pie.conf pixma.conf plustek.conf plustek_pp.conf \
+	       pie.conf pieusb.conf pixma.conf plustek.conf plustek_pp.conf \
 	       qcam.conf ricoh.conf rts8891.conf s9036.conf sceptre.conf \
 	       sharp.conf sm3840.conf snapscan.conf sp15c.conf \
 	       st400.conf stv680.conf tamarack.conf \
@@ -171,7 +171,7 @@ be_convenience_libs = libabaton.la libagfafocus.la \
     libcoolscan2.la libcoolscan3.la libdc25.la \
     libdc210.la libdc240.la libdell1600n_net.la \
     libdmc.la libdll.la libdll_preload.la libepjitsu.la libepson.la \
-    libepson2.la libfujitsu.la libgenesys.la \
+    libepson2.la libepsonds.la libfujitsu.la libgenesys.la \
     libgphoto2_i.la libgt68xx.la libhp.la \
     libhp3500.la libhp3900.la libhp4200.la \
     libhp5400.la libhp5590.la libhpljm1005.la \
@@ -182,7 +182,7 @@ be_convenience_libs = libabaton.la libagfafocus.la \
     libmustek.la libmustek_pp.la libmustek_usb.la \
     libmustek_usb2.la libnec.la libnet.la \
     libniash.la libp5.la \
-    libpie.la libpint.la libpixma.la \
+    libpie.la libpieusb.la libpint.la libpixma.la \
     libplustek.la libplustek_pp.la libpnm.la \
     libqcam.la libricoh.la librts8891.la \
     libs9036.la libsceptre.la libsharp.la \
@@ -204,7 +204,7 @@ be_dlopen_libs = libsane-abaton.la libsane-agfafocus.la \
     libsane-coolscan2.la libsane-coolscan3.la libsane-dc25.la \
     libsane-dc210.la libsane-dc240.la libsane-dell1600n_net.la \
     libsane-dmc.la libsane-epjitsu.la libsane-epson.la \
-    libsane-epson2.la libsane-fujitsu.la libsane-genesys.la \
+    libsane-epson2.la libsane-epsonds.la libsane-fujitsu.la libsane-genesys.la \
     libsane-gphoto2.la libsane-gt68xx.la libsane-hp.la \
     libsane-hp3500.la libsane-hp3900.la libsane-hp4200.la \
     libsane-hp5400.la libsane-hp5590.la libsane-hpljm1005.la \
@@ -216,7 +216,7 @@ be_dlopen_libs = libsane-abaton.la libsane-agfafocus.la \
     libsane-mustek.la libsane-mustek_pp.la libsane-mustek_usb.la \
     libsane-mustek_usb2.la libsane-nec.la libsane-net.la \
     libsane-niash.la libsane-p5.la \
-    libsane-pie.la libsane-pint.la libsane-pixma.la \
+    libsane-pie.la libsane-pieusb.la libsane-pint.la libsane-pixma.la \
     libsane-plustek.la libsane-plustek_pp.la libsane-pnm.la \
     libsane-qcam.la libsane-ricoh.la libsane-rts8891.la \
     libsane-s9036.la libsane-sceptre.la libsane-sharp.la \
@@ -462,7 +462,7 @@ libsane_epson_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
 libsane_epson_la_LIBADD = $(COMMON_LIBS) libepson.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo  ../sanei/sanei_pio.lo $(SCSI_LIBS) $(USB_LIBS) $(RESMGR_LIBS)
 EXTRA_DIST += epson.conf.in
 
-libepson2_la_SOURCES = epson2.c epson2.h epson2_scsi.c epson2_scsi.h epson_usb.c epson2_net.c epson2_net.h epson2-io.c epson2-io.h epson2-commands.c epson2-commands.h epson2-ops.c epson2-ops.h epson2-cct.c
+libepson2_la_SOURCES = epson2.c epson2.h epson2_scsi.c epson2_scsi.h epson2_usb.c epson2_net.c epson2_net.h epson2-io.c epson2-io.h epson2-commands.c epson2-commands.h epson2-ops.c epson2-ops.h epson2-cct.c
 libepson2_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=epson2
 
 nodist_libsane_epson2_la_SOURCES = epson2-s.c
@@ -470,6 +470,19 @@ libsane_epson2_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=epson2
 libsane_epson2_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
 libsane_epson2_la_LIBADD = $(COMMON_LIBS) libepson2.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo ../sanei/sanei_pio.lo ../sanei/sanei_tcp.lo ../sanei/sanei_udp.lo $(SCSI_LIBS) $(USB_LIBS) $(SOCKET_LIBS) $(MATH_LIB) $(RESMGR_LIBS)
 EXTRA_DIST += epson2.conf.in
+
+libepsonds_la_SOURCES = epsonds.c epsonds.h epsonds-usb.c epsonds-usb.h epsonds-io.c epsonds-io.h \
+		epsonds-cmd.c epsonds-cmd.h epsonds-ops.c epsonds-ops.h epsonds-jpeg.c epsonds-jpeg.h
+libepsonds_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=epsonds
+
+nodist_libsane_epsonds_la_SOURCES = epsonds-s.c
+libsane_epsonds_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=epsonds
+libsane_epsonds_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
+libsane_epsonds_la_LIBADD = $(COMMON_LIBS) libepsonds.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo \
+				../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo \
+				../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo \
+				@SANEI_SANEI_JPEG_LO@ $(JPEG_LIBS) $(USB_LIBS) $(MATH_LIB) $(RESMGR_LIBS)
+EXTRA_DIST += epsonds.conf.in
 
 libfujitsu_la_SOURCES = fujitsu.c fujitsu.h fujitsu-scsi.h
 libfujitsu_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=fujitsu
@@ -801,6 +814,15 @@ libsane_pie_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=pie
 libsane_pie_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
 libsane_pie_la_LIBADD = $(COMMON_LIBS) libpie.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_scsi.lo ../sanei/sanei_thread.lo $(SCSI_LIBS) $(PTHREAD_LIBS) $(RESMGR_LIBS)
 EXTRA_DIST += pie.conf.in
+
+libpieusb_la_SOURCES = pieusb.h pieusb_buffer.c pieusb_buffer.h pieusb_scancmd.c pieusb_scancmd.h pieusb_specific.c pieusb_specific.h pieusb_usb.c pieusb_usb.h pieusb.c
+libpieusb_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=pieusb
+
+nodist_libsane_pieusb_la_SOURCES = pieusb-s.c
+libsane_pieusb_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=pieusb
+libsane_pieusb_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
+libsane_pieusb_la_LIBADD = $(COMMON_LIBS) libpieusb.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_scsi.lo ../sanei/sanei_thread.lo ../sanei/sanei_usb.lo ../sanei/sanei_ir.lo ../sanei/sanei_magic.lo $(PTHREAD_LIBS) $(RESMGR_LIBS) $(USB_LIBS) $(MATH_LIB)
+EXTRA_DIST += pieusb.conf.in
 
 libp5_la_SOURCES = p5.c p5.h p5_device.h
 libp5_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=p5

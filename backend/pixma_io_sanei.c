@@ -1,8 +1,8 @@
 /* SANE - Scanner Access Now Easy.
  * For limitations, see function sanei_usb_get_vendor_product().
 
+   Copyright (C) 2011-2015 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2006-2007 Wittawat Yamwong <wittawat@web.de>
-   Copyright (C) 2011-2013 Rolf Bensch <rolf at bensch hyphen online dot de>
 
    This file is part of the SANE package.
 
@@ -575,7 +575,8 @@ pixma_wait_interrupt (pixma_io_t * io, void *buf, unsigned size, int timeout)
 #endif
       error = map_error (sanei_usb_read_int (io->dev, buf, &count));
     }
-  if (error == PIXMA_EIO || error == PIXMA_EOF)
+  if (error == PIXMA_EIO ||
+      (io->interface == INT_BJNP && error == PIXMA_EOF))     /* EOF is a bjnp timeout error! */
     error = PIXMA_ETIMEDOUT;	/* FIXME: SANE doesn't have ETIMEDOUT!! */
   if (error == 0)
     error = count;

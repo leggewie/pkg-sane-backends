@@ -58,6 +58,8 @@ enum scanner_Option
   OPT_COUNTONLY,
   OPT_BYPASSMODE,
   OPT_COUNTER,
+  OPT_ADF_LOADED,
+  OPT_CARD_LOADED,
 
   /* must come last: */
   NUM_OPTIONS
@@ -174,13 +176,16 @@ struct scanner
   int has_flatbed;
   int has_duplex;
   int has_back;         /* not all duplex scanners can do adf back side only */
+  int has_card;         /* P215 has a card reader instead of fb */
   int has_comp_JPEG;
   int has_buffer;
   int has_df;
+  int has_df_ultra;
   int has_btc;
   int has_ssm;           /* older scanners use this set scan mode command */         
   int has_ssm2;          /* newer scanners user this similar command */
   int has_ssm_pay_head_len; /* newer scanners put the length twice in ssm */
+  int can_read_sensors;
   int can_read_panel;
   int can_write_panel;
   int rgb_format;       /* meaning unknown */
@@ -190,11 +195,13 @@ struct scanner
   int invert_tly;       /* weird bug in some smaller scanners */
   int unknown_byte2;    /* weird byte, required, meaning unknown */
   int padded_read;      /* some machines need extra 12 bytes on reads */
+  int extra_status;     /* some machines need extra status read after cmd */
   int fixed_width;      /* some machines always scan full width */
   int even_Bpl;         /* some machines require even bytes per line */
 
   int gray_interlace[2];  /* different models interlace heads differently    */
   int color_interlace[2]; /* different models interlace colors differently   */
+  int color_inter_by_res[16]; /* and some even change by resolution */
   int duplex_interlace; /* different models interlace sides differently      */
   int jpeg_interlace;   /* different models interlace jpeg sides differently */
   int duplex_offset;    /* number of lines of padding added to front (1/1200)*/
@@ -224,7 +231,7 @@ struct scanner
 
   /*mode group*/
   SANE_String_Const mode_list[7];
-  SANE_String_Const source_list[5];
+  SANE_String_Const source_list[8];
 
   SANE_Int res_list[17];
   SANE_Range res_range;
@@ -334,9 +341,12 @@ struct scanner
   int panel_bypass_mode;
   int panel_enable_led;
   int panel_counter;
+  int sensor_adf_loaded;
+  int sensor_card_loaded;
 
   /* values which are used to track the frontend's access to sensors  */
-  char hw_read[NUM_OPTIONS-OPT_START];
+  char panel_read[OPT_COUNTER - OPT_START + 1];
+  char sensors_read[OPT_CARD_LOADED - OPT_ADF_LOADED + 1];
 };
 
 #define CONNECTION_SCSI   0 /* SCSI interface */
@@ -353,6 +363,9 @@ struct scanner
 #define SOURCE_ADF_FRONT 1
 #define SOURCE_ADF_BACK 2
 #define SOURCE_ADF_DUPLEX 3
+#define SOURCE_CARD_FRONT 4
+#define SOURCE_CARD_BACK 5
+#define SOURCE_CARD_DUPLEX 6
 
 static const int dpi_list[] = {
 60,75,100,120,150,160,180,200,
@@ -406,11 +419,14 @@ enum {
 #define GRAY_INTERLACE_2510 1
 #define GRAY_INTERLACE_gG 2
 
-#define COLOR_INTERLACE_RGB 0
-#define COLOR_INTERLACE_BGR 1
-#define COLOR_INTERLACE_RRGGBB 2
-#define COLOR_INTERLACE_rRgGbB 3
-#define COLOR_INTERLACE_2510 4
+#define COLOR_INTERLACE_UNK 0
+#define COLOR_INTERLACE_RGB 1
+#define COLOR_INTERLACE_BGR 2
+#define COLOR_INTERLACE_BRG 3
+#define COLOR_INTERLACE_GBR 4
+#define COLOR_INTERLACE_RRGGBB 5
+#define COLOR_INTERLACE_rRgGbB 6
+#define COLOR_INTERLACE_2510 7
 
 #define DUPLEX_INTERLACE_NONE 0
 #define DUPLEX_INTERLACE_FFBB 1
@@ -510,6 +526,9 @@ do_usb_cmd(struct scanner *s, int runRS, int shortTime,
  unsigned char * inBuff, size_t * inLen
 );
 
+static SANE_Status
+do_usb_status(struct scanner *s, int runRS, int shortTime, size_t * extraLength);
+
 static SANE_Status do_usb_clear(struct scanner *s, int clear, int runRS);
 
 static SANE_Status wait_scanner (struct scanner *s);
@@ -520,6 +539,8 @@ static SANE_Status ssm_buffer (struct scanner *s);
 static SANE_Status ssm_do (struct scanner *s);
 static SANE_Status ssm_df (struct scanner *s);
 
+static int get_color_inter(struct scanner *s, int side, int res);
+
 static int get_page_width (struct scanner *s);
 static int get_page_height (struct scanner *s);
 
@@ -528,6 +549,7 @@ static SANE_Status update_params (struct scanner *s, int calib);
 static SANE_Status update_i_params (struct scanner *s);
 static SANE_Status clean_params (struct scanner *s);
 
+static SANE_Status read_sensors(struct scanner *s, SANE_Int option);
 static SANE_Status read_panel(struct scanner *s, SANE_Int option);
 static SANE_Status send_panel(struct scanner *s);
 

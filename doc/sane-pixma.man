@@ -1,4 +1,4 @@
-.TH "sane\-pixma" "5" "24 Sep 2013" "@PACKAGEVERSION@" "SANE Scanner Access Now Easy"
+.TH "sane\-pixma" "5" "29 Jul 2015" "@PACKAGEVERSION@" "SANE Scanner Access Now Easy"
 .IX sane\-pixma
 .SH NAME
 sane\-pixma \- SANE backend for Canon Multi-Function Printers and CanoScan Scanners
@@ -8,16 +8,18 @@ The
 library implements a SANE (Scanner Access Now Easy) backend that provides
 access to Canon PIXMA / i-SENSYS / imageCLASS / imageRUNNER multi-function
 devices (All-in-one printers) and the Canon CanoScan Flatbed/TPU scanners.
-The backend implements both USB interface and network interface 
-using Canon's BJNP protocol. The network interface supports scanners over
-IPv4 as well as IPv6.
+The backend implements both the USB interface and network interface 
+(using Canon's BJNP and MFNP protocols). The network interface supports scanners 
+over IPv4 as well as IPv6 (MFNP over IPv6 is untested).
 .PP
 Currently, the following models work with this backend:
 .PP
 .RS
-PIXMA MG2100, MG3100, MG4200, MG5100, MG5200, MG5300
+PIXMA MG2100, MG2200, MG2400, MG2500, MG2900, MG3100, MG3200
 .br
-PIXMA MG6100, MG6200, MG6300, MG8200
+PIXMA MG3500, MG4200, MG5100, MG5200, MG5300, MG5500, MG6100
+.br
+PIXMA MG6200, MG6300, MG6400, MG7100, MG7500, MG8200
 .br
 PIXMA MP140, MP150, MP160, MP170, MP180, MP190
 .br
@@ -39,9 +41,9 @@ PIXMA MP960, MP970, MP980, MP990
 .br
 PIXMA MX300, MX310, MX330, MX340, MX350, MX360, MX370
 .br
-PIXMA MX420, MX700, MX7600
+PIXMA MX410, MX420, MX470, MX510, MX520, MX530, MX700, MX720
 .br
-PIXMA MX850, MX860, MX870, MX882, MX885, MX890
+PIXMA MX850, MX860, MX870, MX882, MX885, MX890, MX920, MX7600
 .br
 imageCLASS MF3110, MF3240, MF4010, MF4018
 .br
@@ -49,11 +51,15 @@ imageCLASS MF4120, MF4122, MF4140, MF4150
 .br
 imageCLASS MF4270, MF4350d, MF4370dn, MF4380dn
 .br
-imageCLASS MF4410, MF4430, MF4660, MF4690, MF4770n
+imageCLASS MF4410, MF4430, MF4570dw, MF4660, MF4690
 .br
-imageCLASS MF5730, MF5770, MF6550, D420, D480
+imageCLASS MF5730, MF5770, MF6550, D420, D480, D530
 .br
-i-SENSYS MF3010, MF4320d, MF4330d, MF4550d
+i-SENSYS MF3010, MF4320d, MF4330d, MF4500 Series
+.br
+i-SENSYS MF4700 Series, MF4800 Series, MF8200C Series
+.br
+i-SENSYS MF8300 Series
 .br
 imageRUNNER 1020/1024/1025
 .br
@@ -65,8 +71,6 @@ and must be switched off and on.
 .PP
 .RS
 PIXMA MP760, MP770, MP780, MP790
-.br
-PIXMA MX360
 .RE
 .PP
 The following models may use the same Pixma protocol as those listed 
@@ -75,23 +79,23 @@ in the backend so that they get recognized and activated.
 Feedback in the sane\-devel mailing list welcome.
 .PP
 .RS
-PIXMA E500, E510, E600, E610
+PIXMA E400, E460, E480, E500, E510, E560, E600, E610
 .br
-PIXMA MG2200, MG2400, MG2500, MG3200, MG4100, MG5400, MG5500
-.br
-PIXMA MG6400, MG6500, MG7100, MG8100
+PIXMA MG3600, MG4100, MG5400, MG5600, MG6500, MG6600, MG8100
 .br
 PIXMA MP375R, MP493, MP495, MP740
 .br
-PIXMA MX320, MX390, MX410, MX430, MX450, MX510, MX520
+PIXMA MX320, MX390, MX430, MX450, MX490, MX710
 .br
-PIXMA MX710, MX720, MX920
-.br
-imageCLASS MF4570dw, MF5630, MF5650, MF5750, MF8030, MF8170c
+imageCLASS MF810/820, MF5630, MF5650, MF5750, MF8030, MF8170c
 .br
 imageRUNNER 1133
 .br
-i-SENSYS MF5880dn, MF6680dn
+i-SENSYS MF210 Series, MF220 Series, MF5880dn, MF5900 Series
+.br
+i-SENSYS MF6100 Series, MF6680dn, MF8500C Series
+.br
+MAXIFY MB2000, MB2300, MB5000, MB5300
 .RE
 .PP
 \#The following models may use partly the same Pixma protocol as other devices
@@ -119,10 +123,13 @@ The backend supports:
 .PP
 The device name for USB devices is in the form pixma:xxxxyyyy_zzzzz
 where x, y and z are vendor ID, product ID and serial number respectively.
+.PP 
 Example: pixma:04A91709_123456 is a MP150.
 .PP
-Device names for BJNP devices is in the form pixma:aaaa_bbbbb
+Device names for BJNP/MFNP devices is in the form pixma:aaaa_bbbbb
 where aaaa is the scanners model and bbbb is the hostname or ip-adress.
+.PP
+Example: pixma:MF4800_192.168.1.45 is a MF4800 Series multi-function peripheral.
 .PP
 This backend, based on cloning original Canon drivers protocols, is in 
 a production stage. Designed has been carried out without any applicable
@@ -136,10 +143,10 @@ provides the following
 \#.B experimental
 options for button handling, i.e. the options might change in the future.
 .br
-The button status can be polled i.e. with 'scanimage -A'.
+The button status can be polled i.e. with 'scanimage \-A'.
 .br
 Button scan is disabled on MAC OS X due to darwin libusb not handling
-timeouts in usb interrupt reads.
+timeouts in usb interrupt reads, but may work when using the network protocol.
 .TP
 .I button\-controlled
 This option can be used by applications (like
@@ -154,7 +161,7 @@ first page in the scanner, press the button, then the next page, press
 the button and so on. When you finished, press the gray-scan button. (For
 MP150 you have to stop the frontend by pressing Ctrl-C for example.)
 .TP
-.I button\-update
+.I button\-update (deprecated)
 (write only) In the past this option was required to be set to force 
 reading of the button status for
 .I button\-1
@@ -202,25 +209,36 @@ support dynamic loading).
 .I @CONFIGDIR@/pixma.conf
 The backend configuration file (see also description of
 .B SANE_CONFIG_DIR
-below). The files contains an optional list of scanners. Normally only scanners
-that can not be auto-detected because they are on a different subnet shall be
-listed here. If your OS does not allow enumeration of interfaces (i.e. it does not
-support the getifaddrs() function) you may need to add your scanner here as well.
+below). The files contains an optional list of networked scanners. Normally 
+only scanners that can not be auto-detected because they are on a different 
+subnet shall be listed here. If your OS does not allow enumeration of 
+interfaces (i.e. it does not support the getifaddrs() function) you may need 
+to add your scanner here as well.
+.PP
 Scanners shall be listed as:
 .PP
 .RS
-.I bjnp://<host>
+.I <method>://<host>[:port] 
 .RE
 .RS
-where host is the hostname or IP address of the scanner, e.g. bjnp://10.0.1.4 
+.PP
+where method indicates the protocol used (bjnp is used for inkjet multi-functionals
+and mfnp is used for laser multi-functionals).
+.PP
+host is the hostname or IP address of the scanner, e.g. bjnp://10.0.1.4 
 for IPv4, bjnp://[2001:888:118e:18e2:21e:8fff:fe36:b64a] for a literal 
-IPv6-address or bjnp://myscanner.mydomain.org. Define each scanner on a new 
-line.
+IPv6-address or bjnp://myscanner.mydomain.org for a hostname.
+.PP
+The port number is optional and in normally implied by the method.
+Port 8610 is the standard port for mfnp, 8612 for bjnp.
+.PP
+Define each scanner on a new line.
 .SH USB SUPPORT
 USB scanners will be auto-detected and require no configuration.
 .SH NETWORKING SUPPORT
 The pixma backend supports network scanners using the so called Canon BJNP 
-protocol. Both IPv4 and IPv6 are supported.
+protocol and MFNP protocol. Both IPv4 and IPv6 are supported, but IPv6 is as
+yet untested with MFNP. Please report your results on the mailing list.
 .PP
 Configuration is normally not required.
 The pixma backend will auto-detect your scanner if it is within
@@ -229,24 +247,27 @@ the same subnet as your computer if your OS does support this.
 If your scanner can not be auto-detected, you can add it to the pixma 
 configuration file (see above).
 .SH FIREWALLING FOR NETWORKED SCANNERS
-The sane pixma backend communicates with port 8612 on the scanner. So
-you will have to allow outgoing traffic TO port 8612 on the common subnet
-for scanning.
+The sane pixma backend communicates with port 8610 for MFNP or port 8612 
+for BJNP on the scanner. So
+you will have to allow outgoing traffic TO port 8610 or 8612 on the 
+common subnet for scanning.
 .PP
 Scanner detection is slightly more complicated. The pixma backend sends
 a broadcast on all direct connected subnets it can find (provided your OS 
 allows for enumeration of all netowrk interfaces). The broadcast is sent FROM 
-port 8612 TO port 8612 on the broadcast address of each interface.
+port 8612 TO port 8610 or 8612 on the broadcast address of each interface.
 The outgoing packets will be allowed by the rule described above.
 .PP
 Responses from the scanner are sent back to the computer TO port 8612.
 Connection tracking however does not see a match as the response does not come
 from the broadcast address but from the scanners own address.
 For automatic detection of your scanner, you will therefore have to allow 
-incoming packets TO port 8612 on your computer.
+incoming packets TO port 8612 on your computer. This applies to both MFNP and
+BJNP.
 .PP
-So in short: open the firewall for all traffic from your computer to port 8612 
-AND to port 8612 to your computer.
+So in short: open the firewall for all traffic from your computer to port 
+8610 (for MFNP) or 8612 (for BJNP)
+AND to port 8612 (for both BJNP and MFNP) to your computer.
 .PP
 With the firewall rules above there is no need to add the scanner to the
 pixma.conf file, unless the scanner is on a network that is not directly
@@ -266,6 +287,8 @@ the verbosity and includes the information printed at the lower levels.
 .br
 3  print debug-level messages
 .br
+4  print verbose debug-level messages
+.br
 11 dump USB traffic
 .br
 21 full dump USB traffic
@@ -275,8 +298,8 @@ the verbosity and includes the information printed at the lower levels.
 .B SANE_DEBUG_BJNP
 If the library was compiled with debug support enabled, this environment
 variable controls the debug level for the 
-.B BJNP
-network protocol for this backend. Higher value increases
+.B BJNP and MFNP
+network protocols for this backend. Higher value increases
 the verbosity and includes the information printed at the lower levels.
 .RS
 0 print nothing (default)

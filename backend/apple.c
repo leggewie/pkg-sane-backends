@@ -136,6 +136,7 @@
 #include "apple.h"
 
 
+static const SANE_Device **devlist = 0;
 static int num_devices;
 static Apple_Device *first_dev;
 static Apple_Scanner *first_handle;
@@ -1596,7 +1597,7 @@ init_options (Apple_Scanner * s)
   s->opt[OPT_WAIT].title = "Wait";
   s->opt[OPT_WAIT].desc = "You may issue the scan command but the actual "
   "scan will not start unless you press the button in the front of the "
-  "scanner. It is usefull feature when you want to make a network scan (?) "
+  "scanner. It is a useful feature when you want to make a network scan (?) "
   "In the mean time you may halt your computer waiting for the SCSI bus "
   "to be free. If this happens just press the scanner button.";
   s->opt[OPT_WAIT].type = SANE_TYPE_BOOL;
@@ -1921,12 +1922,13 @@ sane_exit (void)
       free ((void *) dev->sane.model);
       free (dev);
     }
+  if (devlist)
+    free (devlist);
 }
 
 SANE_Status
 sane_get_devices (const SANE_Device *** device_list, SANE_Bool local_only)
 {
-  static const SANE_Device **devlist = 0;
   Apple_Device *dev;
   int i;
 

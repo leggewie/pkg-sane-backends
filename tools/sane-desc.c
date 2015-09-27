@@ -2878,7 +2878,7 @@ static void
 html_print_legend_model (void)
 {
   printf
-    ("  <dt><b>Model:</b></dt>\n" "  <dd>Name of the the device.</dd>\n");
+    ("  <dt><b>Model:</b></dt>\n" "  <dd>Name of the device.</dd>\n");
 }
 
 static void
@@ -3568,7 +3568,8 @@ print_udev (void)
 
   printf ("\nLABEL=\"libsane_usb_rules_end\"\n\n");
 
-  printf ("SUBSYSTEMS!=\"scsi\", GOTO=\"libsane_scsi_rules_end\"\n\n");
+  printf ("SUBSYSTEMS==\"scsi\", GOTO=\"libsane_scsi_rules_begin\"\n");
+  printf ("GOTO=\"libsane_scsi_rules_end\"\n\n");
   printf ("LABEL=\"libsane_scsi_rules_begin\"\n");
   printf ("# Generic: SCSI device type 6 indicates a scanner\n");
 
@@ -3695,7 +3696,9 @@ print_udevhwdb (void)
   printf("# The following rule will disable USB autosuspend for the device\n");
   printf("ENV{DEVTYPE}==\"usb_device\", ENV{libsane_matched}==\"yes\", TEST==\"power/control\", ATTR{power/control}=\"on\"\n\n");
 
-  printf ("SUBSYSTEMS!=\"scsi\", GOTO=\"libsane_rules_end\"\n");
+  printf ("SUBSYSTEMS==\"scsi\", GOTO=\"libsane_scsi_rules_begin\"\n");
+  printf ("GOTO=\"libsane_rules_end\"\n\n");
+  printf ("LABEL=\"libsane_scsi_rules_begin\"\n");
   printf ("KERNEL!=\"sg[0-9]*\", GOTO=\"libsane_rules_end\"\n\n");
 
   printf ("# Generic: SCSI device type 6 indicates a scanner\n");
@@ -3827,7 +3830,7 @@ print_hwdb (void)
 
       for(j = 0; j < 4; j++) {
         vendor_id[j] = toupper(vendor_id[j]);
-        product_id[j] = toupper(vendor_id[j]);
+        product_id[j] = toupper(product_id[j]);
       }
 
       printf ("usb:v%sp%s*\n libsane_matched=yes\n\n",

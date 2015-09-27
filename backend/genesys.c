@@ -2,7 +2,7 @@
 
    Copyright (C) 2003, 2004 Henning Meier-Geinitz <henning@meier-geinitz.de>
    Copyright (C) 2004, 2005 Gerhard Jaeger <gerhard@gjaeger.de>
-   Copyright (C) 2004-2013 Stéphane Voltz <stef.dev@free.fr>
+   Copyright (C) 2004-2015 Stéphane Voltz <stef.dev@free.fr>
    Copyright (C) 2005-2009 Pierre Willenbrock <pierre@pirsoft.dnsalias.org>
    Copyright (C) 2006 Laurent Charpentier <laurent_pubs@yahoo.com>
    Copyright (C) 2007 Luke <iceyfor@gmail.com>
@@ -16,49 +16,49 @@
    noah work in the fujitsu backend
 
    This file is part of the SANE package.
-   
+
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
    published by the Free Software Foundation; either version 2 of the
    License, or (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful, but
    WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place - Suite 330, Boston,
    MA 02111-1307, USA.
-   
+
    As a special exception, the authors of SANE give permission for
    additional uses of the libraries contained in this release of SANE.
-   
+
    The exception is that, if you link a SANE library with other files
    to produce an executable, this does not by itself cause the
    resulting executable to be covered by the GNU General Public
    License.  Your use of that executable is in no way restricted on
    account of linking the SANE library code into it.
-   
+
    This exception does not, however, invalidate any other reasons why
    the executable file might be covered by the GNU General Public
    License.
-   
+
    If you submit changes to SANE to the maintainers to be included in
    a subsequent release, you agree by submitting the changes that
    those changes may be distributed with this exception intact.
 
    If you write modifications of your own for SANE, it is your choice
    whether to permit this exception to apply to your modifications.
-   If you do not wish that, delete this exception notice. 
+   If you do not wish that, delete this exception notice.
 */
 
 /*
  * SANE backend for Genesys Logic GL646/GL841/GL842/GL843/GL846/GL847/GL124 based scanners
  */
 
-#define BUILD 2411
+#define BUILD 2508
 #define BACKEND_NAME genesys
 
 #include "genesys.h"
@@ -157,6 +157,15 @@ static const SANE_Range enhance_range = {
   1		/* quantization */
 };
 
+/**
+ * range for expiration time
+ */
+static const SANE_Range expiration_range = {
+  -1,	        /* minimum */
+  30000,	/* maximum */
+  1		/* quantization */
+};
+
 void
 sanei_genesys_init_structs (Genesys_Device * dev)
 {
@@ -231,11 +240,11 @@ sanei_genesys_init_fe (Genesys_Device * dev)
 
 /* main function for slope creation */
 /**
- * This function generates a slope table using the given slope 
- * truncated at the given exposure time or step count, whichever comes first. 
+ * This function generates a slope table using the given slope
+ * truncated at the given exposure time or step count, whichever comes first.
  * The reached step time is then stored in final_exposure and used for the rest
  * of the table. The summed time of the acceleration steps is returned, and the
- * number of accerelation steps is put into used_steps. 
+ * number of accerelation steps is put into used_steps.
  *
  * @param slope_table    Table to write to
  * @param max_steps      Size of slope_table in steps
@@ -248,7 +257,7 @@ sanei_genesys_init_fe (Genesys_Device * dev)
  * @param used_steps     Final number of steps is stored here
  * @param vfinal         Final step time is stored here
  * @return               Time for acceleration
- * @note  All times in pixel time. Correction for other motor timings is not 
+ * @note  All times in pixel time. Correction for other motor timings is not
  *        done.
  */
 SANE_Int
@@ -339,10 +348,10 @@ sanei_genesys_generate_slope_table (uint16_t * slope_table,
 /* Generate slope table for motor movement */
 /**
  * This function generates a slope table using the slope from the motor struct
- * truncated at the given exposure time or step count, whichever comes first. 
+ * truncated at the given exposure time or step count, whichever comes first.
  * The reached step time is then stored in final_exposure and used for the rest
  * of the table. The summed time of the acceleration steps is returned, and the
- * number of accerelation steps is put into used_steps. 
+ * number of accerelation steps is put into used_steps.
  *
  * @param dev            Device struct
  * @param slope_table    Table to write to
@@ -412,7 +421,7 @@ sanei_genesys_create_slope_table3 (Genesys_Device * dev,
 
   if (final_exposure)
     *final_exposure = (vfinal * dev->motor.base_ydpi) / yres;
-  
+
   DBG (DBG_proc,
        "sanei_genesys_create_slope_table: returns sum_time=%d, completed\n",
        sum_time);
@@ -735,7 +744,7 @@ sanei_genesys_create_gamma_table (uint16_t * gamma_table, int size,
 
   if(gamma_table==NULL)
     {
-      DBG (DBG_proc, "sanei_genesys_create_gamma_table: gamma tbale is NULL\n");
+      DBG (DBG_proc, "sanei_genesys_create_gamma_table: gamma table is NULL\n");
       return;
     }
   DBG (DBG_proc,
@@ -753,27 +762,26 @@ sanei_genesys_create_gamma_table (uint16_t * gamma_table, int size,
 }
 
 
-/* computes the exposure_time on the basis of the given vertical dpi, 
+/* computes the exposure_time on the basis of the given vertical dpi,
    the number of pixels the ccd needs to send,
    the step_type and the corresponding maximum speed from the motor struct */
 /*
-  Currently considers maximum motor speed at given step_type, minimum 
+  Currently considers maximum motor speed at given step_type, minimum
   line exposure needed for conversion and led exposure time.
 
   TODO: Should also consider maximum transfer rate: ~6.5MB/s.
-    Note: The enhance option of the scanners does _not_ help. It only halves 
+    Note: The enhance option of the scanners does _not_ help. It only halves
           the amount of pixels transfered.
  */
 SANE_Int
 sanei_genesys_exposure_time2 (Genesys_Device * dev, float ydpi,
 			      int step_type, int endpixel,
-			      int led_exposure, int power_mode)
+			      int exposure_by_led, int power_mode)
 {
   int exposure_by_ccd = endpixel + 32;
   int exposure_by_motor =
     (dev->motor.slopes[power_mode][step_type].maximum_speed
      * dev->motor.base_ydpi) / ydpi;
-  int exposure_by_led = led_exposure;
 
   int exposure = exposure_by_ccd;
 
@@ -783,6 +791,8 @@ sanei_genesys_exposure_time2 (Genesys_Device * dev, float ydpi,
   if (exposure < exposure_by_led && dev->model->is_cis)
     exposure = exposure_by_led;
 
+  DBG (DBG_info, "%s: ydpi=%d, step=%d, endpixel=%d led=%d, power=%d => exposure=%d\n",
+       __FUNCTION__, (int)ydpi, step_type, endpixel, exposure_by_led, power_mode, exposure);
   return exposure;
 }
 
@@ -898,11 +908,11 @@ sanei_genesys_exposure_time (Genesys_Device * dev, Genesys_Register_Set * reg,
 
 
 
-/* Sends a block of shading information to the scanner. 
-   The data is placed at address 0x0000 for color mode, gray mode and 
+/* Sends a block of shading information to the scanner.
+   The data is placed at address 0x0000 for color mode, gray mode and
    unconditionally for the following CCD chips: HP2300, HP2400 and HP5345
-   In the other cases (lineart, halftone on ccd chips not mentioned) the 
-   addresses are 0x2a00 for dpihw==0, 0x5500 for dpihw==1 and 0xa800 for 
+   In the other cases (lineart, halftone on ccd chips not mentioned) the
+   addresses are 0x2a00 for dpihw==0, 0x5500 for dpihw==1 and 0xa800 for
    dpihw==2. //Note: why this?
 
    The data needs to be of size "size", and in little endian byte order.
@@ -918,10 +928,11 @@ genesys_send_offset_and_shading (Genesys_Device * dev, uint8_t * data,
   int start_address;
   SANE_Status status;
 
-  DBG (DBG_proc, "genesys_send_offset_and_shading (size = %d)\n", size);
+  DBG (DBG_proc, "%s: (size = %d)\n", __FUNCTION__, size);
 
   /* ASIC higher than gl843 doesn't have register 2A/2B, so we route to
-   * a per ASIC shading data loading function if available */
+   * a per ASIC shading data loading function if available.
+   * It is also used for scanners using SHDAREA */
   if(dev->model->cmd_set->send_shading_data!=NULL)
     {
         status=dev->model->cmd_set->send_shading_data(dev, data, size);
@@ -932,7 +943,7 @@ genesys_send_offset_and_shading (Genesys_Device * dev, uint8_t * data,
   /* gl646, gl84[123] case */
   dpihw = sanei_genesys_read_reg_from_set (dev->reg, 0x05) >> 6;
 
-  /* TODO invert the test so only the 2 models behaving like that are 
+  /* TODO invert the test so only the 2 models behaving like that are
    * tested instead of adding all the others */
   /* many scanners send coefficient for lineart/gray like in color mode */
   if (dev->settings.scan_mode < 2
@@ -945,6 +956,7 @@ genesys_send_offset_and_shading (Genesys_Device * dev, uint8_t * data,
       && dev->model->ccd_type != CCD_XP300
       && dev->model->ccd_type != CCD_DP665
       && dev->model->ccd_type != CCD_DP685
+      && dev->model->ccd_type != CIS_CANONLIDE80
       && dev->model->ccd_type != CCD_ROADWARRIOR
       && dev->model->ccd_type != CCD_HP2300
       && dev->model->ccd_type != CCD_HP2400
@@ -966,17 +978,15 @@ genesys_send_offset_and_shading (Genesys_Device * dev, uint8_t * data,
   status = sanei_genesys_set_buffer_address (dev, start_address);
   if (status != SANE_STATUS_GOOD)
     {
-      DBG (DBG_error,
-	   "genesys_send_offset_and_shading: failed to set buffer address: %s\n",
-	   sane_strstatus (status));
+      DBG (DBG_error, "%s: failed to set buffer address: %s\n", __FUNCTION__,
+           sane_strstatus (status));
       return status;
     }
-  
+
   status = dev->model->cmd_set->bulk_write_data (dev, 0x3c, data, size);
   if (status != SANE_STATUS_GOOD)
     {
-      DBG (DBG_error,
-	   "genesys_send_offset_and_shading: failed to send shading table: %s\n",
+      DBG (DBG_error, "%s: failed to send shading table: %s\n", __FUNCTION__,
 	   sane_strstatus (status));
       return status;
     }
@@ -1030,22 +1040,22 @@ sanei_genesys_init_shading_data (Genesys_Device * dev, int pixels_per_line)
       *shading_data_ptr++ = 0x40;	/* white hi -> 0x4000 */
     }
 
-  status =
-    genesys_send_offset_and_shading (dev, shading_data,
-				     pixels_per_line * 4 * channels);
-  if (status != SANE_STATUS_GOOD)
-    DBG (DBG_error,
-	 "sanei_genesys_init_shading_data: failed to send shading data: %s\n",
-	 sane_strstatus (status));
-
+  status = genesys_send_offset_and_shading (dev,
+                                            shading_data,
+                                            pixels_per_line * 4 * channels);
   free (shading_data);
+  if (status != SANE_STATUS_GOOD)
+    {
+      DBG (DBG_error, "%s: failed to send shading data: %s\n", __FUNCTION__,
+	  sane_strstatus (status));
+    }
 
   DBGCOMPLETED;
   return status;
 }
 
 
-/* Find the position of the reference point: 
+/* Find the position of the reference point:
    takes gray level 8 bits data and find
    first CCD usable pixel and top of scanning area */
 SANE_Status
@@ -1090,7 +1100,7 @@ sanei_genesys_search_reference_point (Genesys_Device * dev, uint8_t * data,
   if (DBG_LEVEL >= DBG_data)
     sanei_genesys_write_pnm_file ("laplace.pnm", image, 8, 1, width, height);
 
-  /* apply X direction sobel filter 
+  /* apply X direction sobel filter
      -1  0  1
      -2  0  2
      -1  0  1
@@ -1144,7 +1154,7 @@ sanei_genesys_search_reference_point (Genesys_Device * dev, uint8_t * data,
     start_pixel + (left * dev->sensor.optical_res) / dpi;
 
   /* find top edge by detecting black strip */
-  /* apply Y direction sobel filter 
+  /* apply Y direction sobel filter
      -1 -2 -1
      0  0  0
      1  2  1
@@ -1913,7 +1923,7 @@ genesys_dark_shading_calibration (Genesys_Device * dev)
 /*
  * this function builds dummy dark calibration data so that we can
  * compute shading coefficient in a clean way
- *  todo: current values are hardcoded, we have to find if they 
+ *  todo: current values are hardcoded, we have to find if they
  * can be computed from previous calibration data (when doing offset
  * calibration ?)
  */
@@ -2114,7 +2124,7 @@ genesys_white_shading_calibration (Genesys_Device * dev)
     sanei_genesys_write_pnm_file ("white_shading.pnm", calibration_data, 16,
 				  channels, pixels_per_line,
 				  dev->calib_lines);
-  
+
   genesys_average_data (dev->white_average_data, calibration_data,
 			dev->calib_lines,
 			pixels_per_line * channels);
@@ -2138,7 +2148,7 @@ genesys_white_shading_calibration (Genesys_Device * dev)
 	  return status;
 	}
     }
-  
+
   if (dev->model->flags & GENESYS_FLAG_SHADING_REPARK)
     {
 	  status = dev->model->cmd_set->slow_back_home (dev, SANE_TRUE);
@@ -2149,10 +2159,13 @@ genesys_white_shading_calibration (Genesys_Device * dev)
   return status;
 }
 
-/* This calibration uses a scan over the calibration target, comprising a 
+/* This calibration uses a scan over the calibration target, comprising a
  * black and a white strip. (So the motor must be on.)
  */
-static SANE_Status
+#ifndef UNIT_TESTING
+static
+#endif
+SANE_Status
 genesys_dark_white_shading_calibration (Genesys_Device * dev)
 {
   SANE_Status status;
@@ -2167,8 +2180,7 @@ genesys_dark_white_shading_calibration (Genesys_Device * dev)
   SANE_Bool motor;
 
 
-  DBG (DBG_proc, "genesys_black_white_shading_calibration (lines = %d)\n",
-       (unsigned int)dev->calib_lines);
+  DBG (DBG_proc, "%s: (lines = %d)\n", __FUNCTION__, (unsigned int)dev->calib_lines);
 
   pixels_per_line = dev->calib_pixels;
   channels = dev->calib_channels;
@@ -2181,8 +2193,7 @@ genesys_dark_white_shading_calibration (Genesys_Device * dev)
   dev->white_average_data = malloc (dev->average_size);
   if (!dev->white_average_data)
     {
-      DBG (DBG_error,
-	   "genesys_dark_white_shading_calibration: failed to allocate average memory\n");
+      DBG (DBG_error, "%s: failed to allocate white average memory\n", __FUNCTION__);
       return SANE_STATUS_NO_MEM;
     }
 
@@ -2192,8 +2203,7 @@ genesys_dark_white_shading_calibration (Genesys_Device * dev)
   dev->dark_average_data = malloc (channels * 2 * pixels_per_line);
   if (!dev->dark_average_data)
     {
-      DBG (DBG_error,
-	   "genesys_dark_white_shading_shading_calibration: failed to allocate average memory\n");
+      DBG (DBG_error, "%s: failed to allocate dark average memory\n", __FUNCTION__);
       return SANE_STATUS_NO_MEM;
     }
 
@@ -2202,8 +2212,7 @@ genesys_dark_white_shading_calibration (Genesys_Device * dev)
   calibration_data = malloc (size);
   if (!calibration_data)
     {
-      DBG (DBG_error,
-	   "genesys_dark_white_shading_calibration: failed to allocate calibration memory\n");
+      DBG (DBG_error, "%s: failed to allocate calibration memory\n", __FUNCTION__);
       return SANE_STATUS_NO_MEM;
     }
 
@@ -2224,9 +2233,8 @@ genesys_dark_white_shading_calibration (Genesys_Device * dev)
   if (status != SANE_STATUS_GOOD)
     {
       free (calibration_data);
-      DBG (DBG_error,
-	   "genesys_dark_white_shading_calibration: failed to bulk write registers: %s\n",
-	   sane_strstatus (status));
+      DBG (DBG_error, "%s: failed to bulk write registers: %s\n", __FUNCTION__,
+           sane_strstatus (status));
       return status;
     }
 
@@ -2235,8 +2243,7 @@ genesys_dark_white_shading_calibration (Genesys_Device * dev)
   if (status != SANE_STATUS_GOOD)
     {
       free (calibration_data);
-      DBG (DBG_error,
-	   "genesys_dark_white_shading_calibration: Failed to begin scan: %s\n",
+      DBG (DBG_error, "%s: failed to begin scan: %s\n", __FUNCTION__,
 	   sane_strstatus (status));
       return status;
     }
@@ -2245,8 +2252,7 @@ genesys_dark_white_shading_calibration (Genesys_Device * dev)
   if (status != SANE_STATUS_GOOD)
     {
       free (calibration_data);
-      DBG (DBG_error,
-	   "genesys_dark_white_shading_calibration: Failed to read data: %s\n",
+      DBG (DBG_error, "%s: failed to read data: %s\n", __FUNCTION__,
 	   sane_strstatus (status));
       return status;
     }
@@ -2255,16 +2261,26 @@ genesys_dark_white_shading_calibration (Genesys_Device * dev)
   if (status != SANE_STATUS_GOOD)
     {
       free (calibration_data);
-      DBG (DBG_error,
-	   "genesys_dark_white_shading_calibration: Failed to end scan: %s\n",
+      DBG (DBG_error, "%s: Failed to end scan: %s\n", __FUNCTION__,
 	   sane_strstatus (status));
       return status;
     }
 
   if (DBG_LEVEL >= DBG_data)
-    sanei_genesys_write_pnm_file ("black_white_shading.pnm", calibration_data,
-				  16, channels, pixels_per_line,
-				  dev->calib_lines);
+    {
+      if (dev->model->is_cis)
+        {
+          sanei_genesys_write_pnm_file ("black_white_shading.pnm", calibration_data,
+                                        16, 1, pixels_per_line*channels,
+                                        dev->calib_lines);
+        }
+      else
+        {
+          sanei_genesys_write_pnm_file ("black_white_shading.pnm", calibration_data,
+                                        16, channels, pixels_per_line,
+                                        dev->calib_lines);
+        }
+    }
 
 
   average_white = dev->white_average_data;
@@ -2375,15 +2391,15 @@ compute_coefficient (unsigned int coeff, unsigned int target, unsigned int value
  * The dark/white shading is actually performed _after_ reducing
  * resolution via averaging. only dark/white shading data for what would be
  * first pixel at full resolution is used.
- * 
+ *
  * scanner raw input to output value calculation:
  *   o=(i-off)*(gain/coeff)
- * 
+ *
  * from datasheet:
  *   off=dark_average
  *   gain=coeff*bright_target/(bright_average-dark_average)
  * works for dark_target==0
- * 
+ *
  * what we want is these:
  *   bright_target=(bright_average-off)*(gain/coeff)
  *   dark_target=(dark_average-off)*(gain/coeff)
@@ -2406,30 +2422,31 @@ static
 #endif
 void
 compute_averaged_planar (Genesys_Device * dev,
-			     uint8_t * shading_data,
-			     unsigned int pixels_per_line,
-			     unsigned int words_per_color,
-			     unsigned int channels,
-			     unsigned int o,
-			     unsigned int coeff,
-			     unsigned int target_bright,
-			     unsigned int target_dark)
+			 uint8_t * shading_data,
+			 unsigned int pixels_per_line,
+			 unsigned int words_per_color,
+			 unsigned int channels,
+			 unsigned int o,
+			 unsigned int coeff,
+			 unsigned int target_bright,
+			 unsigned int target_dark)
 {
   unsigned int x, i, j, br, dk, res, avgpixels, basepixels, val;
+  unsigned int fill,factor;
 
-  DBG (DBG_info, "%s: pixels=%d, offset=%d\n", __FUNCTION__, pixels_per_line,
-       o);
+  DBG (DBG_info, "%s: pixels=%d, offset=%d\n", __FUNCTION__, pixels_per_line, o);
+
   /* initialize result */
   memset (shading_data, 0xff, words_per_color * 3 * 2);
 
-  /* 
+  /*
      strangely i can write 0x20000 bytes beginning at 0x00000 without overwriting
      slope tables - which begin at address 0x10000(for 1200dpi hw mode):
      memory is organized in words(2 bytes) instead of single bytes. explains
      quite some things
    */
 /*
-  another one: the dark/white shading is actually performed _after_ reducing 
+  another one: the dark/white shading is actually performed _after_ reducing
   resolution via averaging. only dark/white shading data for what would be
   first pixel at full resolution is used.
  */
@@ -2449,15 +2466,17 @@ compute_averaged_planar (Genesys_Device * dev,
     off = (dark_average*bright_target - bright_average*dark_target)/(bright_target - dark_target)
     gain = (bright_target - dark_target)/(bright_average - dark_average)*coeff
  */
-  /* duplicate half-ccd logic */
   res = dev->settings.xres;
+
+  /* duplicate half-ccd logic */
   if ((dev->model->flags & GENESYS_FLAG_HALF_CCD_MODE) &&
       dev->settings.xres <= dev->sensor.optical_res / 2)
-    res *= 2;			/* scanner is using half-ccd mode */
-  /*this should be evenly dividable */
+    res *= 2;
+
+  /* this should be evenly dividable */
   basepixels = dev->sensor.optical_res / res;
 
-/* gl841 supports 1/1 1/2 1/3 1/4 1/5 1/6 1/8 1/10 1/12 1/15 averaging */
+  /* gl841 supports 1/1 1/2 1/3 1/4 1/5 1/6 1/8 1/10 1/12 1/15 averaging */
   if (basepixels < 1)
     avgpixels = 1;
   else if (basepixels < 6)
@@ -2473,11 +2492,24 @@ compute_averaged_planar (Genesys_Device * dev,
   else
     avgpixels = 15;
 
+  /* LiDE80 packs shading data */
+  if(dev->model->ccd_type != CIS_CANONLIDE80)
+    {
+      factor=1;
+      fill=avgpixels;
+    }
+  else
+    {
+      factor=avgpixels;
+      fill=1;
+    }
+
   DBG (DBG_info, "%s: averaging over %d pixels\n", __FUNCTION__, avgpixels);
+  DBG (DBG_info, "%s: packing factor is %d\n", __FUNCTION__, factor);
+  DBG (DBG_info, "%s: fill length is %d\n", __FUNCTION__, fill);
 
   for (x = 0; x <= pixels_per_line - avgpixels; x += avgpixels)
     {
-
       if ((x + o) * 2 * 2 + 3 > words_per_color * 2)
 	break;
 
@@ -2514,59 +2546,47 @@ compute_averaged_planar (Genesys_Device * dev,
 		   65535 * (target_bright - target_dark))
 	    val = 65535;
 	  else
-	    val =
-	      (dk * target_bright - br * target_dark) / (target_bright -
-							 target_dark);
+            {
+	      val = (dk * target_bright - br * target_dark) / (target_bright - target_dark);
+            }
 
-/*fill all pixels, even if only the last one is relevant*/
-	  for (i = 0; i < avgpixels; i++)
+          /*fill all pixels, even if only the last one is relevant*/
+	  for (i = 0; i < fill; i++)
 	    {
-	      shading_data[(x + o + i) * 2 * 2 +
-			   words_per_color * 2 * j] = val & 0xff;
-	      shading_data[(x + o + i) * 2 * 2 +
-			   words_per_color * 2 * j + 1] = val >> 8;
+	      shading_data[(x/factor + o + i) * 2 * 2 + words_per_color * 2 * j] = val & 0xff;
+	      shading_data[(x/factor + o + i) * 2 * 2 + words_per_color * 2 * j + 1] = val >> 8;
 	    }
 
 	  val = br - dk;
 
 	  if (65535 * val > (target_bright - target_dark) * coeff)
-	    val = (coeff * (target_bright - target_dark)) / val;
+            {
+	      val = (coeff * (target_bright - target_dark)) / val;
+            }
 	  else
-	    val = 65535;
+            {
+	      val = 65535;
+            }
 
-/*fill all pixels, even if only the last one is relevant*/
-	  for (i = 0; i < avgpixels; i++)
+          /*fill all pixels, even if only the last one is relevant*/
+	  for (i = 0; i < fill; i++)
 	    {
-	      shading_data[(x + o + i) * 2 * 2 +
-			   words_per_color * 2 * j + 2] = val & 0xff;
-	      shading_data[(x + o + i) * 2 * 2 +
-			   words_per_color * 2 * j + 3] = val >> 8;
+	      shading_data[(x/factor + o + i) * 2 * 2 + words_per_color * 2 * j + 2] = val & 0xff;
+	      shading_data[(x/factor + o + i) * 2 * 2 + words_per_color * 2 * j + 3] = val >> 8;
 	    }
 	}
 
-/*fill remaining channels*/
+      /* fill remaining channels */
       for (j = channels; j < 3; j++)
 	{
-	  for (i = 0; i < avgpixels; i++)
+	  for (i = 0; i < fill; i++)
 	    {
-	      shading_data[(x + o + i) * 2 * 2 +
-			   words_per_color * 2 * j] =
-		shading_data[(x + o + i) * 2 * 2 + words_per_color * 0];
-	      shading_data[(x + o + i) * 2 * 2 +
-			   words_per_color * 2 * j + 1] =
-		shading_data[(x + o + i) * 2 * 2 +
-			     words_per_color * 2 * 0 + 1];
-	      shading_data[(x + o + i) * 2 * 2 +
-			   words_per_color * 2 * j + 2] =
-		shading_data[(x + o + i) * 2 * 2 +
-			     words_per_color * 2 * 0 + 2];
-	      shading_data[(x + o + i) * 2 * 2 +
-			   words_per_color * 2 * j + 3] =
-		shading_data[(x + o + i) * 2 * 2 +
-			     words_per_color * 2 * 0 + 3];
+	      shading_data[(x/factor + o + i) * 2 * 2 + words_per_color * 2 * j    ] = shading_data[(x/factor + o + i) * 2 * 2    ];
+	      shading_data[(x/factor + o + i) * 2 * 2 + words_per_color * 2 * j + 1] = shading_data[(x/factor + o + i) * 2 * 2 + 1];
+	      shading_data[(x/factor + o + i) * 2 * 2 + words_per_color * 2 * j + 2] = shading_data[(x/factor + o + i) * 2 * 2 + 2];
+	      shading_data[(x/factor + o + i) * 2 * 2 + words_per_color * 2 * j + 3] = shading_data[(x/factor + o + i) * 2 * 2 + 3];
 	    }
 	}
-
     }
 }
 
@@ -2603,7 +2623,7 @@ compute_coefficients (Genesys_Device * dev,
 
   DBG (DBG_io,
        "compute_coefficients: pixels_per_line=%d,  coeff=0x%04x\n", pixels_per_line, coeff);
-  
+
   /* compute start & end values depending of the offset */
   if (offset < 0)
    {
@@ -2672,7 +2692,7 @@ compute_planar_coefficients (Genesys_Device * dev,
 			     unsigned int channels,
 			     unsigned int cmat[3],
 			     unsigned int offset,
-			     unsigned int coeff, 
+			     unsigned int coeff,
 			     unsigned int target)
 {
   uint8_t *ptr;			/* contains 16bit words in little endian */
@@ -2781,9 +2801,9 @@ compute_shifted_coefficients (Genesys_Device * dev,
 
     for (i = 0; i < avgpixels; i++) {
       for (j = 0; j < channels; j++) {
-        br_tmp[j]  += (dev->white_average_data[((x + i) * channels + j) * 2] | 
+        br_tmp[j]  += (dev->white_average_data[((x + i) * channels + j) * 2] |
                       (dev->white_average_data[((x + i) * channels + j) * 2 + 1] << 8));
-        dk_tmp[i] += (dev->dark_average_data[((x + i) * channels + j) * 2] | 
+        dk_tmp[i] += (dev->dark_average_data[((x + i) * channels + j) * 2] |
                      (dev->dark_average_data[((x + i) * channels + j) * 2 + 1] << 8));
       }
     }
@@ -2826,7 +2846,7 @@ compute_shifted_coefficients (Genesys_Device * dev,
   }
 }
 
-static SANE_Status
+GENESYS_STATIC SANE_Status
 genesys_send_shading_coefficient (Genesys_Device * dev)
 {
   SANE_Status status;
@@ -2869,19 +2889,27 @@ genesys_send_shading_coefficient (Genesys_Device * dev)
       break;
     }
 
+  /* special case, memory is aligned on 0x5400, this has yet to be explained */
+  /* could be 0xa800 because sensor is truly 2400 dpi, then halved because
+   * we only set 1200 dpi */
+  if(dev->model->ccd_type==CIS_CANONLIDE80)
+    {
+      words_per_color = 0x5400;
+    }
+
   length = words_per_color * 3 * 2;
+
   /* allocate computed size */
   shading_data = malloc (length);
   if (!shading_data)
     {
-      DBG (DBG_error,
-	   "genesys_send_shading_coefficient: failed to allocate memory\n");
+      DBG (DBG_error, "%s: failed to allocate memory\n", __FUNCTION__);
       return SANE_STATUS_NO_MEM;
     }
   memset (shading_data, 0, length);
 
   /* TARGET/(Wn-Dn) = white gain -> ~1.xxx then it is multiplied by 0x2000
-     or 0x4000 to give an integer 
+     or 0x4000 to give an integer
      Wn = white average for column n
      Dn = dark average for column n
    */
@@ -2974,10 +3002,10 @@ genesys_send_shading_coefficient (Genesys_Device * dev)
       compute_coefficients (dev,
 			    shading_data,
 			    pixels_per_line,
-			    3, 
-                            cmat, 
-                            o, 
-                            coeff, 
+			    3,
+                            cmat,
+                            o,
+                            coeff,
                             target_code);
       break;
     case CCD_HP3670:
@@ -2999,10 +3027,10 @@ genesys_send_shading_coefficient (Genesys_Device * dev)
       compute_coefficients (dev,
 			    shading_data,
 			    pixels_per_line,
-			    3, 
-                            cmat, 
-                            o, 
-                            coeff, 
+			    3,
+                            cmat,
+                            o,
+                            coeff,
                             target_code);
       break;
     case CCD_KVSS080:
@@ -3015,21 +3043,25 @@ genesys_send_shading_coefficient (Genesys_Device * dev)
       compute_coefficients (dev,
 			    shading_data,
 			    pixels_per_line,
-			    3, 
-                            cmat, 
-                            o, 
-                            coeff, 
+			    3,
+                            cmat,
+                            o,
+                            coeff,
                             target_code);
       break;
     case CIS_CANONLIDE700:
     case CIS_CANONLIDE100:
     case CIS_CANONLIDE200:
     case CIS_CANONLIDE110:
+    case CIS_CANONLIDE120:
     case CIS_CANONLIDE210:
+    case CIS_CANONLIDE220:
         /* TODO store this in a data struct so we avoid
          * growing this switch */
         if(dev->model->ccd_type!=CIS_CANONLIDE110
-        && dev->model->ccd_type!=CIS_CANONLIDE210)
+        && dev->model->ccd_type!=CIS_CANONLIDE210
+        && dev->model->ccd_type!=CIS_CANONLIDE120
+        && dev->model->ccd_type!=CIS_CANONLIDE220)
           target_code=0xdc00;
         else
           target_code=0xf000;
@@ -3039,8 +3071,7 @@ genesys_send_shading_coefficient (Genesys_Device * dev)
         shading_data = malloc (length);
         if (!shading_data)
           {
-            DBG (DBG_error,
-                 "genesys_send_shading_coefficient: failed to allocate memory\n");
+            DBG (DBG_error, "%s: failed to allocate memory\n", __FUNCTION__);
             return SANE_STATUS_NO_MEM;
           }
         memset (shading_data, 0, length);
@@ -3063,8 +3094,19 @@ genesys_send_shading_coefficient (Genesys_Device * dev)
                                channels,
                                4,
                                coeff,
-                               0xfa00,
+                               0xe000,
                                0x0a00);
+      break;
+    case CIS_CANONLIDE80:
+      compute_averaged_planar (dev,
+			       shading_data,
+                               pixels_per_line,
+                               words_per_color,
+                               channels,
+                               0,
+                               coeff,
+                               0xd000,
+                               0x0800);
       break;
     case CCD_PLUSTEK_3600:
       compute_shifted_coefficients (dev,
@@ -3079,23 +3121,21 @@ genesys_send_shading_coefficient (Genesys_Device * dev)
 			            256);        /* patch_size: contigous extent */
       break;
     default:
-      DBG (DBG_error,
-	   "genesys_send_shading_coefficient: sensor %d not supported\n",
-	   dev->model->ccd_type);
+      DBG (DBG_error, "%s: sensor %d not supported\n", __FUNCTION__, dev->model->ccd_type);
       return SANE_STATUS_UNSUPPORTED;
       break;
     }
 
   /* do the actual write of shading calibration data to the scanner */
   status = genesys_send_offset_and_shading (dev, shading_data, length);
-  if (status != SANE_STATUS_GOOD)
-    DBG (DBG_error,
-	 "genesys_send_shading_coefficient: failed to send shading data: %s\n",
-	 sane_strstatus (status));
-
   free (shading_data);
-  DBGCOMPLETED;
+  if (status != SANE_STATUS_GOOD)
+    {
+      DBG (DBG_error, "%s: failed to send shading data: %s\n", __FUNCTION__,
+	  sane_strstatus (status));
+    }
 
+  DBGCOMPLETED;
   return SANE_STATUS_GOOD;
 }
 
@@ -3125,7 +3165,7 @@ genesys_restore_calibration (Genesys_Device * dev)
   for (cache = dev->calibration_cache; cache; cache = cache->next)
     {
       status = dev->model->cmd_set->is_compatible_calibration (dev, cache, SANE_FALSE);
-      /* SANE_STATUS_GOOD, a matching cache has been found 
+      /* SANE_STATUS_GOOD, a matching cache has been found
        * so we use it to populate calibration data
        */
       if (status == SANE_STATUS_GOOD)
@@ -3270,7 +3310,7 @@ genesys_save_calibration (Genesys_Device * dev)
  * @param dev device to calibrate
  * @return SANE_STATUS_GOOD if everything when all right, else the error code.
  */
-static SANE_Status
+GENESYS_STATIC SANE_Status
 genesys_flatbed_calibration (Genesys_Device * dev)
 {
   SANE_Status status;
@@ -3514,7 +3554,7 @@ genesys_sheetfed_calibration (Genesys_Device * dev)
   xres = dev->sensor.optical_res;
   dev->settings.xres = dev->sensor.optical_res;
   /* XP200 needs to calibrate a full and half sensor's resolution */
-  if (dev->model->ccd_type == CIS_XP200 
+  if (dev->model->ccd_type == CIS_XP200
    && dev->settings.xres <= dev->sensor.optical_res / 2)
     dev->settings.xres /= 2;
 
@@ -3590,7 +3630,7 @@ genesys_sheetfed_calibration (Genesys_Device * dev)
 	}
     }
 
-  /* search for a full width black strip and then do a 16 bit scan to 
+  /* search for a full width black strip and then do a 16 bit scan to
    * gather black shading data */
   if (dev->model->flags & GENESYS_FLAG_DARK_CALIBRATION)
     {
@@ -3649,8 +3689,7 @@ genesys_sheetfed_calibration (Genesys_Device * dev)
   if (status != SANE_STATUS_GOOD)
     {
       dev->model->cmd_set->eject_document (dev);
-      DBG (DBG_error,
-	   "genesys_sheetfed_calibration: failed eject target: %s\n",
+      DBG (DBG_error, "%s: failed eject target: %s\n", __FUNCTION__,
 	   sane_strstatus (status));
       return status;
     }
@@ -3851,7 +3890,7 @@ genesys_warmup_lamp (Genesys_Device * dev)
 	{
 	  first_average /= pixel;
 	  second_average /= pixel;
-	  difference = abs (first_average - second_average);
+	  difference = fabs (first_average - second_average);
 	  DBG (DBG_info,
 	       "genesys_warmup_lamp: average = %.2f, diff = %.3f\n",
 	       100 * ((second_average) / (256 * 256)),
@@ -3878,7 +3917,7 @@ genesys_warmup_lamp (Genesys_Device * dev)
 	    }
 	  DBG (DBG_info, "genesys_warmup_lamp: average 1 = %.2f, average 2 = %.2f\n", first_average, second_average);
           /* if delta below 15/255 ~= 5.8%, lamp is considred warm enough */
-	  if (abs (first_average - second_average) < 15
+	  if (fabs (first_average - second_average) < 15
 	      && second_average > 55)
 	    break;
 	}
@@ -3935,7 +3974,7 @@ genesys_start_scan (Genesys_Device * dev, SANE_Bool lamp_off)
           return status;
         }
     }
-  
+
   /* disable power saving*/
   status = dev->model->cmd_set->save_power (dev, SANE_FALSE);
   if (status != SANE_STATUS_GOOD)
@@ -4077,7 +4116,7 @@ genesys_start_scan (Genesys_Device * dev, SANE_Bool lamp_off)
       status = sanei_genesys_load_lut(dev->lineart_lut, 8, 8, 50, 205,
                         dev->settings.threshold_curve,
                         dev->settings.threshold-127);
-      if (status != SANE_STATUS_GOOD) 
+      if (status != SANE_STATUS_GOOD)
         {
           DBG (DBG_error, "genesys_start_scan: failed to build lut\n");
           return status;
@@ -4094,11 +4133,11 @@ genesys_start_scan (Genesys_Device * dev, SANE_Bool lamp_off)
     }
 
   /* no lamp during scan */
-  if(lamp_off == SANE_TRUE) 
+  if(lamp_off == SANE_TRUE)
     {
       dev->model->cmd_set->set_lamp_power (dev, dev->reg, SANE_FALSE);
     }
-  
+
   /* GL124 is using SHDAREA, so we have to wait for scan to be set up before
    * sending shading data */
   if(  (dev->model->cmd_set->send_shading_data!=NULL)
@@ -4140,7 +4179,7 @@ genesys_start_scan (Genesys_Device * dev, SANE_Bool lamp_off)
   /*do we really need this? the valid data check should be sufficent -- pierre*/
   /* waits for head to reach scanning position */
   expected = sanei_genesys_read_reg_from_set (dev->reg, 0x3d) * 65536
-           + sanei_genesys_read_reg_from_set (dev->reg, 0x3e) * 256 
+           + sanei_genesys_read_reg_from_set (dev->reg, 0x3e) * 256
            + sanei_genesys_read_reg_from_set (dev->reg, 0x3f);
   do
     {
@@ -4157,7 +4196,7 @@ genesys_start_scan (Genesys_Device * dev, SANE_Bool lamp_off)
         }
     }
   while (steps < expected);
-  
+
   /* wait for buffers to be filled */
   do
     {
@@ -4173,7 +4212,7 @@ genesys_start_scan (Genesys_Device * dev, SANE_Bool lamp_off)
   else
     usleep (500 * 1000);
 */
-  /* then we wait for at least one word of valid scan data 
+  /* then we wait for at least one word of valid scan data
 
      this is also done in sanei_genesys_read_data_from_scanner -- pierre */
   if (dev->model->is_sheetfed == SANE_FALSE)
@@ -4192,12 +4231,12 @@ genesys_start_scan (Genesys_Device * dev, SANE_Bool lamp_off)
 	}
       while (steps < 1);
     }
-      
+
   DBGCOMPLETED;
   return SANE_STATUS_GOOD;
 }
 
-/* this is _not_ a ringbuffer. 
+/* this is _not_ a ringbuffer.
    if we need a block which does not fit at the end of our available data,
    we move the available data to the beginning.
  */
@@ -4294,7 +4333,7 @@ static SANE_Status accurate_line_read(Genesys_Device * dev,
  * must be read and bytes interleaved to get usable by the other stages
  * of the backend
  */
-static SANE_Status 
+static SANE_Status
 genesys_fill_line_interp_buffer (Genesys_Device * dev, uint8_t *work_buffer_dst, size_t size)
 {
   size_t count;
@@ -4313,7 +4352,7 @@ genesys_fill_line_interp_buffer (Genesys_Device * dev, uint8_t *work_buffer_dst,
 	    }
 	}
 
-      /* copy size bytes of data, copying from a line when line count matches */ 
+      /* copy size bytes of data, copying from a line when line count matches */
       count = 0;
       while (count < size)
 	{
@@ -4344,7 +4383,7 @@ genesys_fill_line_interp_buffer (Genesys_Device * dev, uint8_t *work_buffer_dst,
               if (status != SANE_STATUS_GOOD)
                 {
                   DBG (DBG_error,
-                       "%s: failed to read %lu bytes (%s)\n", __FUNCTION__, 
+                       "%s: failed to read %lu bytes (%s)\n", __FUNCTION__,
                        (u_long) dev->oe_buffer.size, sane_strstatus (status));
                   return SANE_STATUS_IO_ERROR;
                 }
@@ -4356,17 +4395,17 @@ genesys_fill_line_interp_buffer (Genesys_Device * dev, uint8_t *work_buffer_dst,
 
 /** @brief fill buffer for segmented sensors
  * This function fills a read buffer with scanned data from a sensor segmented
- * in several parts (multi-lines sensors). Data of the same valid area is read 
+ * in several parts (multi-lines sensors). Data of the same valid area is read
  * back to back and must be interleaved to get usable by the other stages
  * of the backend
  */
-static SANE_Status 
+static SANE_Status
 genesys_fill_segmented_buffer (Genesys_Device * dev, uint8_t *work_buffer_dst, size_t size)
 {
   size_t count;
   SANE_Status status;
   int depth,i,n,k;
-  
+
   depth = dev->settings.depth;
   if (dev->settings.scan_mode == SCAN_MODE_LINEART && dev->settings.dynamic_lineart==SANE_FALSE)
     depth = 1;
@@ -4397,12 +4436,12 @@ genesys_fill_segmented_buffer (Genesys_Device * dev, uint8_t *work_buffer_dst, s
               count++;
               dev->cur++;
             }
-          else 
+          else
             {
                   if(depth==1)
                     {
                       while (dev->cur < dev->len && count < size)
-                        { 
+                        {
                           for(n=0;n<dev->segnb;n++)
                             {
                                   work_buffer_dst[count+n] = 0;
@@ -4429,7 +4468,7 @@ genesys_fill_segmented_buffer (Genesys_Device * dev, uint8_t *work_buffer_dst, s
                   if(depth==8)
                     {
                       while (dev->cur < dev->len && count < size)
-                        { 
+                        {
                           for(n=0;n<dev->segnb;n++)
                             {
                                   work_buffer_dst[count+n] = dev->oe_buffer.buffer[dev->cur + dev->skip + dev->dist*dev->order[n] + dev->oe_buffer.pos];
@@ -4442,7 +4481,7 @@ genesys_fill_segmented_buffer (Genesys_Device * dev, uint8_t *work_buffer_dst, s
                   if(depth==16)
                     {
                       while (dev->cur < dev->len && count < size)
-                        { 
+                        {
                           for(n=0;n<dev->segnb;n++)
                             {
                                   work_buffer_dst[count+n*2] = dev->oe_buffer.buffer[dev->cur + dev->skip + dev->dist*dev->order[n] + dev->oe_buffer.pos];
@@ -4469,7 +4508,7 @@ genesys_fill_segmented_buffer (Genesys_Device * dev, uint8_t *work_buffer_dst, s
               if (status != SANE_STATUS_GOOD)
                 {
                   DBG (DBG_error,
-                       "%s: failed to read %lu bytes (%s)\n", __FUNCTION__, 
+                       "%s: failed to read %lu bytes (%s)\n", __FUNCTION__,
                        (u_long) dev->oe_buffer.size, sane_strstatus (status));
                   return SANE_STATUS_IO_ERROR;
                 }
@@ -4508,7 +4547,7 @@ genesys_fill_read_buffer (Genesys_Device * dev)
 
   size = space;
 
-  /* never read an odd number. exception: last read 
+  /* never read an odd number. exception: last read
      the chip internal counter does not count half words. */
   size &= ~1;
   /* Some setups need the reads to be multiples of 256 bytes */
@@ -4536,10 +4575,10 @@ genesys_fill_read_buffer (Genesys_Device * dev)
    * may have to be read from another intermediate buffer and then processed.
    * There are currently 3 intermediate stages:
    * - handling of odd/even sensors
-   * - handling of line interpolation for motors that can't have low 
+   * - handling of line interpolation for motors that can't have low
    *   enough dpi
    * - handling of multi-segments sensors
-   *  
+   *
    * This is also the place where full duplex data will be handled.
    */
   if (dev->line_interp>0)
@@ -4576,8 +4615,8 @@ genesys_fill_read_buffer (Genesys_Device * dev)
   return SANE_STATUS_GOOD;
 }
 
-/* this function does the effective data read in a manner that suits 
-   the scanner. It does data reordering and resizing if need.  
+/* this function does the effective data read in a manner that suits
+   the scanner. It does data reordering and resizing if need.
    It also manages EOF and I/O errors, and line distance correction.
    */
 static SANE_Status
@@ -4736,14 +4775,14 @@ genesys_read_ordered_data (Genesys_Device * dev, SANE_Byte * destination,
 -------------- out_buffer -----------------------
   4. memcpy to destination (for lineart with bit reversal)
 */
-/*FIXME: for lineart we need sub byte addressing in buffers, or conversion to 
+/*FIXME: for lineart we need sub byte addressing in buffers, or conversion to
   bytes at 0. and back to bits at 4.
 Problems with the first approach:
   - its not clear how to check if we need to output an incomplete byte
     because it is the last one.
  */
-/*FIXME: add lineart support for gl646. in the meantime add logic to convert 
-  from gray to lineart at the end? would suffer the above problem, 
+/*FIXME: add lineart support for gl646. in the meantime add logic to convert
+  from gray to lineart at the end? would suffer the above problem,
   total_bytes_to_read and total_bytes_read help in that case.
  */
 
@@ -5061,7 +5100,7 @@ Problems with the first approach:
   dev->total_bytes_read += *len;
 
   RIE (sanei_genesys_buffer_consume (src_buffer, bytes));
-  
+
   /* end scan if all needed data have been read */
    if(dev->total_bytes_read >= dev->total_bytes_to_read)
     {
@@ -5149,11 +5188,11 @@ calc_parameters (Genesys_Scanner * s)
   /* we need an even pixels number
    * TODO invert test logic or generalize behaviour across all ASICs */
   if ((s->dev->model->flags & GENESYS_FLAG_SIS_SENSOR)
-      || s->dev->model->asic_type == GENESYS_GL847  
-      || s->dev->model->asic_type == GENESYS_GL124  
-      || s->dev->model->asic_type == GENESYS_GL845  
-      || s->dev->model->asic_type == GENESYS_GL846  
-      || s->dev->model->asic_type == GENESYS_GL843) 
+      || s->dev->model->asic_type == GENESYS_GL847
+      || s->dev->model->asic_type == GENESYS_GL124
+      || s->dev->model->asic_type == GENESYS_GL845
+      || s->dev->model->asic_type == GENESYS_GL846
+      || s->dev->model->asic_type == GENESYS_GL843)
     {
       if (s->dev->settings.xres <= 1200)
         s->params.pixels_per_line = (s->params.pixels_per_line/4)*4;
@@ -5164,7 +5203,7 @@ calc_parameters (Genesys_Scanner * s)
   /* corner case for true lineart for sensor with several segments
    * or when xres is doubled to match yres */
   if (s->dev->settings.xres >= 1200
-      && (    s->dev->model->asic_type == GENESYS_GL124 
+      && (    s->dev->model->asic_type == GENESYS_GL124
            || s->dev->model->asic_type == GENESYS_GL847
            || s->dev->current_setup.xres < s->dev->current_setup.yres
          )
@@ -5182,7 +5221,7 @@ calc_parameters (Genesys_Scanner * s)
   else if (s->params.depth == 1)
     {
       s->params.bytes_per_line /= 8;
-      /* round down pixel number 
+      /* round down pixel number
          really? rounding down means loss of at most 7 pixels! -- pierre */
       s->params.pixels_per_line = 8 * s->params.bytes_per_line;
     }
@@ -5241,21 +5280,21 @@ calc_parameters (Genesys_Scanner * s)
   /* hardware lineart works only when we don't have interleave data
    * for GL847 scanners, ie up to 600 DPI, then we have to rely on
    * dynamic_lineart */
-  if(s->dev->settings.xres > 600 
+  if(s->dev->settings.xres > 600
      && s->dev->model->asic_type==GENESYS_GL847
      && s->dev->settings.scan_mode == SCAN_MODE_LINEART)
    {
       s->dev->settings.dynamic_lineart = SANE_TRUE;
    }
-  
+
   /* threshold curve for dynamic rasterization */
   s->dev->settings.threshold_curve=s->val[OPT_THRESHOLD_CURVE].w;
 
   /* some digital processing requires the whole picture to be buffered */
   /* no digital processing takes place when doing preview, or when bit depth is
    * higher than 8 bits */
-  if ((s->val[OPT_SWDESPECK].b 
-    || s->val[OPT_SWCROP].b 
+  if ((s->val[OPT_SWDESPECK].b
+    || s->val[OPT_SWCROP].b
     || s->val[OPT_SWDESKEW].b
     || s->val[OPT_SWDEROTATE].b
     ||(SANE_UNFIX(s->val[OPT_SWSKIP].w)>0))
@@ -5280,6 +5319,9 @@ calc_parameters (Genesys_Scanner * s)
       s->dev->settings.contrast=0;
       s->dev->settings.brightness=0;
     }
+
+  /* cache expiration time */
+   s->dev->settings.expiration_time=s->val[OPT_EXPIRATION_TIME].w;
 
   return status;
 }
@@ -5339,7 +5381,7 @@ init_gamma_vector_option (Genesys_Scanner * scanner, int option)
   scanner->val[option].wa = NULL;
 }
 
-/** 
+/**
  * allocate a geometry range
  * @param size maximum size of the range
  * @return a pointer to a valid range or NULL
@@ -5356,6 +5398,107 @@ SANE_Range *range=NULL;
       range->quant = SANE_FIX (0.0);
     }
   return range;
+}
+
+/** @brief generate calibration cache file nam
+ * Generates the calibration cache file name to use.
+ * Tries to store the chache in $HOME/.sane or
+ * then fallbacks to $TMPDIR or TMP. The filename
+ * uses the model name if only one scanner is plugged
+ * else is uses the device name when several identical
+ * scanners are in use.
+ * @param currdev current scanner device
+ * @return an allocated string containing a file name
+ */
+GENESYS_STATIC char *calibration_filename(Genesys_Device *currdev)
+{
+  char *tmpstr;
+  char *ptr;
+  char filename[80];
+  Genesys_Device *dev;
+  unsigned int count;
+  unsigned int i;
+
+  /* allocate space for result */
+  tmpstr=malloc(PATH_MAX);
+  if(tmpstr==NULL)
+    {
+      return NULL;
+    }
+
+  /* first compute the DIR where we can store cache:
+   * 1 - home dir
+   * 2 - $TMPDIR
+   * 3 - $TMP
+   * 4 - tmp dir
+   * 5 - temp dir
+   * 6 - then resort to current dir
+   */
+  ptr = getenv ("HOME");
+  if(ptr==NULL)
+    {
+      ptr = getenv ("USERPROFILE");
+    }
+  if(ptr==NULL)
+    {
+      ptr = getenv ("TMPDIR");
+    }
+  if(ptr==NULL)
+    {
+      ptr = getenv ("TMP");
+    }
+
+  /* now choose filename:
+   * 1 - if only one scanner, name of the model
+   * 2 - if several scanners of the same model, use device name,
+   *     replacing special chars
+   */
+  count=0;
+  /* count models of the same names if several scanners attached */
+  if(num_devices>1)
+    {
+      for (dev = first_dev; dev; dev = dev->next)
+        {
+          if(strcmp(dev->model->name,currdev->model->name)==0)
+            {
+              count++;
+            }
+        }
+    }
+  if(count>1)
+    {
+      snprintf(filename,sizeof(filename),"%s.cal",currdev->file_name);
+      for(i=0;i<strlen(filename);i++)
+        {
+          if(filename[i]==':'||filename[i]==PATH_SEP)
+            {
+              filename[i]='_';
+            }
+        }
+    }
+  else
+    {
+      snprintf(filename,sizeof(filename),"%s.cal",currdev->model->name);
+    }
+
+  /* build final final name : store dir + filename */
+  if (NULL == ptr)
+    {
+      snprintf (tmpstr, PATH_MAX, "%s", filename);
+    }
+  else
+    {
+#ifdef HAVE_MKDIR
+      /* make sure .sane directory exists in existing store dir */
+      snprintf (tmpstr, PATH_MAX, "%s%c.sane", ptr, PATH_SEP);
+      mkdir(tmpstr,0700);
+#endif
+      snprintf (tmpstr, PATH_MAX, "%s%c.sane%c%s", ptr, PATH_SEP, PATH_SEP, filename);
+    }
+
+  DBG (DBG_info, "%s: calibration filename >%s<\n", __FUNCTION__, tmpstr);
+
+  return tmpstr;
 }
 
 
@@ -5412,13 +5555,13 @@ init_options (Genesys_Scanner * s)
   s->opt[OPT_SOURCE].size = max_string_size (source_list);
   s->opt[OPT_SOURCE].constraint.string_list = source_list;
   s->val[OPT_SOURCE].s = strdup (FLATBED);
-  if (!(model->flags & GENESYS_FLAG_HAS_UTA))
+  if (model->flags & GENESYS_FLAG_HAS_UTA)
     {
-      DISABLE (OPT_SOURCE);
+      ENABLE (OPT_SOURCE);
     }
   else
     {
-      ENABLE (OPT_SOURCE);
+      DISABLE (OPT_SOURCE);
     }
 
   /* preview */
@@ -5578,7 +5721,7 @@ init_options (Genesys_Scanner * s)
       DBG (DBG_info, "init_options: custom gamma disabled\n");
     }
 
-  /* software base image enhancements, these are consuming as many 
+  /* software base image enhancements, these are consuming as many
    * memory than used by the full scanned image and may fail at high
    * resolution
    */
@@ -5589,7 +5732,7 @@ init_options (Genesys_Scanner * s)
   s->opt[OPT_SWDESKEW].type = SANE_TYPE_BOOL;
   s->opt[OPT_SWDESKEW].cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
   s->val[OPT_SWDESKEW].b = SANE_FALSE;
-  
+
   /* software deskew */
   s->opt[OPT_SWDESPECK].name = "swdespeck";
   s->opt[OPT_SWDESPECK].title = "Software despeck";
@@ -5606,7 +5749,7 @@ init_options (Genesys_Scanner * s)
   s->opt[OPT_DESPECK].unit = SANE_UNIT_NONE;
   s->opt[OPT_DESPECK].constraint_type = SANE_CONSTRAINT_RANGE;
   s->opt[OPT_DESPECK].constraint.range = &swdespeck_range;
-  s->opt[OPT_DESPECK].cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
+  s->opt[OPT_DESPECK].cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED | SANE_CAP_INACTIVE;
   s->val[OPT_DESPECK].w = 1;
 
   /* crop by software */
@@ -5680,7 +5823,7 @@ init_options (Genesys_Scanner * s)
   s->opt[OPT_THRESHOLD].constraint_type = SANE_CONSTRAINT_RANGE;
   s->opt[OPT_THRESHOLD].constraint.range = &percentage_range;
   s->val[OPT_THRESHOLD].w = SANE_FIX (50);
-  
+
   /* BW threshold curve */
   s->opt[OPT_THRESHOLD_CURVE].name = "threshold-curve";
   s->opt[OPT_THRESHOLD_CURVE].title = SANE_I18N ("Threshold curve");
@@ -5690,7 +5833,7 @@ init_options (Genesys_Scanner * s)
   s->opt[OPT_THRESHOLD_CURVE].constraint_type = SANE_CONSTRAINT_RANGE;
   s->opt[OPT_THRESHOLD_CURVE].constraint.range = &threshold_curve_range;
   s->val[OPT_THRESHOLD_CURVE].w = 50;
-  
+
   /* dynamic linart */
   s->opt[OPT_DISABLE_DYNAMIC_LINEART].name = "disable-dynamic-lineart";
   s->opt[OPT_DISABLE_DYNAMIC_LINEART].title = SANE_I18N ("Disable dynamic lineart");
@@ -5767,6 +5910,17 @@ init_options (Genesys_Scanner * s)
       DISABLE (OPT_CALIBRATION_FILE);
     }
 #endif
+
+  /* expiration time for calibration cache entries */
+  s->opt[OPT_EXPIRATION_TIME].name = "expiration-time";
+  s->opt[OPT_EXPIRATION_TIME].title = SANE_I18N ("Calibration cache expiration time");
+  s->opt[OPT_EXPIRATION_TIME].desc = SANE_I18N ("Time (in minutes) before a cached calibration expires. "
+     "A value of 0 means cache is not used. A negative value means cache never expires.");
+  s->opt[OPT_EXPIRATION_TIME].type = SANE_TYPE_INT;
+  s->opt[OPT_EXPIRATION_TIME].unit = SANE_UNIT_NONE;
+  s->opt[OPT_EXPIRATION_TIME].constraint_type = SANE_CONSTRAINT_RANGE;
+  s->opt[OPT_EXPIRATION_TIME].constraint.range = &expiration_range;
+  s->val[OPT_EXPIRATION_TIME].w = 60;	/* 60 minutes by default */
 
   /* Powersave time (turn lamp off) */
   s->opt[OPT_LAMP_OFF_TIME].name = "lamp-off-time";
@@ -5890,7 +6044,7 @@ init_options (Genesys_Scanner * s)
     s->opt[OPT_POWER_SW].cap = SANE_CAP_INACTIVE;
   s->val[OPT_POWER_SW].b = 0;
   s->last_val[OPT_POWER_SW].b = 0;
-  
+
   /* extra button */
   s->opt[OPT_EXTRA_SW].name = "extra";
   s->opt[OPT_EXTRA_SW].title = SANE_I18N ("Extra button");
@@ -5971,13 +6125,24 @@ check_present (SANE_String_Const devname)
   return SANE_STATUS_GOOD;
 }
 
+/** @brief add a scanner device
+ * Insert the given device into the backend list of devices.
+ * @param dev device to add
+ */
+GENESYS_STATIC void add_device(Genesys_Device *dev)
+{
+  ++num_devices;
+  dev->next = first_dev;
+  first_dev = dev;
+}
+
 static SANE_Status
 attach (SANE_String_Const devname, Genesys_Device ** devp, SANE_Bool may_wait)
 {
   Genesys_Device *dev = 0;
   SANE_Int dn, vendor, product;
   SANE_Status status;
-  int i;
+  unsigned int i;
 
 
   DBG (DBG_proc, "attach: start: devp %s NULL, may_wait = %d\n",
@@ -6061,7 +6226,10 @@ attach (SANE_String_Const devname, Genesys_Device ** devp, SANE_Bool may_wait)
 
   dev->file_name = strdup (devname);
   if (!dev->file_name)
-    return SANE_STATUS_NO_MEM;
+    {
+      free(dev);
+      return SANE_STATUS_NO_MEM;
+    }
 
   dev->model = genesys_usb_device_list[i].model;
   dev->vendorId = genesys_usb_device_list[i].vendor;
@@ -6070,9 +6238,7 @@ attach (SANE_String_Const devname, Genesys_Device ** devp, SANE_Bool may_wait)
 
   DBG (DBG_info, "attach: found %s flatbed scanner %s at %s\n",
        dev->model->vendor, dev->model->model, dev->file_name);
-  ++num_devices;
-  dev->next = first_dev;
-  first_dev = dev;
+  add_device(dev);
 
   if (devp)
     *devp = dev;
@@ -6125,8 +6291,8 @@ attach_one_device (SANE_String_Const devname)
 static SANE_Status
 config_attach_genesys (SANEI_Config __sane_unused__ *config, const char *devname)
 {
-  /* the devname has been processed and is ready to be used 
-   * directly. Since the backend is an USB only one, we can 
+  /* the devname has been processed and is ready to be used
+   * directly. Since the backend is an USB only one, we can
    * call sanei_usb_attach_matching_devices straight */
   sanei_usb_attach_matching_devices (devname, attach_one_device);
 
@@ -6164,15 +6330,17 @@ probe_genesys_devices (void)
       free (new_dev);
     }
 
+  DBG(DBG_info, "%s: %d devices currently attached\n", __FUNCTION__, num_devices);
+
   DBGCOMPLETED;
 
   return status;
 }
 
 /**
- * This should be changed if one of the substructures of 
+ * This should be changed if one of the substructures of
    Genesys_Calibration_Cache change, but it must be changed if there are
-   changes that don't change size -- at least for now, as we store most 
+   changes that don't change size -- at least for now, as we store most
    of Genesys_Calibration_Cache as is.
 */
 #define CALIBRATION_VERSION 1
@@ -6630,7 +6798,7 @@ sane_get_devices (const SANE_Device *** device_list, SANE_Bool local_only)
 		  first_dev = dev->next;
 		  num_devices--;
 		  free (dev);
-	          dev = prev->next;
+	          dev = first_dev;
 		}
 	    }
 	  /* case 2 : removed device is not first_dev */
@@ -6661,8 +6829,7 @@ sane_open (SANE_String_Const devicename, SANE_Handle * handle)
   Genesys_Device *dev;
   SANE_Status status;
   Genesys_Scanner *s;
-  char tmp_str[PATH_MAX];
-  char *ptr;
+  char *tmpstr;
 
   DBG (DBG_proc, "sane_open: start (devicename = `%s')\n", devicename);
 
@@ -6768,37 +6935,16 @@ sane_open (SANE_String_Const devicename, SANE_Handle * handle)
 
   RIE (dev->model->cmd_set->init (dev));
 
+  /* some hardware capabilities are detected through sensors */
+  RIE (s->dev->model->cmd_set->update_hardware_sensors (s));
+
   /* here is the place to fetch a stored calibration cache */
-
-  /* create calibration-filename 
-     lifted from plustek-usb.c
-   */
-  /* we should add a unique identifying feature to the file name
-     to support multiple scanners of the same model, but to my 
-     knowledge, there is no such thing in these scanners. 
-     (At least the usb serial is always "0".)
-     TODO add an storedir option to genesys.conf
-   */
-
-  ptr = getenv ("HOME");
-  if (NULL == ptr)
-    {
-      sprintf (tmp_str, "/tmp/%s.cal", s->dev->model->name);
-    }
-  else
-    {
-#ifdef HAVE_MKDIR 
-      /* make sure .sane directory exists */
-      sprintf (tmp_str, "%s/.sane", ptr);
-      mkdir(tmp_str,0700);
-#endif
-      sprintf (tmp_str, "%s/.sane/%s.cal", ptr, s->dev->model->name);
-    }
- 
-  s->val[OPT_CALIBRATION_FILE].s = strdup (tmp_str);
-  s->dev->calib_file = strdup (tmp_str);
-  DBG (DBG_info, "Calibration filename set to:\n");
-  DBG (DBG_info, ">%s<\n", s->dev->calib_file);
+  tmpstr=calibration_filename(s->dev);
+  s->val[OPT_CALIBRATION_FILE].s = strdup (tmpstr);
+  s->dev->calib_file = strdup (tmpstr);
+  DBG (DBG_info, "%s: Calibration filename set to:\n", __FUNCTION__);
+  DBG (DBG_info, "%s: >%s<\n", __FUNCTION__, s->dev->calib_file);
+  free(tmpstr);
 
   /* now open file, fetch calibration records */
 
@@ -6860,7 +7006,7 @@ sane_close (SANE_Handle handle)
            "sane_close: failed to enable power saving mode: %s\n",
            sane_strstatus (status));
     }
-    
+
   /* here is the place to store calibration cache */
   write_calibration (s->dev);
 
@@ -6903,13 +7049,12 @@ sane_close (SANE_Handle handle)
   /* LAMP OFF : same register across all the ASICs */
   sanei_genesys_write_register (s->dev, 0x03, 0x00);
 
-  /* we need this to avoid ASIC getting stuck
+  /* clear before closing */
+  sanei_usb_clear_halt (s->dev->dn);
+
+  /* we need this to avoid these ASIC getting stuck
    * in bulk writes */
-  if(s->dev->model->asic_type==GENESYS_GL847
-   ||s->dev->model->asic_type==GENESYS_GL845
-   ||s->dev->model->asic_type==GENESYS_GL845
-   ||s->dev->model->asic_type==GENESYS_GL843)
-    sanei_usb_reset (s->dev->dn);
+  sanei_usb_reset (s->dev->dn);
 
   sanei_usb_close (s->dev->dn);
   free (s);
@@ -7075,37 +7220,35 @@ static SANE_Status set_calibration_value (Genesys_Scanner * s, int option, void 
 {
   SANE_Status status=SANE_STATUS_GOOD;
   char *tmp;
-  Genesys_Calibration_Cache *cache;
   Genesys_Device *dev=s->dev;
+
+  DBGSTART;
 
   /* try to load file */
   tmp=dev->calib_file;
   dev->calib_file=val;
   status=sanei_genesys_read_calibration (dev);
-  
-  /* file exists but is invalid */
+
+  /* file exists but is invalid, so fall back to previous cache file
+   * an re-read it */
   if (status!=SANE_STATUS_IO_ERROR && status!=SANE_STATUS_GOOD)
     {
       dev->calib_file=tmp;
+      status=sanei_genesys_read_calibration (dev);
       return status;
     }
 
-  /* we can set no file name value */
+  /* now we can set file name value */
   if (s->val[option].s)
     free (s->val[option].s);
   s->val[option].s = strdup (val);
   if (tmp)
     free (tmp);
   dev->calib_file = strdup (val);
+  DBG (DBG_info, "%s: Calibration filename set to:\n", __FUNCTION__);
+  DBG (DBG_info, "%s: >%s<\n", __FUNCTION__, s->dev->calib_file);
 
-  /* clear device calibration cache */
-  while(dev->calibration_cache!=NULL)
-    {
-      cache=dev->calibration_cache;
-      dev->calibration_cache=dev->calibration_cache->next;
-      free(cache);
-    }
-
+  DBGCOMPLETED;
   return SANE_STATUS_GOOD;
 }
 
@@ -7300,6 +7443,7 @@ set_option_value (Genesys_Scanner * s, int option, void *val,
       RIE(set_calibration_value (s, option, val));
       break;
     case OPT_LAMP_OFF_TIME:
+    case OPT_EXPIRATION_TIME:
       if (*(SANE_Word *) val != s->val[option].w)
 	{
 	  s->val[option].w = *(SANE_Word *) val;
@@ -7617,27 +7761,27 @@ sane_start (SANE_Handle handle)
               return status;
             }
         }
-   
+
       /* deskew image if required */
       if(s->val[OPT_SWDESKEW].b == SANE_TRUE)
         {
           RIE(genesys_deskew(s));
         }
-   
+
       /* despeck image if required */
       if(s->val[OPT_SWDESPECK].b == SANE_TRUE)
         {
           RIE(genesys_despeck(s));
         }
-   
+
       /* crop image if required */
-      if(s->val[OPT_SWCROP].b == SANE_TRUE) 
+      if(s->val[OPT_SWCROP].b == SANE_TRUE)
         {
           RIE(genesys_crop(s));
         }
-   
+
       /* de-rotate image if required */
-      if(s->val[OPT_SWDEROTATE].b == SANE_TRUE) 
+      if(s->val[OPT_SWDEROTATE].b == SANE_TRUE)
         {
           RIE(genesys_derotate(s));
         }
@@ -7661,7 +7805,7 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len,
       DBG (DBG_error, "sane_read: handle is null!\n");
       return SANE_STATUS_INVAL;
     }
-  
+
   dev=s->dev;
   if (!dev)
     {
@@ -7694,7 +7838,7 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len,
   DBG (DBG_io2, "sane_read: bytes_to_read=%lu, total_bytes_read=%lu\n",
        (u_long) dev->total_bytes_to_read, (u_long) dev->total_bytes_read);
   DBG (DBG_io2, "sane_read: physical bytes to read = %lu\n", (u_long) dev->read_bytes_left);
-  
+
   if(dev->total_bytes_read>=dev->total_bytes_to_read)
     {
       DBG (DBG_proc, "sane_read: nothing more to scan: EOF\n");
@@ -7776,11 +7920,11 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len,
   *len = local_len;
   if(local_len>(size_t)max_len)
     {
-      fprintf (stderr, "[genesys] sane_read: returning incorrect length!!\n"); 
+      fprintf (stderr, "[genesys] sane_read: returning incorrect length!!\n");
     }
   DBG (DBG_proc, "sane_read: %d bytes returned\n", *len);
   return status;
-} 
+}
 
 void
 sane_cancel (SANE_Handle handle)

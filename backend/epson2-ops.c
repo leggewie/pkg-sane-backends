@@ -177,7 +177,7 @@ e2_dev_init(Epson_Device *dev, const char *devname, int conntype)
 SANE_Status
 e2_dev_post_init(struct Epson_Device *dev)
 {
-	int i;
+	int i, last;
 
 	DBG(5, "%s\n", __func__);
 
@@ -231,7 +231,7 @@ e2_dev_post_init(struct Epson_Device *dev)
 
 	/* try to expand the resolution list where appropriate */
 
-	int last = dev->res_list[dev->res_list_size - 1];
+	last = dev->res_list[dev->res_list_size - 1];
 
 	DBG(1, "highest available resolution: %d\n", last);
 
@@ -239,6 +239,21 @@ e2_dev_post_init(struct Epson_Device *dev)
 		DBG(1, "adding optical resolution (%d)\n", dev->optical_res);
 		e2_add_resolution(dev, dev->optical_res);
 	}
+
+	/* add missing resolutions for known scanners */
+
+	if (e2_dev_model(dev, "GT-X800") || e2_dev_model(dev, "GT-X700")) {
+
+		DBG(1, "known scanner, integrating resolution list\n");
+		e2_add_resolution(dev, 4800);
+		e2_add_resolution(dev, 6400);
+		e2_add_resolution(dev, 9600);
+		e2_add_resolution(dev, 12800);
+
+		last = dev->res_list[dev->res_list_size - 1];
+	}
+
+	/* guess for the others */
 
 	if (dev->dpi_range.max > last && dev->dpi_range.max != dev->optical_res) {
 
@@ -472,8 +487,10 @@ e2_set_tpu2_area(struct Epson_Scanner *s, int x, int y, int unit)
 }
 
 void
-e2_add_depth(Epson_Device * dev, SANE_Word depth)
+e2_add_depth(Epson_Device *dev, SANE_Int depth)
 {
+	DBG(10, "%s: add (bpp): %d\n", __func__, depth);
+
 	if (depth > dev->maxDepth)
 		dev->maxDepth = depth;
 
@@ -579,7 +596,7 @@ e2_discover_capabilities(Epson_Scanner *s)
 
 	/*
 	 * Extended status flag request (ESC f).
-	 * this also requests the scanner device name from the the scanner.
+	 * this also requests the scanner device name from the scanner.
 	 * It seems unsupported on the network transport (CX11NF/LP-A500).
 	 */
 
@@ -700,6 +717,11 @@ e2_discover_capabilities(Epson_Scanner *s)
 				*source_list_add++ = ADF_STR;
 				dev->ADF = SANE_TRUE;
 			}
+
+			if (buf[44] & EXT_IDTY_CAP1_ADFS) {
+				dev->duplex = SANE_TRUE;
+			}
+
 		}
 
 		/* TPU */
@@ -713,7 +735,7 @@ e2_discover_capabilities(Epson_Scanner *s)
 		}
 
                 /* TPU2 */
-		if (e2_model(s, "GT-X800") || e2_model(s, "GT-X900")) {
+		if (e2_model(s, "GT-X800") || e2_model(s, "GT-X900") || e2_model(s, "GT-X980")) {
 			if (le32atoh(&buf[68]) > 0 ) {
 				e2_set_tpu2_area(s,
 					  	 le32atoh(&buf[68]),
@@ -760,7 +782,7 @@ e2_discover_capabilities(Epson_Scanner *s)
 	 * Check for the max. supported color depth and assign
 	 * the values to the bitDepthList.
 	 */
-	dev->depth_list = malloc(sizeof(SANE_Word) * 4);
+	dev->depth_list = malloc(sizeof(SANE_Int) * (4 + 1));
 	if (dev->depth_list == NULL) {
 		DBG(1, "out of memory (line %d)\n", __LINE__);
 		return SANE_STATUS_NO_MEM;
@@ -771,9 +793,12 @@ e2_discover_capabilities(Epson_Scanner *s)
 	/* maximum depth discovery */
 	DBG(3, "discovering max depth, NAKs are expected\n");
 
-	if (dev->maxDepth >= 16 || dev->maxDepth == 0) {
-		if (esci_set_data_format(s, 16) == SANE_STATUS_GOOD)
-			e2_add_depth(dev, 16);
+	/* add default depth */
+	e2_add_depth(dev, 8);
+
+	if (dev->maxDepth >= 12 || dev->maxDepth == 0) {
+		if (esci_set_data_format(s, 12) == SANE_STATUS_GOOD)
+			e2_add_depth(dev, 12);
 	}
 
 	if (dev->maxDepth >= 14 || dev->maxDepth == 0) {
@@ -781,13 +806,10 @@ e2_discover_capabilities(Epson_Scanner *s)
 			e2_add_depth(dev, 14);
 	}
 
-	if (dev->maxDepth >= 12 || dev->maxDepth == 0) {
-		if (esci_set_data_format(s, 12) == SANE_STATUS_GOOD)
-			e2_add_depth(dev, 12);
+	if (dev->maxDepth >= 16 || dev->maxDepth == 0) {
+		if (esci_set_data_format(s, 16) == SANE_STATUS_GOOD)
+			e2_add_depth(dev, 16);
 	}
-
-	/* add default depth */
-	e2_add_depth(dev, 8);
 
 	DBG(1, "maximum supported color depth: %d\n", dev->maxDepth);
 
@@ -901,25 +923,28 @@ e2_set_extended_scanning_parameters(Epson_Scanner * s)
 
 		char extensionCtrl;
 		extensionCtrl = (s->hw->use_extension ? 1 : 0);
-		if (s->hw->use_extension && (s->val[OPT_ADF_MODE].w == 1))
+		if (s->hw->use_extension && (s->val[OPT_ADF_MODE].w == 1)) {
 			extensionCtrl = 2;
+		}
 
 		/* Test for TPU2
 		 * Epson Perfection 4990 Command Specifications
 		 * JZIS-0075 Rev. A, page 31
 		 */
-		if (s->hw->use_extension && s->hw->TPU2)
+		if (s->hw->use_extension && s->hw->TPU2) {
 			extensionCtrl = 5;
+		}
 
-		if (s->val[OPT_MODE].w == MODE_INFRARED)
+		if (s->val[OPT_MODE].w == MODE_INFRARED) {
                         /* only infrared in TPU mode (NOT in TPU2 or flatbeth) 
 	                 * XXX investigate this ... only tested on GT-X800 
                          */
 
                         if (extensionCtrl == 1)   /* test for TPU */
-                           extensionCtrl = 3;
+				extensionCtrl = 3;
                         else
-                           return SANE_STATUS_UNSUPPORTED;
+				return SANE_STATUS_UNSUPPORTED;
+		}
 
 		/* ESC e */
 		buf[26] = extensionCtrl;
@@ -1262,7 +1287,7 @@ e2_setup_block_mode(Epson_Scanner * s)
 	DBG(1, "max req size: %d, line count: %d\n", maxreq, s->lcount);
 
 	/* XXX investigate this */
-	if (s->lcount < 3 && (e2_model(s, "GT-X800") || e2_model(s, "GT-X900"))) {
+	if (s->lcount < 3 && (e2_model(s, "GT-X800") || e2_model(s, "GT-X900") || e2_model(s, "GT-X980"))) {
 		s->lcount = 21;
 		DBG(17,
 		    "%s: set lcount = %i bigger than sanei_scsi_max_request_size\n",
@@ -1689,10 +1714,6 @@ e2_scan_finish(Epson_Scanner * s)
 	if (s->hw->ADF && s->hw->use_extension && s->val[OPT_AUTO_EJECT].w)
 		if (e2_check_adf(s) == SANE_STATUS_NO_DOCS)
 			esci_eject(s);
-
-	/* XXX required? */
-	if (s->hw->connection != SANE_EPSON_NET)
-		esci_reset(s);
 }
 
 void
@@ -1738,6 +1759,8 @@ e2_ext_read(struct Epson_Scanner *s)
 	SANE_Status status = SANE_STATUS_GOOD;
 	ssize_t buf_len = 0, read;
 
+	DBG(18, "%s: begin\n", __func__);
+
 	/* did we passed everything we read to sane? */
 	if (s->ptr == s->end) {
 
@@ -1761,10 +1784,12 @@ e2_ext_read(struct Epson_Scanner *s)
 		/* receive image data + error code */
 		read = e2_recv(s, s->buf, buf_len + 1, &status);
 
-		DBG(18, "%s: read %lu bytes\n", __func__, (unsigned long) read);
+		DBG(18, "%s: read %lu bytes, status: %d\n", __func__, (unsigned long) read, status);
 
-		if (read != buf_len + 1)
-			return SANE_STATUS_IO_ERROR;
+		if (status != SANE_STATUS_GOOD) {
+			e2_cancel(s);
+			return status;
+		}
 
 		if (e2_dev_model(dev, "GT-8200") || e2_dev_model(dev, "Perfection1650")) {
 			/* See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=597922#127 */
@@ -2132,6 +2157,7 @@ e2_block_read(struct Epson_Scanner *s)
 		 * RGB then swap the colors.
 		 */
 
+		/* never used, beta testers required */
 		needStrangeReorder =
 			(strstr(s->hw->model, "GT-2200") ||
 			 ((strstr(s->hw->model, "1640")
