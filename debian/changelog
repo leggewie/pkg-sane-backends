@@ -1,3 +1,10 @@
+sane-backends (1.0.25+git20150927-2) UNRELEASED; urgency=medium
+
+  * debian/libsane.preinst: 
+    - Correct typo (Closes: #800507).
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 30 Sep 2015 21:56:47 +0200
+
 sane-backends (1.0.25+git20150927-1) experimental; urgency=medium
 
   * Build from daily snapshot sane-backends-git20150927.tar.gz.
@@ -24,7 +31,7 @@ sane-backends (1.0.25+git20150927-1) experimental; urgency=medium
       + Remove /usr/bin/sane-config.*.
       + Remove symbolic link to /usr/bin/sane-config.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 28 May 2015 17:15:51 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 27 Sep 2015 10:19:38 +0200
 
 sane-backends (1.0.25+git20150528-1) experimental; urgency=medium
 
