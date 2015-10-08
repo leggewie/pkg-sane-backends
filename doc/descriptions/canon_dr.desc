@@ -11,9 +11,9 @@
 
 :backend "canon_dr"              ; name of backend
 :url "http://www.thebility.com/canon/" 
-:version "41"                    ; version of backend
+:version "51"                    ; version of backend
 :manpage "sane-canon_dr"         ; name of manpage (if it exists)
-:comment "Backend updated for SANE release 1.0.24, see sane-canon_dr manpage"
+:comment "Backend updated for SANE release 1.0.25, see sane-canon_dr manpage"
 :devicetype :scanner             ; start of a list of devices....
                                  ; other types:  :stillcam, :vidcam,
                                  ;               :meta, :api
@@ -226,8 +226,8 @@
 :model "DR-7080C"
 :interface "USB SCSI"
 :usbid "0x04a9" "0x1604"
-:status :untested
-:comment "Please test!"
+:status :good
+:comment "ADF and flatbed work"
 
 :model "DR-7090C"
 :interface "USB SCSI"
@@ -265,35 +265,60 @@
 :status :untested
 :comment "Please test!"
 
+:model "DR-C120"
+:interface "USB"
+:usbid "0x1083" "0x1651"
+:status :untested
+
 :model "DR-C125"
 :interface "USB"
-;:usbid "0x1083" "0x"
-:status :untested
-:comment "Similar protocol to other canon_dr machines, but unsupported image format."
+:usbid "0x1083" "0x1640"
+:status :good
 
 :model "DR-C130"
 :interface "USB"
-;:usbid "0x1083" "0x"
+:usbid "0x1083" "0x164a"
+:status :untested
+
+:model "DR-C225"
+:interface "USB"
+:usbid "0x1083" "0x1658"
+:status :untested
+:comment ""
+
+:model "DR-F120"
+:interface "USB"
+:usbid "0x1083" "0x1654"
 :status :untested
 
 :model "DR-G1100"
 :interface "USB"
-;:usbid "0x1083" "0x"
-:status :untested
+:usbid "0x1083" "0x1650"
+:status :good
 
 :model "DR-G1130"
 :interface "USB"
-;:usbid "0x1083" "0x"
+:usbid "0x1083" "0x164f"
 :status :untested
 
 :model "DR-M140"
 :interface "USB"
-;:usbid "0x1083" "0x"
-:status :untested
+:usbid "0x1083" "0x163f"
+:status :good
 
 :model "DR-M160"
 :interface "USB"
+:usbid "0x1083" "0x163e"
+:status :good
+
+:model "DR-M160II"
+:interface "USB"
 ;:usbid "0x1083" "0x"
+:status :untested
+
+:model "DR-M1060"
+:interface "USB"
+:usbid "0x1083" "0x1657"
 :status :untested
 
 :model "P-150"
@@ -306,15 +331,63 @@
 ;:usbid "0x1083" "0x"
 :status :untested
 
+:model "P-201"
+:interface "USB"
+:usbid "0x1083" "0x1652"
+:status :untested
+
+:model "DR-P208"
+:interface "USB"
+:usbid "0x1083" "0x164b"
+:status :untested
+:comment "Same as P-208?"
+
 :model "P-208"
 :interface "USB"
 :usbid "0x1083" "0x164c"
 :status :basic
 :comment "All modes and resolutions working, but calibration is poor."
 
+:model "DR-P208II"
+:interface "USB"
+:usbid "0x1083" "0x165d"
+:status :untested
+
+:model "P-208II"
+:interface "USB"
+:usbid "0x1083" "0x165f"
+:status :untested
+
+:model "DR-P215"
+:interface "USB"
+:usbid "0x1083" "0x1641"
+:status :untested
+:comment "Same as P-215?"
+
 :model "P-215"
 :interface "USB"
 :usbid "0x1083" "0x1646"
 :status :basic
 :comment "All modes and resolutions working, but calibration is poor. Card reader slot not working."
+
+:model "P-215"
+:interface "USB"
+:usbid "0x1083" "0x1647"
+:status :basic
+:comment "This is the same device as the 0x1646 P-215, but the mode switch on the scanner is in the wrong position, you must move the switch."
+
+:model "DR-P215II"
+:interface "USB"
+:usbid "0x1083" "0x1659"
+:status :untested
+
+:model "P-215II"
+:interface "USB"
+:usbid "0x1083" "0x165b"
+:status :untested
+
+:model "FSU-201"
+:interface "USB"
+:usbid "0x1083" "0x1648"
+:status :untested
 

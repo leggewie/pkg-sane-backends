@@ -1,45 +1,45 @@
 /* sane - Scanner Access Now Easy.
 
    Copyright (C) 2010-2013 Stéphane Voltz <stef.dev@free.fr>
-   
-    
+
+
    This file is part of the SANE package.
-   
+
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
    published by the Free Software Foundation; either version 2 of the
    License, or (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful, but
    WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place - Suite 330, Boston,
    MA 02111-1307, USA.
-   
+
    As a special exception, the authors of SANE give permission for
    additional uses of the libraries contained in this release of SANE.
-   
+
    The exception is that, if you link a SANE library with other files
    to produce an executable, this does not by itself cause the
    resulting executable to be covered by the GNU General Public
    License.  Your use of that executable is in no way restricted on
    account of linking the SANE library code into it.
-   
+
    This exception does not, however, invalidate any other reasons why
    the executable file might be covered by the GNU General Public
    License.
-   
+
    If you submit changes to SANE to the maintainers to be included in
    a subsequent release, you agree by submitting the changes that
    those changes may be distributed with this exception intact.
-   
+
    If you write modifications of your own for SANE, it is your choice
    whether to permit this exception to apply to your modifications.
-   If you do not wish that, delete this exception notice. 
+   If you do not wish that, delete this exception notice.
 */
 #undef BACKEND_NAME
 #define BACKEND_NAME genesys_low
@@ -261,7 +261,7 @@ sanei_genesys_read_hregister (Genesys_Device * dev, uint16_t reg, uint8_t * val)
 
 /**
  * Write to one GL847 ASIC register
-URB    10  control  0x40 0x04 0x83 0x00 len     2 wrote 0xa6 0x04 
+URB    10  control  0x40 0x04 0x83 0x00 len     2 wrote 0xa6 0x04
  */
 static SANE_Status
 sanei_genesys_write_gl847_register (Genesys_Device * dev, uint8_t reg, uint8_t val)
@@ -310,8 +310,8 @@ sanei_genesys_write_register (Genesys_Device * dev, uint16_t reg, uint8_t val)
 
   /* route to gl847 function if needed */
   if(dev->model->asic_type==GENESYS_GL847
-  || dev->model->asic_type==GENESYS_GL845 
-  || dev->model->asic_type==GENESYS_GL846 
+  || dev->model->asic_type==GENESYS_GL845
+  || dev->model->asic_type==GENESYS_GL846
   || dev->model->asic_type==GENESYS_GL124)
     {
       return sanei_genesys_write_gl847_register(dev, reg, val);
@@ -346,7 +346,7 @@ sanei_genesys_write_register (Genesys_Device * dev, uint16_t reg, uint8_t val)
   return status;
 }
 
-/** 
+/**
  * @brief write command to 0x8c endpoint
  * Write a value to 0x8c end point (end access), for USB firmware related operations
  * Known values are 0x0f, 0x11 for USB 2.0 data transfer and 0x0f,0x14 for USB1.1
@@ -475,10 +475,10 @@ SANE_Status
 sanei_genesys_set_buffer_address (Genesys_Device * dev, uint32_t addr)
 {
   SANE_Status status;
-  
+
   if(dev->model->asic_type==GENESYS_GL847
-  || dev->model->asic_type==GENESYS_GL845 
-  || dev->model->asic_type==GENESYS_GL846 
+  || dev->model->asic_type==GENESYS_GL845
+  || dev->model->asic_type==GENESYS_GL846
   || dev->model->asic_type==GENESYS_GL124)
     {
       DBG (DBG_warn,
@@ -943,13 +943,18 @@ sanei_genesys_get_triple(Genesys_Register_Set *regs, uint16_t addr, uint32_t *va
   return SANE_STATUS_GOOD;
 }
 
-/* Checks if the scan buffer is empty */
+/** @brief Check if the scanner's internal data buffer is empty
+ * @param *dev device to test for data
+ * @param *empty return value
+ * @return empty will be set to SANE_TRUE if there is no scanned data.
+ **/
 SANE_Status
 sanei_genesys_test_buffer_empty (Genesys_Device * dev, SANE_Bool * empty)
 {
   uint8_t val = 0;
   SANE_Status status;
 
+  usleep(1000);
   status = sanei_genesys_get_status (dev, &val);
   if (status != SANE_STATUS_GOOD)
     {
@@ -961,6 +966,10 @@ sanei_genesys_test_buffer_empty (Genesys_Device * dev, SANE_Bool * empty)
 
   if (dev->model->cmd_set->test_buffer_empty_bit (val))
     {
+      /* fix timing issue on USB3 (or just may be too fast) hardware
+       * spotted by John S. Weber <jweber53@gmail.com>
+       */
+      usleep(1000);
       DBG (DBG_io2, "sanei_genesys_test_buffer_empty: buffer is empty\n");
       *empty = SANE_TRUE;
       return SANE_STATUS_GOOD;
@@ -1210,7 +1219,7 @@ SANE_Status sanei_genesys_generate_gamma_buffer(Genesys_Device * dev,
                              max,
                              dev->settings.contrast,
                              dev->settings.brightness);
-      for (i = 0; i < size-1; i++)
+      for (i = 0; i < size; i++)
         {
           value=dev->sensor.gamma_table[GENESYS_RED][i];
           value=lut[value];
@@ -1230,7 +1239,7 @@ SANE_Status sanei_genesys_generate_gamma_buffer(Genesys_Device * dev,
     }
   else
     {
-      for (i = 0; i < size-1; i++)
+      for (i = 0; i < size; i++)
         {
           value=dev->sensor.gamma_table[GENESYS_RED][i];
           gamma[i * 2 + size * 0 + 0] = value & 0xff;
@@ -1258,7 +1267,7 @@ SANE_Status sanei_genesys_generate_gamma_buffer(Genesys_Device * dev,
 
 /** @brief send gamma table to scanner
  * This function sends generic gamma table (ie ones built with
- * provided gamma) or the user defined one if provided by 
+ * provided gamma) or the user defined one if provided by
  * fontend. Used by gl846+ ASICs
  * @param dev device to write to
  */
@@ -1317,10 +1326,14 @@ sanei_genesys_send_gamma_table (Genesys_Device * dev)
 }
 
 /** @brief initialize device
- * initialize backend and ASIC : registers, motor tables, and gamma tables
- * then ensure scanner's head is at home. Designed for gl846+ ASICs
+ * Initialize backend and ASIC : registers, motor tables, and gamma tables
+ * then ensure scanner's head is at home. Designed for gl846+ ASICs.
+ * Detects cold boot (ie first boot since device plugged) in this case 
+ * an extensice setup up is done at hardware level.
+ *
  * @param dev device to initialize
  * @param max_regs umber of maximum used registers
+ * @return SANE_STATUS_GOOD in case of success
  */
 SANE_Status
 sanei_genesys_asic_init (Genesys_Device * dev, int max_regs)
@@ -1328,7 +1341,8 @@ sanei_genesys_asic_init (Genesys_Device * dev, int max_regs)
   SANE_Status status;
   uint8_t val;
   SANE_Bool cold = SANE_TRUE;
-  int size, i;
+  int size;     /**< size of the device's gamma table */
+  int i;
 
   DBGSTART;
 
@@ -1354,7 +1368,26 @@ sanei_genesys_asic_init (Genesys_Device * dev, int max_regs)
         }
     }
 
-  /* check if the device has already been initialized and powered up 
+  /* setup gamma tables */
+  size = 256;
+  for(i=0;i<3;i++)
+    {
+      FREE_IFNOT_NULL (dev->sensor.gamma_table[i]);
+      dev->sensor.gamma_table[i] = (uint16_t *) malloc (2 * size);
+      if (dev->sensor.gamma_table[i] == NULL)
+        {
+          DBG (DBG_error, "%s: could not allocate memory for gamma table %d\n",
+               __FUNCTION__, i);
+          return SANE_STATUS_NO_MEM;
+        }
+      sanei_genesys_create_gamma_table (dev->sensor.gamma_table[i],
+                                        size,
+                                        65535,
+                                        65535,
+                                        dev->sensor.gamma[i]);
+    }
+
+  /* check if the device has already been initialized and powered up
    * we read register 6 and check PWRBIT, if reset scanner has been
    * freshly powered up. This bit will be set to later so that following
    * reads can detect power down/up cycle*/
@@ -1380,9 +1413,6 @@ sanei_genesys_asic_init (Genesys_Device * dev, int max_regs)
   /* now hardware part is OK, set up device struct */
   FREE_IFNOT_NULL (dev->white_average_data);
   FREE_IFNOT_NULL (dev->dark_average_data);
-  FREE_IFNOT_NULL (dev->sensor.gamma_table[0]);
-  FREE_IFNOT_NULL (dev->sensor.gamma_table[1]);
-  FREE_IFNOT_NULL (dev->sensor.gamma_table[2]);
 
   dev->settings.color_filter = 0;
 
@@ -1391,28 +1421,6 @@ sanei_genesys_asic_init (Genesys_Device * dev, int max_regs)
 
   /* Set analog frontend */
   RIE (dev->model->cmd_set->set_fe (dev, AFE_INIT));
-
-  /* init gamma tables */
-  size = 256;
-
-  for(i=0;i<3;i++)
-    {
-      if (dev->sensor.gamma_table[i] == NULL)
-        {
-          dev->sensor.gamma_table[i] = (uint16_t *) malloc (2 * size);
-          if (dev->sensor.gamma_table[i] == NULL)
-            {
-              DBG (DBG_error, "%s: could not allocate memory for gamma table %d\n",
-                   __FUNCTION__, i);
-              return SANE_STATUS_NO_MEM;
-            }
-          sanei_genesys_create_gamma_table (dev->sensor.gamma_table[i],
-                                            size,
-                                            65535,
-                                            65535,
-                                            dev->sensor.gamma[i]);
-        }
-    }
 
   dev->oe_buffer.buffer = NULL;
   dev->already_initialized = SANE_TRUE;
@@ -1429,7 +1437,7 @@ sanei_genesys_asic_init (Genesys_Device * dev, int max_regs)
 }
 
 /**
- * Wait for the scanning head to park 
+ * Wait for the scanning head to park
  */
 SANE_Status
 sanei_genesys_wait_for_home (Genesys_Device * dev)
@@ -1437,6 +1445,7 @@ sanei_genesys_wait_for_home (Genesys_Device * dev)
   SANE_Status status;
   uint8_t val;
   int loop;
+  int max=300;
 
   DBGSTART;
 
@@ -1492,7 +1501,14 @@ sanei_genesys_wait_for_home (Genesys_Device * dev)
             }
       ++loop;
     }
-  while (loop < 300 && !(val & HOMESNR) && status == SANE_STATUS_GOOD);
+  while (loop < max && !(val & HOMESNR) && status == SANE_STATUS_GOOD);
+
+  /* if after the timeout, head is still not parked, error out */
+  if(loop >= max && !(val & HOMESNR) && status == SANE_STATUS_GOOD) 
+    {
+      DBG (DBG_error, "%s: failed to reach park position %ds\n", __FUNCTION__, max/10);
+      return SANE_STATUS_IO_ERROR;
+    }
 
   DBGCOMPLETED;
   return status;
@@ -1638,8 +1654,8 @@ Motor_Profile *profile;
 
 	/* required speed */
 	target=((exposure * dpi) / base_dpi)>>step_type;
-        DBG (DBG_io2, "%s: target=%d\n", __FUNCTION__, target);
-	
+        DBG (DBG_io2, "%s: exposure=%d, dpi=%d, target=%d\n", __FUNCTION__, exposure, dpi, target);
+
 	/* fill result with target speed */
         for(i=0;i<SLOPE_TABLE_SIZE;i++)
           slope[i]=target;
@@ -1650,7 +1666,7 @@ Motor_Profile *profile;
         i=0;
 	sum=0;
 
-        /* first step is used unmodified */
+        /* first step is always used unmodified */
         current=profile->table[0];
 
         /* loop on profile copying and apply step type */
@@ -1660,6 +1676,14 @@ Motor_Profile *profile;
             sum+=slope[i];
             i++;
             current=profile->table[i]>>step_type;
+          }
+
+        /* ensure last step is required speed in case profile doesn't contain it */
+        if(current!=0 && current<target)
+          {
+            slope[i]=target;
+            sum+=slope[i];
+            i++;
           }
 
         /* range checking */
@@ -1747,7 +1771,11 @@ int sanei_genesys_get_lowest_dpi(Genesys_Device *dev)
 /** @brief check is a cache entry may be used
  * Compares current settings with the cache entry and return
  * SANE_TRUE if they are compatible.
- */
+ * A calibration cache is compatible if color mode and x dpi match the user
+ * requested scan. In the case of CIS scanners, dpi isn't a criteria.
+ * flatbed cache entries are considred too old and then expires if they
+ * are older than the expiration time option, forcing calibration at least once
+ * then given time. */
 SANE_Status
 sanei_genesys_is_compatible_calibration (Genesys_Device * dev,
 				 Genesys_Calibration_Cache * cache,
@@ -1760,27 +1788,25 @@ sanei_genesys_is_compatible_calibration (Genesys_Device * dev,
   SANE_Status status;
 
   DBGSTART;
- 
+
   if(dev->model->cmd_set->calculate_current_setup==NULL)
     {
-      DBG (DBG_proc,
-	   "sanei_genesys_is_compatible_calibration: no calculate_setup, non compatible cache\n");
+      DBG (DBG_proc, "%s: no calculate_setup, non compatible cache\n", __FUNCTION__);
       return SANE_STATUS_UNSUPPORTED;
     }
 
   status = dev->model->cmd_set->calculate_current_setup (dev);
   if (status != SANE_STATUS_GOOD)
     {
-      DBG (DBG_error,
-	   "sanei_genesys_is_compatible_calibration: failed to calculate current setup: %s\n",
+      DBG (DBG_error, "%s: failed to calculate current setup: %s\n", __FUNCTION__,
 	   sane_strstatus (status));
       return status;
     }
   dev->current_setup.scan_method = dev->settings.scan_method;
 
-  DBG (DBG_proc, "sanei_genesys_is_compatible_calibration: checking\n");
-  
-  /* a calibration cache is compatible if color mode and x dpi match the user 
+  DBG (DBG_proc, "%s: checking\n", __FUNCTION__);
+
+  /* a calibration cache is compatible if color mode and x dpi match the user
    * requested scan. In the case of CIS scanners, dpi isn't a criteria */
   if (dev->model->is_cis == SANE_FALSE)
     {
@@ -1796,39 +1822,36 @@ sanei_genesys_is_compatible_calibration (Genesys_Device * dev,
       resolution=sanei_genesys_compute_dpihw(dev,dev->settings.xres);
       compatible = (resolution == ((int) sanei_genesys_compute_dpihw(dev,cache->used_setup.xres)));
     }
+  DBG (DBG_io, "%s: after resolution check current compatible=%d\n", __FUNCTION__, compatible);
   if (dev->current_setup.half_ccd != cache->used_setup.half_ccd)
     {
-      DBG (DBG_io,
-	   "sanei_genesys_is_compatible_calibration: half_ccd=%d, used=%d\n",
+      DBG (DBG_io, "%s: half_ccd=%d, used=%d\n", __FUNCTION__,
 	   dev->current_setup.half_ccd, cache->used_setup.half_ccd);
       compatible = 0;
     }
   if (dev->current_setup.scan_method != cache->used_setup.scan_method)
     {
-      DBG (DBG_io,
-	   "sanei_genesys_is_compatible_calibration: current method=%d, used=%d\n",
+      DBG (DBG_io, "%s: current method=%d, used=%d\n", __FUNCTION__,
 	   dev->current_setup.scan_method, cache->used_setup.scan_method);
       compatible = 0;
     }
   if (!compatible)
     {
-      DBG (DBG_proc,
-	   "sanei_genesys_is_compatible_calibration: completed, non compatible cache\n");
+      DBG (DBG_proc, "%s: completed, non compatible cache\n", __FUNCTION__);
       return SANE_STATUS_UNSUPPORTED;
     }
 
-  /* a cache entry expires after 60 minutes for non sheetfed scanners */
+  /* a cache entry expires after afetr expiration time for non sheetfed scanners */
   /* this is not taken into account when overwriting cache entries    */
 #ifdef HAVE_SYS_TIME_H
-  if(for_overwrite == SANE_FALSE)
+  if(for_overwrite == SANE_FALSE && dev->settings.expiration_time >=0)
     {
       gettimeofday (&time, NULL);
-      if ((time.tv_sec - cache->last_calibration > 60 * 60)
+      if ((time.tv_sec - cache->last_calibration > dev->settings.expiration_time*60)
           && (dev->model->is_sheetfed == SANE_FALSE)
           && (dev->settings.scan_method == SCAN_METHOD_FLATBED))
         {
-          DBG (DBG_proc,
-               "sanei_genesys_is_compatible_calibration: expired entry, non compatible cache\n");
+          DBG (DBG_proc, "%s: expired entry, non compatible cache\n", __FUNCTION__);
           return SANE_STATUS_UNSUPPORTED;
         }
     }

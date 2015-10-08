@@ -29,6 +29,7 @@
  *	20	usb cmd counters
  *	18	sane_read
  *	17	setvalue, getvalue, control_option
+ *	16	gamma table
  *	15	e2_send, e2_recv calls
  *	13	e2_cmd_info_block
  *	12	epson_cmd_simple
@@ -355,10 +356,12 @@ print_params(const SANE_Parameters params)
 static void
 close_scanner(Epson_Scanner *s)
 {
+	int i;
+
 	DBG(7, "%s: fd = %d\n", __func__, s->fd);
 
 	if (s->fd == -1)
-		return;
+		goto free;
 
 	/* send a request_status. This toggles w_cmd_count and r_cmd_count */
 	if (r_cmd_count % 2)
@@ -380,6 +383,14 @@ close_scanner(Epson_Scanner *s)
 	}
 
 	s->fd = -1;
+
+free:
+	for (i = 0; i < LINES_SHUFFLE_MAX; i++) {
+		if (s->line_buffer[i] != NULL)
+			free(s->line_buffer[i]);
+	}
+
+	free(s);
 }
 
 static void
@@ -409,8 +420,8 @@ e2_network_discovery(void)
 	FD_SET(fd, &rfds);
 
 	sanei_udp_set_nonblock(fd, SANE_TRUE);
-	if (select(fd + 1, &rfds, NULL, NULL, &to) > 0) {
-		while ((len = sanei_udp_recvfrom(fd, buf, 76, &ip)) == 76) {
+	while (select(fd + 1, &rfds, NULL, NULL, &to) > 0) {
+		if ((len = sanei_udp_recvfrom(fd, buf, 76, &ip)) == 76) {
 			DBG(5, " response from %s\n", ip);
 
 			/* minimal check, protocol unknown */
@@ -576,12 +587,12 @@ static SANE_Status detect_scsi(struct Epson_Scanner *s)
 }
 
 static SANE_Status
-detect_usb(struct Epson_Scanner *s)
+detect_usb(struct Epson_Scanner *s, SANE_Bool assume_valid)
 {
 	SANE_Status status;
 	int vendor, product;
 	int i, numIds;
-	SANE_Bool is_valid;
+	SANE_Bool is_valid = assume_valid;
 
 	/* if the sanei_usb_get_vendor_product call is not supported,
 	 * then we just ignore this and rely on the user to config
@@ -603,19 +614,20 @@ detect_usb(struct Epson_Scanner *s)
 	}
 
 	numIds = sanei_epson_getNumberOfUSBProductIds();
-	is_valid = SANE_FALSE;
 	i = 0;
 
 	/* check all known product IDs to verify that we know
 	   about the device */
-	while (i != numIds && !is_valid) {
-		if (product == sanei_epson_usb_product_ids[i])
+	while (i != numIds) {
+		if (product == sanei_epson_usb_product_ids[i]) {
 			is_valid = SANE_TRUE;
+			break;
+		}
 		i++;
 	}
 
 	if (is_valid == SANE_FALSE) {
-		DBG(1, "the device at %s is not a supported (product id=0x%x)\n",
+		DBG(1, "the device at %s is not supported (product id=0x%x)\n",
 			s->hw->sane.name, product);
 		return SANE_STATUS_INVAL;
 	}
@@ -649,7 +661,7 @@ scanner_create(struct Epson_Device *dev, SANE_Status *status)
 }
 
 static struct Epson_Scanner *
-device_detect(const char *name, int type, SANE_Status *status)
+device_detect(const char *name, int type, SANE_Bool assume_valid, SANE_Status *status)
 {
 	struct Epson_Scanner *s;
 	struct Epson_Device *dev;
@@ -702,7 +714,7 @@ device_detect(const char *name, int type, SANE_Status *status)
 
 	} else if (dev->connection == SANE_EPSON_USB) {
 
-		*status = detect_usb(s);
+		*status = detect_usb(s, assume_valid);
 	}
 
 	if (*status != SANE_STATUS_GOOD)
@@ -748,7 +760,6 @@ device_detect(const char *name, int type, SANE_Status *status)
 
 close:
       	close_scanner(s);
-	free(s);
 	return NULL;
 }
 
@@ -761,12 +772,11 @@ attach(const char *name, int type)
 
 	DBG(7, "%s: devname = %s, type = %d\n", __func__, name, type);
 
-	s = device_detect(name, type, &status);
+	s = device_detect(name, type, 0, &status);
 	if(s == NULL)
 		return status;
 
       	close_scanner(s);
-	free(s);
 	return status;
 }
 
@@ -813,6 +823,7 @@ attach_one_config(SANEI_Config __sane_unused__ *config, const char *line)
 	DBG(7, "%s: len = %d, line = %s\n", __func__, len, line);
 	
 	if (sscanf(line, "usb %i %i", &vendor, &product) == 2) {
+
 		/* add the vendor and product IDs to the list of
 		   known devices before we call the attach function */
 
@@ -976,10 +987,10 @@ init_options(Epson_Scanner *s)
 	s->opt[OPT_MODE].size = max_string_size(mode_list);
 	s->opt[OPT_MODE].constraint_type = SANE_CONSTRAINT_STRING_LIST;
 	s->opt[OPT_MODE].constraint.string_list = mode_list;
-	s->val[OPT_MODE].w = 0;	/* Binary */
+	s->val[OPT_MODE].w = 0;	/* Lineart */
 
 	/* disable infrared on unsupported scanners */
-	if (!e2_model(s, "GT-X800") && !e2_model(s, "GT-X700") && !e2_model(s, "GT-X900"))
+	if (!e2_model(s, "GT-X800") && !e2_model(s, "GT-X700") && !e2_model(s, "GT-X900") && !e2_model(s, "GT-X980"))
 		mode_list[MODE_INFRARED] = NULL;
 
 	/* bit depth */
@@ -987,14 +998,13 @@ init_options(Epson_Scanner *s)
 	s->opt[OPT_BIT_DEPTH].title = SANE_TITLE_BIT_DEPTH;
 	s->opt[OPT_BIT_DEPTH].desc = SANE_DESC_BIT_DEPTH;
 	s->opt[OPT_BIT_DEPTH].type = SANE_TYPE_INT;
-	s->opt[OPT_BIT_DEPTH].unit = SANE_UNIT_NONE;
+	s->opt[OPT_BIT_DEPTH].unit = SANE_UNIT_BIT;
 	s->opt[OPT_BIT_DEPTH].constraint_type = SANE_CONSTRAINT_WORD_LIST;
 	s->opt[OPT_BIT_DEPTH].constraint.word_list = s->hw->depth_list;
-	s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
-	s->val[OPT_BIT_DEPTH].w = s->hw->depth_list[1];	/* the first "real" element is the default */
+	s->val[OPT_BIT_DEPTH].w = 8; /* default to 8 bit */
 
-	if (s->hw->depth_list[0] == 1)	/* only one element in the list -> hide the option */
-		s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
+	/* default is Lineart, disable depth selection */
+	s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
 
 	/* halftone */
 	s->opt[OPT_HALFTONE].name = SANE_NAME_HALFTONE;
@@ -1456,6 +1466,8 @@ sane_open(SANE_String_Const name, SANE_Handle *handle)
 
 	DBG(7, "%s: name = %s\n", __func__, name);
 
+	*handle = NULL;
+
 	/* probe if empty device name provided */
 	if (l == 0) {
 
@@ -1467,7 +1479,7 @@ sane_open(SANE_String_Const name, SANE_Handle *handle)
 		}
 
 		s = device_detect(first_dev->sane.name, first_dev->connection,
-					&status);
+					0, &status);
 		if (s == NULL) {
 			DBG(1, "cannot open a perfectly valid device (%s),"
 				" please report to the authors\n", name);
@@ -1477,15 +1489,15 @@ sane_open(SANE_String_Const name, SANE_Handle *handle)
 	} else {
 
 		if (strncmp(name, "net:", 4) == 0) {
-			s = device_detect(name, SANE_EPSON_NET, &status);
+			s = device_detect(name, SANE_EPSON_NET, 0, &status);
 			if (s == NULL)
 				return status;
 		} else if (strncmp(name, "libusb:", 7) == 0) {
-			s = device_detect(name, SANE_EPSON_USB, &status);
+			s = device_detect(name, SANE_EPSON_USB, 1, &status);
 			if (s == NULL)
 				return status;
 		} else if (strncmp(name, "pio:", 4) == 0) {
-			s = device_detect(name, SANE_EPSON_PIO, &status);
+			s = device_detect(name, SANE_EPSON_PIO, 0, &status);
 			if (s == NULL)
 				return status;
 		} else {
@@ -1498,7 +1510,7 @@ sane_open(SANE_String_Const name, SANE_Handle *handle)
 			if (first_dev == NULL)
 				probe_devices();
 
-			s = device_detect(name, SANE_EPSON_NODEV, &status);
+			s = device_detect(name, SANE_EPSON_NODEV, 0, &status);
 			if (s == NULL) {
 				DBG(1, "invalid device name: %s\n", name);
 				return SANE_STATUS_INVAL;
@@ -1513,8 +1525,6 @@ sane_open(SANE_String_Const name, SANE_Handle *handle)
 
 	init_options(s);
 
-	*handle = (SANE_Handle) s;
-
 	status = open_scanner(s);
 	if (status != SANE_STATUS_GOOD) {
 		free(s);
@@ -1522,17 +1532,22 @@ sane_open(SANE_String_Const name, SANE_Handle *handle)
 	}
 
 	status = esci_reset(s);
-	if (status != SANE_STATUS_GOOD)
+	if (status != SANE_STATUS_GOOD) {
 		close_scanner(s);
+		return status;
+	}
+
+	*handle = (SANE_Handle)s;
 	
-	return status;
+	return SANE_STATUS_GOOD;
 }
 
 void
 sane_close(SANE_Handle handle)
 {
-	int i;
 	Epson_Scanner *s;
+
+	DBG(1, "* %s\n", __func__);
 
 	/*
 	 * XXX Test if there is still data pending from
@@ -1541,15 +1556,7 @@ sane_close(SANE_Handle handle)
 
 	s = (Epson_Scanner *) handle;
 
-	if (s->fd != -1)
-		close_scanner(s);
-
-	for (i = 0; i < LINES_SHUFFLE_MAX; i++) {
-		if (s->line_buffer[i] != NULL)
-			free(s->line_buffer[i]);
-	}
-
-	free(s);
+	close_scanner(s);
 }
 
 const SANE_Option_Descriptor *
@@ -1752,8 +1759,9 @@ change_source(Epson_Scanner *s, SANE_Int optindex, char *value)
 			s->val[OPT_ADF_MODE].w = 0;
 		}
 
-		DBG(1, "adf activated (%d %d)\n", s->hw->use_extension,
-		    s->hw->duplex);
+		DBG(1, "adf activated (ext: %d, duplex: %d)\n",
+			s->hw->use_extension,
+			s->hw->duplex);
 
 	} else if (strcmp(TPU_STR, value) == 0 || strcmp(TPU_STR2, value) == 0) {
 	        if (strcmp(TPU_STR, value) == 0) {
@@ -1907,6 +1915,8 @@ setvalue(SANE_Handle handle, SANE_Int option, void *value, SANE_Int *info)
 
 		sval->w = optindex;
 
+		DBG(17, "%s: setting mode to %d\n", __func__, optindex);
+
 		/* halftoning available only on bw scans */
 		if (s->hw->cmd->set_halftoning != 0)
 			setOptionState(s, mode_params[optindex].depth == 1,
@@ -1921,16 +1931,18 @@ setvalue(SANE_Handle handle, SANE_Int option, void *value, SANE_Int *info)
 
 		/* if binary, then disable the bit depth selection */
 		if (optindex == 0) {
+			DBG(17, "%s: disabling bit depth selection\n", __func__);
 			s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
 		} else {
-			if (s->hw->depth_list[0] == 1)
-				s->opt[OPT_BIT_DEPTH].cap |=
-					SANE_CAP_INACTIVE;
-			else {
-				s->opt[OPT_BIT_DEPTH].cap &=
-					~SANE_CAP_INACTIVE;
-				s->val[OPT_BIT_DEPTH].w =
-					mode_params[optindex].depth;
+			if (s->hw->depth_list[0] == 1) {
+				DBG(17, "%s: only one depth is available\n", __func__);
+				s->opt[OPT_BIT_DEPTH].cap |= SANE_CAP_INACTIVE;
+			} else {
+
+				DBG(17, "%s: enabling bit depth selection\n", __func__);
+
+				s->opt[OPT_BIT_DEPTH].cap &= ~SANE_CAP_INACTIVE;
+				s->val[OPT_BIT_DEPTH].w = mode_params[optindex].depth;
 			}
 		}
 
@@ -2075,7 +2087,10 @@ sane_start(SANE_Handle handle)
 	Epson_Device *dev = s->hw;
 	SANE_Status status;
 
-	DBG(5, "%s\n", __func__);
+	DBG(5, "* %s\n", __func__);
+
+	s->eof = SANE_FALSE;
+	s->canceling = SANE_FALSE;
 
 	/* check if we just have finished working with the ADF */
 	status = e2_check_adf(s);
@@ -2200,9 +2215,7 @@ sane_start(SANE_Handle handle)
 	if (s->buf == NULL)
 		return SANE_STATUS_NO_MEM;
 
-	s->eof = SANE_FALSE;
 	s->ptr = s->end = s->buf;
-	s->canceling = SANE_FALSE;
 
 	/* feed the first sheet in the ADF */
 	if (dev->ADF && dev->use_extension && dev->cmd->feed) {
@@ -2273,8 +2286,14 @@ sane_read(SANE_Handle handle, SANE_Byte *data, SANE_Int max_length,
 	SANE_Status status;
 	Epson_Scanner *s = (Epson_Scanner *) handle;
 
-	if (s->buf == NULL || s->canceling)
-		return SANE_STATUS_CANCELLED;
+	DBG(18, "* %s: eof: %d, canceling: %d\n",
+		__func__, s->eof, s->canceling);
+
+	/* sane_read called before sane_start? */
+	if (s->buf == NULL) {
+		DBG(1, "%s: buffer is NULL", __func__);
+		return SANE_STATUS_INVAL;
+	}
 
 	*length = 0;
 
@@ -2283,9 +2302,12 @@ sane_read(SANE_Handle handle, SANE_Byte *data, SANE_Int max_length,
 	else
 		status = e2_block_read(s);
 
-	if (status == SANE_STATUS_CANCELLED) {
+	/* The scanning operation might be canceled by the scanner itself
+	 * or the fronted program
+	 */
+	if (status == SANE_STATUS_CANCELLED || s->canceling) {
 		e2_scan_finish(s);
-		return status;
+		return SANE_STATUS_CANCELLED;
 	}
 
 	/* XXX if FS G and STATUS_IOERR, use e2_check_extended_status */
@@ -2296,9 +2318,9 @@ sane_read(SANE_Handle handle, SANE_Byte *data, SANE_Int max_length,
 
 	e2_copy_image_data(s, data, max_length, length);
 
-	DBG(18, "%d lines read, eof: %d, status: %d\n",
+	DBG(18, "%d lines read, eof: %d, canceling: %d, status: %d\n",
 		*length / s->params.bytes_per_line,
-		s->eof, status);
+		s->canceling, s->eof, status);
 
 	/* continue reading if appropriate */
 	if (status == SANE_STATUS_GOOD)
@@ -2320,6 +2342,8 @@ void
 sane_cancel(SANE_Handle handle)
 {
 	Epson_Scanner *s = (Epson_Scanner *) handle;
+
+	DBG(1, "* %s\n", __func__);
 
 	s->canceling = SANE_TRUE;
 }

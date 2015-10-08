@@ -79,7 +79,7 @@
 :model "ScanJet 4850C"
 :interface "USB"
 :usbid "0x03f0" "0x1b05"
-:status :untested
+:status :good
 :comment "resolution from 100 to 2400 supported, UTA not supported yet"
 
 :model "ScanJet G4010"
@@ -127,6 +127,12 @@
 :usbid "0x04a9" "0x221c"
 :status :good
 
+:model "CanoScan LiDE 80"
+:interface "USB"
+:usbid "0x04a9" "0x2214"
+:status :basic
+:comment "No 2400 dpi support, slow speed at lower resolution"
+
 :model "CanoScan LiDE 100"
 :interface "USB"
 :usbid "0x04a9" "0x1904"
@@ -139,6 +145,12 @@
 :status :complete
 :comment "GL124 based, resolution from 75 to 2400 dpi"
 
+:model "CanoScan LiDE 120"
+:interface "USB"
+:usbid "0x04a9" "0x190e"
+:status :unsupported
+:comment "GL124+ based, resolution from 75 to 2400 dpi"
+
 :model "CanoScan LiDE 200"
 :interface "USB"
 :usbid "0x04a9" "0x1905"
@@ -149,7 +161,13 @@
 :interface "USB"
 :usbid "0x04a9" "0x190a"
 :status :complete
-:comment "GL124 based, resolution from 75 to 2400 dpi"
+:comment "GL124 based, resolution from 75 to 4800 dpi"
+
+:model "CanoScan LiDE 220"
+:interface "USB"
+:usbid "0x04a9" "0x190f"
+:status :complete
+:comment "GL124+ based, resolution from 75 to 4800 dpi"
 
 :model "CanoScan 4400f"
 :interface "USB"

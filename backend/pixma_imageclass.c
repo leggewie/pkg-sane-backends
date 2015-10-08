@@ -1,8 +1,8 @@
 /* SANE - Scanner Access Now Easy.
 
+   Copyright (C) 2011-2015 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2007-2009 Nicolas Martin, <nicols-guest at alioth dot debian dot org>
    Copyright (C) 2008 Dennis Lou, dlou 99 at yahoo dot com
-   Copyright (C) 2011-2013 Rolf Bensch <rolf at bensch hyphen online dot de>
 
    This file is part of the SANE package.
 
@@ -64,24 +64,30 @@
 # define UNUSED(v)
 #endif
 
-#define IMAGE_BLOCK_SIZE (0xffff)
+#define IMAGE_BLOCK_SIZE (0x80000)
 #define MAX_CHUNK_SIZE   (0x1000)
 #define MIN_CHUNK_SIZE   (0x0200)
 #define CMDBUF_SIZE 512
 
-#define MF4200_PID 0x26b5
 #define MF4100_PID 0x26a3
 #define MF4600_PID 0x26b0
 #define MF4010_PID 0x26b4
+#define MF4200_PID 0x26b5
 #define MF4360_PID 0x26ec
 #define D480_PID   0x26ed
 #define MF4320_PID 0x26ee
 #define D420_PID   0x26ef
 #define MF3200_PID 0x2684
 #define MF6500_PID 0x2686
+/* generation 2 scanners (>=0x2707) */
+#define MF8300_PID 0x2708
+#define MF4500_PID 0x2736
 #define MF4410_PID 0x2737
 #define MF3010_PID 0x2759
-#define MF4770_PID 0x2774
+#define MF4570_PID 0x275a
+#define MF4800_PID 0x2773
+#define MF4700_PID 0x2774
+#define MF8200_PID 0x2779
 /* the following are all untested */
 #define MF5630_PID 0x264e
 #define MF5650_PID 0x264f
@@ -89,9 +95,14 @@
 #define MF5880_PID 0x26f9
 #define MF6680_PID 0x26fa
 #define MF8030_PID 0x2707
-#define MF4550_PID 0x2736
-#define MF4570_PID 0x275a
 #define IR1133_PID 0x2742
+#define MF5900_PID 0x2743
+#define D530_PID   0x2775
+#define MF8500_PID 0x277a
+#define MF6100_PID 0x278e
+#define MF820_PID  0x27a6
+#define MF220_PID  0x27a8
+#define MF210_PID  0x27a9
 
 
 enum iclass_state_t
@@ -198,6 +209,7 @@ activate (pixma_t * s, uint8_t x)
     case D420_PID:
     case MF4360_PID:
     case MF4100_PID:
+    case MF8300_PID:
       return iclass_exec (s, &mf->cb, 1);
       break;
     default:
@@ -229,6 +241,7 @@ select_source (pixma_t * s)
     case D420_PID:
     case MF4360_PID:
     case MF4100_PID:
+    case MF8300_PID:
       return iclass_exec (s, &mf->cb, 0);
       break;
     default:
@@ -263,6 +276,7 @@ send_scan_param (pixma_t * s)
     case D420_PID:
     case MF4360_PID:
     case MF4100_PID:
+    case MF8300_PID:
       return iclass_exec (s, &mf->cb, 0);
       break;
     default:
@@ -280,16 +294,10 @@ request_image_block (pixma_t * s, unsigned flag, uint8_t * info,
   const int hlen = 2 + 6;
 
   memset (mf->cb.buf, 0, 11);
-  pixma_set_be16 (((s->cfg->pid == MF3010_PID ||
-                    s->cfg->pid == MF4410_PID ||
-                    s->cfg->pid == MF4770_PID ||
-                    s->cfg->pid == MF4550_PID) ? cmd_read_image2 : cmd_read_image), mf->cb.buf);
+  pixma_set_be16 (((mf->generation >= 2) ? cmd_read_image2 : cmd_read_image), mf->cb.buf);
   mf->cb.buf[8] = flag;
   mf->cb.buf[10] = 0x06;
-  expected_len = (s->cfg->pid == MF3010_PID ||
-                  s->cfg->pid == MF4410_PID ||
-                  s->cfg->pid == MF4770_PID ||
-                  s->cfg->pid == MF4550_PID ||
+  expected_len = (mf->generation >= 2 ||
                   s->cfg->pid == MF4600_PID ||
                   s->cfg->pid == MF6500_PID ||
                   s->cfg->pid == MF8030_PID) ? 512 : hlen;
@@ -300,10 +308,7 @@ request_image_block (pixma_t * s, unsigned flag, uint8_t * info,
       *size = pixma_get_be16 (mf->cb.buf + 6);    /* 16bit size */
       error = 0;
 
-      if (s->cfg->pid == MF3010_PID ||
-          s->cfg->pid == MF4410_PID ||
-          s->cfg->pid == MF4770_PID ||
-          s->cfg->pid == MF4550_PID ||
+      if (mf->generation >= 2 ||
           s->cfg->pid == MF4600_PID ||
           s->cfg->pid == MF6500_PID ||
           s->cfg->pid == MF8030_PID)
@@ -312,6 +317,7 @@ request_image_block (pixma_t * s, unsigned flag, uint8_t * info,
           *size = (*datalen + hlen == 512) ? pixma_get_be32 (mf->cb.buf + 4) - *datalen : 0;
           memcpy (data, mf->cb.buf + hlen, *datalen);
         }
+     PDBG (pixma_dbg (11, "*request_image_block***** size = %u *****\n", *size));
     }
   else
     {
@@ -323,13 +329,11 @@ request_image_block (pixma_t * s, unsigned flag, uint8_t * info,
 static int
 read_image_block (pixma_t * s, uint8_t * data, unsigned size)
 {
+  iclass_t *mf = (iclass_t *) s->subdriver;
   int error;
   unsigned maxchunksize, chunksize, count = 0;
   
-  maxchunksize = MAX_CHUNK_SIZE * ((s->cfg->pid == MF3010_PID ||
-                                    s->cfg->pid == MF4410_PID ||
-                                    s->cfg->pid == MF4770_PID ||
-                                    s->cfg->pid == MF4550_PID ||
+  maxchunksize = MAX_CHUNK_SIZE * ((mf->generation >= 2 ||
                                     s->cfg->pid == MF4600_PID ||
                                     s->cfg->pid == MF6500_PID ||
                                     s->cfg->pid == MF8030_PID) ? 4 : 1);
@@ -369,6 +373,7 @@ read_error_info (pixma_t * s, void *buf, unsigned size)
     case D420_PID:
     case MF4360_PID:
     case MF4100_PID:
+    case MF8300_PID:
       error = iclass_exec (s, &mf->cb, 0);
       break;
     default:
@@ -513,8 +518,8 @@ iclass_check_param (pixma_t * s, pixma_scan_param_t * sp)
 
   /* Some exceptions here for particular devices */
   /* Those devices can scan up to Legal 14" with ADF, but A4 11.7" in flatbed */
-  if (sp->source == PIXMA_SOURCE_FLATBED
-      && ( s->cfg->pid == MF4770_PID ))
+  /* PIXMA_CAP_ADF also works for PIXMA_CAP_ADFDUP */
+  if ((s->cfg->cap & PIXMA_CAP_ADF) && sp->source == PIXMA_SOURCE_FLATBED)
     sp->h = MIN (sp->h, 877 * sp->xdpi / 75);
 
   return 0;
@@ -651,10 +656,7 @@ iclass_fill_buffer (pixma_t * s, pixma_imagebuf_t * ib)
       if (n != 0)
         {
           if (s->param->channels != 1 &&
-                  s->cfg->pid != MF3010_PID &&
-                  s->cfg->pid != MF4410_PID &&
-                  s->cfg->pid != MF4770_PID &&
-	          s->cfg->pid != MF4550_PID &&
+                  mf->generation == 1 &&
 	          s->cfg->pid != MF4600_PID &&
 	          s->cfg->pid != MF6500_PID &&
 	          s->cfg->pid != MF8030_PID)
@@ -706,10 +708,15 @@ iclass_finish_scan (pixma_t * s)
           activate (s, 0);
           query_status (s);
         }
-      /* 0x38 = last block and ADF empty
-       * 0x28 = last block and Paper in ADF */
-      if (mf->last_block==0x38                                  /* ADF empty */
-          || (mf->generation == 1 && mf->last_block == 0x28))   /* generation 1 scanner or Paper in ADF */
+      /* generation = 1:
+       * 0x28 = last block (no multi page scan)
+       * generation >= 2:
+       * 0x38 = last block and ADF empty (generation >= 2)
+       * 0x28 = last block and Paper in ADF (multi page scan)
+       * some generation 2 scanners don't use 0x38 for ADF empty => check status */
+      if (mf->last_block==0x38                                  /* generation 2 scanner ADF empty */
+          || (mf->generation == 1 && mf->last_block == 0x28)    /* generation 1 scanner last block */
+          || (mf->generation >= 2 && !has_paper(s)))            /* check status: no paper in ADF */
 	{
           PDBG (pixma_dbg (3, "*iclass_finish_scan***** abort session  *****\n"));
 	  abort_session (s);
@@ -759,41 +766,52 @@ static const pixma_scan_ops_t pixma_iclass_ops = {
   iclass_get_status
 };
 
-#define DEV(name, model, pid, dpi, w, h, cap) {     \
+#define DEV(name, model, pid, dpi, adftpu_max_dpi, w, h, cap) {     \
             name,                     /* name */		\
             model,                    /* model */		\
             0x04a9, pid,              /* vid pid */	\
             1,                        /* iface */		\
             &pixma_iclass_ops,        /* ops */		\
             dpi, dpi,                 /* xdpi, ydpi */	\
-            0, 0,                     /* adftpu_min_dpi & adftpu_max_dpi not used in this subdriver */ \
+            0,                        /* adftpu_min_dpi not used in this subdriver */ \
+            adftpu_max_dpi,           /* adftpu_max_dpi */ \
             0, 0,                     /* tpuir_min_dpi & tpuir_max_dpi not used in this subdriver */   \
             w, h,                     /* width, height */	\
             PIXMA_CAP_GRAY|PIXMA_CAP_EVENTS|cap             \
 }
 const pixma_config_t pixma_iclass_devices[] = {
-  DEV ("Canon imageCLASS MF4270", "MF4270", MF4200_PID, 600, 640, 877, PIXMA_CAP_ADF),
-  DEV ("Canon imageCLASS MF4150", "MF4100", MF4100_PID, 600, 640, 877, PIXMA_CAP_ADF),
-  DEV ("Canon imageCLASS MF4690", "MF4690", MF4600_PID, 600, 640, 877, PIXMA_CAP_ADF),
-  DEV ("Canon imageCLASS D420", "D420", D420_PID, 600, 640, 877, PIXMA_CAP_ADFDUP),
-  DEV ("Canon imageCLASS D480", "D480", D480_PID, 600, 640, 877, PIXMA_CAP_ADFDUP),
-  DEV ("Canon imageCLASS MF4360", "MF4360", MF4360_PID, 600, 640, 877, PIXMA_CAP_ADFDUP),
-  DEV ("Canon imageCLASS MF4320", "MF4320", MF4320_PID, 600, 640, 877, PIXMA_CAP_ADF),
-  DEV ("Canon imageCLASS MF4010", "MF4010", MF4010_PID, 600, 640, 877, 0),
-  DEV ("Canon imageCLASS MF3240", "MF3240", MF3200_PID, 600, 640, 877, 0),
-  DEV ("Canon imageClass MF6500", "MF6500", MF6500_PID, 600, 640, 877, PIXMA_CAP_ADF),
-  DEV ("Canon imageCLASS MF4410", "MF4410", MF4410_PID, 600, 640, 877, PIXMA_CAP_ADF),
-  DEV ("Canon i-SENSYS MF4550d", "MF4550", MF4550_PID, 600, 640, 877, PIXMA_CAP_ADF),
-  DEV ("Canon i-SENSYS MF3010", "MF3010", MF3010_PID, 600, 640, 877, 0),
-  DEV ("Canon imageCLASS MF4770n", "MF4770", MF4770_PID, 600, 640, 1050, PIXMA_CAP_ADF),
+  DEV ("Canon imageCLASS MF4270", "MF4270", MF4200_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon imageCLASS MF4150", "MF4100", MF4100_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon imageCLASS MF4690", "MF4690", MF4600_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon imageCLASS D420", "D420", D420_PID, 600, 0, 640, 877, PIXMA_CAP_ADFDUP),
+  DEV ("Canon imageCLASS D480", "D480", D480_PID, 600, 0, 640, 877, PIXMA_CAP_ADFDUP),
+  DEV ("Canon imageCLASS MF4360", "MF4360", MF4360_PID, 600, 0, 640, 877, PIXMA_CAP_ADFDUP),
+  DEV ("Canon imageCLASS MF4320", "MF4320", MF4320_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon imageCLASS MF4010", "MF4010", MF4010_PID, 600, 0, 640, 877, 0),
+  DEV ("Canon imageCLASS MF3240", "MF3240", MF3200_PID, 600, 0, 640, 877, 0),
+  DEV ("Canon imageClass MF6500", "MF6500", MF6500_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon imageCLASS MF4410", "MF4410", MF4410_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon i-SENSYS MF4500 Series", "MF4500", MF4500_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon i-SENSYS MF3010", "MF3010", MF3010_PID, 600, 0, 640, 877, 0),
+  DEV ("Canon i-SENSYS MF4700 Series", "MF4700", MF4700_PID, 600, 0, 640, 1050, PIXMA_CAP_ADF),
+  DEV ("Canon i-SENSYS MF4800 Series", "MF4800", MF4800_PID, 600, 0, 640, 1050, PIXMA_CAP_ADF),
+  DEV ("Canon imageCLASS MF4570dw", "MF4570dw", MF4570_PID, 600, 0, 640, 877, 0),
+  DEV ("Canon i-SENSYS MF8200C Series", "MF8200C", MF8200_PID, 600, 300, 640, 1050, PIXMA_CAP_ADF),
+  DEV ("Canon i-SENSYS MF8300 Series", "MF8300", MF8300_PID, 600, 0, 640, 1050, PIXMA_CAP_ADF),
+  DEV ("Canon imageCLASS D530", "D530", D530_PID, 600, 0, 640, 877, 0),
   /* FIXME: the following capabilities all need updating/verifying */
-  DEV ("Canon imageCLASS MF5630", "MF5630", MF5630_PID, 600, 640, 877, PIXMA_CAP_ADF),
-  DEV ("Canon laserBase MF5650", "MF5650", MF5650_PID, 600, 640, 877, PIXMA_CAP_ADF),
-  DEV ("Canon imageCLASS MF8170c", "MF8170c", MF8100_PID, 600, 640, 877, PIXMA_CAP_ADF),
-  DEV ("Canon imageClass MF8030", "MF8030", MF8030_PID, 600, 640, 877, PIXMA_CAP_ADF),  
-  DEV ("Canon i-SENSYS MF5880dn", "MF5880", MF5880_PID, 600, 640, 877, PIXMA_CAP_ADFDUP),
-  DEV ("Canon i-SENSYS MF6680dn", "MF6680", MF6680_PID, 600, 640, 877, PIXMA_CAP_ADFDUP),
-  DEV ("Canon imageCLASS MF4570dw", "MF4570dw", MF4570_PID, 600, 640, 877, 0),
-  DEV ("Canon imageRUNNER 1133", "iR1133", IR1133_PID, 600, 637, 877, PIXMA_CAP_ADFDUP),
-  DEV (NULL, NULL, 0, 0, 0, 0, 0)
+  DEV ("Canon imageCLASS MF5630", "MF5630", MF5630_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon laserBase MF5650", "MF5650", MF5650_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon imageCLASS MF8170c", "MF8170c", MF8100_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon imageClass MF8030", "MF8030", MF8030_PID, 600, 0, 640, 877, PIXMA_CAP_ADF),
+  DEV ("Canon i-SENSYS MF5880dn", "MF5880", MF5880_PID, 600, 0, 640, 877, PIXMA_CAP_ADFDUP),
+  DEV ("Canon i-SENSYS MF6680dn", "MF6680", MF6680_PID, 600, 0, 640, 877, PIXMA_CAP_ADFDUP),
+  DEV ("Canon imageRUNNER 1133", "iR1133", IR1133_PID, 600, 0, 637, 877, PIXMA_CAP_ADFDUP),
+  DEV ("Canon i-SENSYS MF5900 Series", "MF5900", MF5900_PID, 600, 0, 640, 1050, PIXMA_CAP_ADFDUP),
+  DEV ("Canon i-SENSYS MF8500C Series", "MF8500C", MF8500_PID, 600, 0, 640, 1050, PIXMA_CAP_ADFDUP),
+  DEV ("Canon i-SENSYS MF6100 Series", "MF6100", MF6100_PID, 600, 0, 640, 1050, PIXMA_CAP_ADFDUP),
+  DEV ("Canon imageClass MF810/820", "MF810/820", MF820_PID, 600, 0, 640, 1050, PIXMA_CAP_ADFDUP),
+  DEV ("Canon i-SENSYS MF220 Series", "MF220", MF220_PID, 600, 0, 640, 1050, PIXMA_CAP_ADFDUP),
+  DEV ("Canon i-SENSYS MF210 Series", "MF210", MF210_PID, 600, 0, 640, 1050, PIXMA_CAP_ADF),
+  DEV (NULL, NULL, 0, 0, 0, 0, 0, 0)
 };

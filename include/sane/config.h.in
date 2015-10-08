@@ -61,9 +61,6 @@
 /* Define to 1 if you have the `cfmakeraw' function. */
 #undef HAVE_CFMAKERAW
 
-/* Is /usr/include/cups/cups.h available? */
-#undef HAVE_CUPS
-
 /* Define to 1 if you have the <ddk/ntddscsi.h> header file. */
 #undef HAVE_DDK_NTDDSCSI_H
 
@@ -173,6 +170,9 @@
 
 /* Define to 1 if you have the libjpeg library. */
 #undef HAVE_LIBJPEG
+
+/* Define to 1 if you have the libpng library. */
+#undef HAVE_LIBPNG
 
 /* Define to 1 if you have the net-snmp library. */
 #undef HAVE_LIBSNMP
@@ -454,9 +454,6 @@
    */
 #undef LT_OBJDIR
 
-/* Define to 1 if your C compiler doesn't accept -c and -o together. */
-#undef NO_MINUS_C_MINUS_O
-
 /* Define to the name of the distribution. */
 #undef PACKAGE
 
@@ -489,6 +486,9 @@
 
 /* SANE DLL minor number */
 #undef SANE_DLL_V_MINOR
+
+/* Define to 1 if you have the <sys/io.h> providing inb,outb. */
+#undef SANE_HAVE_SYS_IO_H_WITH_INB_OUTB
 
 /* SCSI command buffer size */
 #undef SCSIBUFFERSIZE
