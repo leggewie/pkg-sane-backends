@@ -333,7 +333,7 @@ esci_set_gamma_table(Epson_Scanner * s)
 
 	/* Print the gamma tables before sending them to the scanner */
 
-	if (DBG_LEVEL >= 10) {
+	if (DBG_LEVEL >= 16) {
 		int c, i, j;
 
 		for (c = 0; c < 3; c++) {
@@ -347,7 +347,8 @@ esci_set_gamma_table(Epson_Scanner * s)
 						s->gamma_table[c][i + j]);
 					strcat(gammaValues, newValue);
 				}
-				DBG(11, "gamma table[%d][%d] %s\n", c, i,
+
+				DBG(16, "gamma table[%d][%d] %s\n", c, i,
 				    gammaValues);
 			}
 		}
@@ -679,8 +680,10 @@ esci_set_scanning_parameter(SANE_Handle handle, unsigned char *buf)
 		return status;
 
 	status = e2_cmd_simple(s, buf, 64);
-	if (status != SANE_STATUS_GOOD)
+	if (status != SANE_STATUS_GOOD) {
+		DBG(1, "%s: invalid scanning parameters\n", __func__);
 		return status;
+	}
 
 	return SANE_STATUS_GOOD;
 }

@@ -276,10 +276,46 @@
          - DR-2580C pads the backside of duplex scans
       v40 2012-11-01, MAN
          - initial DR-9050C, DR-7550C, DR-6050C and DR-3010C support
-      v41 2013-07-31, MAN
+      v41 2013-07-31, MAN (SANE 1.0.24)
          - initial P-208 and P-215 support
          - bug fix for calibration of scanners with duplex_offset
          - allow duplex_offset to be controlled from config file
+      v42 2013-12-09, MAN
+         - initial DR-G1100 support
+         - add support for paper sensors (P-215 & P-208)
+         - add initial support for card reader (P-215)
+         - removed unused var from do_scsi_cmd()
+      v43 2014-03-13, MAN
+         - initial DR-M140 support
+         - add extra_status config and code
+         - split status code into do_usb_status
+         - fix copy_line margin offset
+         - add new color interlacing modes and code
+         - comment out ssm2
+         - add timestamp to do_usb_cmd
+      v44 2014-03-26, MAN
+         - buffermode support for machines with ssm2 command
+         - DR-M140 needs always_op=0
+      v45 2014-03-29, MAN
+         - dropout support for machines with ssm2 command
+         - doublefeed support for machines with ssm2 command
+      v46 2014-04-09, MAN
+         - split debug level 30 into two levels
+         - simplify jpeg ifdefs
+         - add support for DR-M160
+      v47 2014-07-07, MAN
+         - initial DR-G1130 support
+      v48 2014-08-06, MAN
+         - set another unknown byte in buffermode for ssm2
+         - add another gettimeofday call at end of do_usb_cmd
+         - don't print 0 length line in hexdump
+      v49 2015-03-18, MAN
+         - initial support for DR-C125
+      v50 2015-08-23, MAN
+         - DR-C125 adds duplex padding on back side
+         - initial support for DR-C225
+      v51 2015-08-25, MAN
+         - DR-C125 does not invert_tly, does need sw_lut
 
    SANE FLOW DIAGRAM
 
@@ -317,6 +353,7 @@
 #include <ctype.h> /*isspace*/
 #include <math.h> /*tan*/
 #include <unistd.h> /*usleep*/
+#include <sys/time.h> /*gettimeofday*/
 
 #include "../include/sane/sanei_backend.h"
 #include "../include/sane/sanei_scsi.h"
@@ -328,7 +365,7 @@
 #include "canon_dr.h"
 
 #define DEBUG 1
-#define BUILD 41
+#define BUILD 51
 
 /* values for SANE_DEBUG_CANON_DR env var:
  - errors           5
@@ -336,15 +373,25 @@
  - function detail 15
  - get/setopt cmds 20
  - scsi/usb trace  25 
- - scsi/usb detail 30
+ - scsi/usb writes 30
+ - scsi/usb reads  31
  - useless noise   35
 */
 
+/* ------------------------------------------------------------------------- */
+/* if JPEG support is not enabled in sane.h, we setup our own defines */
+#ifndef SANE_FRAME_JPEG
+#define SANE_FRAME_JPEG 0x0B
+#define SANE_JPEG_DISABLED 1
+#endif
 /* ------------------------------------------------------------------------- */
 #define STRING_FLATBED SANE_I18N("Flatbed")
 #define STRING_ADFFRONT SANE_I18N("ADF Front")
 #define STRING_ADFBACK SANE_I18N("ADF Back")
 #define STRING_ADFDUPLEX SANE_I18N("ADF Duplex")
+#define STRING_CARDFRONT SANE_I18N("Card Front")
+#define STRING_CARDBACK SANE_I18N("Card Back")
+#define STRING_CARDDUPLEX SANE_I18N("Card Duplex")
 
 #define STRING_LINEART SANE_VALUE_SCAN_MODE_LINEART
 #define STRING_HALFTONE SANE_VALUE_SCAN_MODE_HALFTONE
@@ -366,6 +413,8 @@ static int global_buffer_size;
 static int global_buffer_size_default = 2 * 1024 * 1024;
 static int global_padded_read;
 static int global_padded_read_default = 0;
+static int global_extra_status;
+static int global_extra_status_default = 0;
 static int global_duplex_offset;
 static int global_duplex_offset_default = 0;
 static char global_vendor_name[9];
@@ -541,6 +590,32 @@ sane_get_devices (const SANE_Device *** device_list, SANE_Bool local_only)
                     buf);
 
                   global_padded_read = buf;
+              }
+
+              /* EXTRA STATUS: we clamp to 0 or 1 */
+              else if (!strncmp (lp, "extra-status", 12) && isspace (lp[12])) {
+    
+                  int buf;
+                  lp += 12;
+                  lp = sanei_config_skip_whitespace (lp);
+                  buf = atoi (lp);
+    
+                  if (buf < 0) {
+                    DBG (5, "sane_get_devices: config option \"extra-status\" "
+                      "(%d) is < 0, ignoring!\n", buf);
+                    continue;
+                  }
+    
+                  if (buf > 1) {
+                    DBG (5, "sane_get_devices: config option \"extra-status\" "
+                      "(%d) is > 1, ignoring!\n", buf);
+                    continue;
+                  }
+    
+                  DBG (15, "sane_get_devices: setting \"extra-status\" to %d\n",
+                    buf);
+
+                  global_extra_status = buf;
               }
 
               /* DUPLEXOFFSET: < 1200 */
@@ -733,6 +808,7 @@ attach_one (const char *device_name, int connType)
   /* config file settings */
   s->buffer_size = global_buffer_size;
   s->padded_read = global_padded_read;
+  s->extra_status = global_extra_status;
   s->duplex_offset = global_duplex_offset;
 
   /* copy the device name */
@@ -1160,6 +1236,9 @@ init_model (struct scanner *s)
   s->reverse_by_mode[MODE_GRAYSCALE] = 0;
   s->reverse_by_mode[MODE_COLOR] = 0;
 
+  s->color_interlace[SIDE_FRONT] = COLOR_INTERLACE_RGB;
+  s->color_interlace[SIDE_BACK] = COLOR_INTERLACE_RGB;
+
   s->always_op = 1;
   s->has_df = 1;
   s->has_btc = 1;
@@ -1191,9 +1270,7 @@ init_model (struct scanner *s)
   /* specific settings missing from vpd */
   if (strstr (s->model_name,"DR-9080")
     || strstr (s->model_name,"DR-7580")){
-#ifdef SANE_FRAME_JPEG
     s->has_comp_JPEG = 1;
-#endif
     s->rgb_format = 2;
   }
 
@@ -1203,7 +1280,10 @@ init_model (struct scanner *s)
 
   else if (strstr (s->model_name,"DR-9050")
     || strstr (s->model_name,"DR-7550")
-    || strstr (s->model_name,"DR-6050")){
+    || strstr (s->model_name,"DR-6050")
+    || strstr (s->model_name,"DR-G1100")
+    || strstr (s->model_name,"DR-G1130")
+  ){
 
     /*missing*/
     s->std_res_x[DPI_100]=1;
@@ -1367,6 +1447,7 @@ init_model (struct scanner *s)
     s->has_ssm_pay_head_len = 1;
     s->ppl_mod = 8;
     s->ccal_version = 3;
+    s->can_read_sensors = 1;
   }
 
   else if (strstr (s->model_name, "P-215")) {
@@ -1382,6 +1463,150 @@ init_model (struct scanner *s)
     s->has_ssm_pay_head_len = 1;
     s->ppl_mod = 8;
     s->ccal_version = 3;
+    s->can_read_sensors = 1;
+    s->has_card = 1;
+  }
+
+  else if (strstr (s->model_name,"DR-M160")){
+
+    /*missing*/
+    s->std_res_x[DPI_100]=1;
+    s->std_res_y[DPI_100]=1;
+    s->std_res_x[DPI_150]=1;
+    s->std_res_y[DPI_150]=1;
+    s->std_res_x[DPI_200]=1;
+    s->std_res_y[DPI_200]=1;
+    s->std_res_x[DPI_300]=1;
+    s->std_res_y[DPI_300]=1;
+    s->std_res_x[DPI_400]=1;
+    s->std_res_y[DPI_400]=1;
+    s->std_res_x[DPI_600]=1;
+    s->std_res_y[DPI_600]=1;
+    
+    s->has_comp_JPEG = 1;
+    s->rgb_format = 1;
+    s->can_color = 1;
+    s->has_df_ultra = 1;
+
+    s->color_inter_by_res[DPI_100] = COLOR_INTERLACE_GBR;
+    s->color_inter_by_res[DPI_150] = COLOR_INTERLACE_GBR;
+    s->color_inter_by_res[DPI_200] = COLOR_INTERLACE_BRG;
+    s->color_inter_by_res[DPI_400] = COLOR_INTERLACE_GBR;
+
+    /*weirdness*/
+    s->always_op = 0;
+    s->fixed_width = 1;
+    s->invert_tly = 1;
+    s->can_write_panel = 0;
+    s->has_ssm = 0;
+    s->has_ssm2 = 1;
+    s->duplex_interlace = DUPLEX_INTERLACE_FFBB;
+    s->duplex_offset_side = SIDE_FRONT;
+
+    /*lies*/
+    s->can_halftone=0;
+    s->can_monochrome=0;
+  }
+
+  else if (strstr (s->model_name,"DR-M140")){
+
+    /*missing*/
+    s->std_res_x[DPI_100]=1;
+    s->std_res_y[DPI_100]=1;
+    s->std_res_x[DPI_150]=1;
+    s->std_res_y[DPI_150]=1;
+    s->std_res_x[DPI_200]=1;
+    s->std_res_y[DPI_200]=1;
+    s->std_res_x[DPI_300]=1;
+    s->std_res_y[DPI_300]=1;
+    s->std_res_x[DPI_400]=1;
+    s->std_res_y[DPI_400]=1;
+    s->std_res_x[DPI_600]=1;
+    s->std_res_y[DPI_600]=1;
+    
+    s->has_comp_JPEG = 1;
+    s->rgb_format = 1;
+    s->can_color = 1;
+    s->has_df_ultra = 1;
+
+    s->color_inter_by_res[DPI_100] = COLOR_INTERLACE_GBR;
+    s->color_inter_by_res[DPI_150] = COLOR_INTERLACE_GBR;
+    s->color_inter_by_res[DPI_200] = COLOR_INTERLACE_BRG;
+    s->color_inter_by_res[DPI_400] = COLOR_INTERLACE_GBR;
+
+    /*weirdness*/
+    s->always_op = 0;
+    s->fixed_width = 1;
+    s->invert_tly = 1;
+    s->can_write_panel = 0;
+    s->has_ssm = 0;
+    s->has_ssm2 = 1;
+    s->duplex_interlace = DUPLEX_INTERLACE_FFBB;
+    s->duplex_offset_side = SIDE_BACK;
+
+    /*lies*/
+    s->can_halftone=0;
+    s->can_monochrome=0;
+  }
+
+  else if (strstr (s->model_name,"DR-C125")){
+
+    /*confirmed settings*/
+    s->gray_interlace[SIDE_FRONT] = GRAY_INTERLACE_2510;
+    s->gray_interlace[SIDE_BACK] = GRAY_INTERLACE_2510;
+    s->color_interlace[SIDE_FRONT] = COLOR_INTERLACE_2510;
+    s->color_interlace[SIDE_BACK] = COLOR_INTERLACE_2510;
+    s->duplex_interlace = DUPLEX_INTERLACE_2510;
+    s->duplex_offset_side = SIDE_BACK;
+    s->unknown_byte2 = 0x88;
+    s->need_ccal = 1;
+    s->ccal_version = 3;
+    s->need_fcal = 1;
+    s->sw_lut = 1;
+    s->can_color = 1;
+    s->rgb_format = 1;
+    /*s->duplex_offset = 400; now set in config file*/
+
+    /*only in Y direction, so we trash them in X*/
+    s->std_res_x[DPI_100]=0;
+    s->std_res_x[DPI_150]=0;
+    s->std_res_x[DPI_200]=0;
+    s->std_res_x[DPI_240]=0;
+    s->std_res_x[DPI_400]=0;
+
+    /*suspected settings*/
+    s->always_op = 0;
+    s->fixed_width = 1;
+    s->valid_x = 8.5 * 1200;
+  }
+
+  else if (strstr (s->model_name,"DR-C225")){
+
+    s->color_interlace[SIDE_FRONT] = COLOR_INTERLACE_RRGGBB;
+    s->color_interlace[SIDE_BACK] = COLOR_INTERLACE_rRgGbB;
+    s->gray_interlace[SIDE_BACK] = GRAY_INTERLACE_gG;
+    s->duplex_interlace = DUPLEX_INTERLACE_FBFB;
+
+    s->unknown_byte2 = 0x88;
+    s->need_ccal = 1;
+    s->ccal_version = 3;
+    s->need_fcal = 1;
+    s->invert_tly = 1;
+    s->can_color = 1;
+    s->rgb_format = 1;
+    /*s->duplex_offset = 400; now set in config file*/
+
+    /*only in Y direction, so we trash them in X*/
+    s->std_res_x[DPI_100]=0;
+    s->std_res_x[DPI_150]=0;
+    s->std_res_x[DPI_200]=0;
+    s->std_res_x[DPI_240]=0;
+    s->std_res_x[DPI_400]=0;
+
+    /*suspected settings*/
+    s->always_op = 0;
+    s->fixed_width = 1;
+    s->valid_x = 8.5 * 1200;
   }
 
   DBG (10, "init_model: finish\n");
@@ -1435,6 +1660,8 @@ init_user (struct scanner *s)
     s->u.source = SOURCE_FLATBED;
   else if(s->has_adf)
     s->u.source = SOURCE_ADF_FRONT;
+  else if(s->has_card)
+    s->u.source = SOURCE_CARD_FRONT;
 
   /* scan mode */
   if(s->can_monochrome)
@@ -1626,6 +1853,16 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
       }
       if(s->has_duplex){
         s->source_list[i++]=STRING_ADFDUPLEX;
+      }
+    }
+    if(s->has_card){
+      s->source_list[i++]=STRING_CARDFRONT;
+  
+      if(s->has_back){
+        s->source_list[i++]=STRING_CARDBACK;
+      }
+      if(s->has_duplex){
+        s->source_list[i++]=STRING_CARDDUPLEX;
       }
     }
     s->source_list[i]=NULL;
@@ -1841,7 +2078,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
     opt->constraint.range = &s->paper_x_range;
 
-    if(s->has_adf){
+    if(s->has_adf || s->has_card){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
       if(s->u.source == SOURCE_FLATBED){
         opt->cap |= SANE_CAP_INACTIVE;
@@ -1868,7 +2105,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
     opt->constraint.range = &s->paper_y_range;
 
-    if(s->has_adf){
+    if(s->has_adf || s->has_card){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
       if(s->u.source == SOURCE_FLATBED){
         opt->cap |= SANE_CAP_INACTIVE;
@@ -1985,7 +2222,9 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->compress_list[i++]=STRING_NONE;
 
     if(s->has_comp_JPEG){
+#ifndef SANE_JPEG_DISABLED
       s->compress_list[i++]=STRING_JPEG;
+#endif
     }
 
     s->compress_list[i]=NULL;
@@ -2306,6 +2545,28 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
       opt->cap = SANE_CAP_INACTIVE;
   }
 
+  if(option==OPT_ADF_LOADED){
+    opt->name = "adf-loaded";
+    opt->title = "ADF Loaded";
+    opt->desc = "Paper available in ADF input hopper";
+    opt->type = SANE_TYPE_BOOL;
+    opt->unit = SANE_UNIT_NONE;
+    opt->cap = SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED;
+    if(!s->can_read_sensors)
+      opt->cap = SANE_CAP_INACTIVE;
+  }
+
+  if(option==OPT_CARD_LOADED){
+    opt->name = "card-loaded";
+    opt->title = "Card Loaded";
+    opt->desc = "Paper available in card reader";
+    opt->type = SANE_TYPE_BOOL;
+    opt->unit = SANE_UNIT_NONE;
+    opt->cap = SANE_CAP_SOFT_DETECT | SANE_CAP_HARD_SELECT | SANE_CAP_ADVANCED;
+    if(!s->can_read_sensors || !s->has_card)
+      opt->cap = SANE_CAP_INACTIVE;
+  }
+
   return opt;
 }
 
@@ -2381,6 +2642,15 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           }
           else if(s->u.source == SOURCE_ADF_DUPLEX){
             strcpy (val, STRING_ADFDUPLEX);
+          }
+          else if(s->u.source == SOURCE_CARD_FRONT){
+            strcpy (val, STRING_CARDFRONT);
+          }
+          else if(s->u.source == SOURCE_CARD_BACK){
+            strcpy (val, STRING_CARDBACK);
+          }
+          else if(s->u.source == SOURCE_CARD_DUPLEX){
+            strcpy (val, STRING_CARDDUPLEX);
           }
           return SANE_STATUS_GOOD;
 
@@ -2581,6 +2851,15 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           *val_p = s->panel_counter;
           return ret;
 
+        case OPT_ADF_LOADED:
+          ret = read_sensors(s,OPT_ADF_LOADED);
+          *val_p = s->sensor_adf_loaded;
+          return ret;
+
+        case OPT_CARD_LOADED:
+          ret = read_sensors(s,OPT_CARD_LOADED);
+          *val_p = s->sensor_card_loaded;
+          return ret;
       }
   }
   else if (action == SANE_ACTION_SET_VALUE) {
@@ -2628,6 +2907,15 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           }
           else if (!strcmp (val, STRING_ADFDUPLEX)) {
             tmp = SOURCE_ADF_DUPLEX;
+          }
+          else if (!strcmp (val, STRING_CARDFRONT)) {
+            tmp = SOURCE_CARD_FRONT;
+          }
+          else if (!strcmp (val, STRING_CARDBACK)) {
+            tmp = SOURCE_CARD_BACK;
+          }
+          else if (!strcmp (val, STRING_CARDDUPLEX)) {
+            tmp = SOURCE_CARD_DUPLEX;
           }
           else{
             tmp = SOURCE_FLATBED;
@@ -2837,53 +3125,84 @@ ssm_buffer (struct scanner *s)
 {
   SANE_Status ret = SANE_STATUS_GOOD;
 
-  unsigned char cmd[SET_SCAN_MODE_len];
-  size_t cmdLen = SET_SCAN_MODE_len;
-
-  unsigned char out[SSM_PAY_len];
-  size_t outLen = SSM_PAY_len;
-
   DBG (10, "ssm_buffer: start\n");
 
-  if(!s->has_ssm){
+  if(s->has_ssm){
+  
+    unsigned char cmd[SET_SCAN_MODE_len];
+    size_t cmdLen = SET_SCAN_MODE_len;
+  
+    unsigned char out[SSM_PAY_len];
+    size_t outLen = SSM_PAY_len;
+  
+    memset(cmd,0,cmdLen);
+    set_SCSI_opcode(cmd, SET_SCAN_MODE_code);
+    set_SSM_pf(cmd, 1);
+    set_SSM_pay_len(cmd, outLen);
+  
+    memset(out,0,outLen);
+    if(s->has_ssm_pay_head_len){
+      set_SSM_pay_head_len(out, SSM_PAY_HEAD_len);
+    }
+    set_SSM_page_code(out, SM_pc_buffer);
+    set_SSM_page_len(out, SSM_PAGE_len);
+  
+    if(s->s.source == SOURCE_ADF_DUPLEX || s->s.source == SOURCE_CARD_DUPLEX){
+      set_SSM_BUFF_duplex(out, 1);
+    }
+    if(s->s.source == SOURCE_FLATBED){
+      set_SSM_BUFF_fb(out, 1);
+    }
+    else if(s->s.source >= SOURCE_CARD_FRONT){
+      set_SSM_BUFF_card(out, 1);
+    }
+    if(s->buffermode){
+      set_SSM_BUFF_async(out, 1);
+    }
+    if(0){
+      set_SSM_BUFF_ald(out, 1);
+    }
+    if(0){
+      set_SSM_BUFF_unk(out,1);
+    }
+  
+    ret = do_cmd (
+        s, 1, 0,
+        cmd, cmdLen,
+        out, outLen,
+        NULL, NULL
+    );
+  }
+
+  else if(s->has_ssm2){
+
+    unsigned char cmd[SET_SCAN_MODE2_len];
+    size_t cmdLen = SET_SCAN_MODE2_len;
+  
+    unsigned char out[SSM2_PAY_len];
+    size_t outLen = SSM2_PAY_len;
+  
+    memset(cmd,0,cmdLen);
+    set_SCSI_opcode(cmd, SET_SCAN_MODE2_code);
+    set_SSM2_page_code(cmd, SM2_pc_buffer);
+    set_SSM2_pay_len(cmd, outLen);
+  
+    memset(out,0,outLen);
+    set_SSM2_BUFF_unk(out, !s->buffermode);
+    set_SSM2_BUFF_unk2(out, 0x40);
+    set_SSM2_BUFF_sync(out, !s->buffermode);
+  
+    ret = do_cmd (
+        s, 1, 0,
+        cmd, cmdLen,
+        out, outLen,
+        NULL, NULL
+    );
+  }
+
+  else{
     DBG (10, "ssm_buffer: unsupported\n");
-    return ret;
   }
-
-  memset(cmd,0,cmdLen);
-  set_SCSI_opcode(cmd, SET_SCAN_MODE_code);
-  set_SSM_pf(cmd, 1);
-  set_SSM_pay_len(cmd, outLen);
-
-  memset(out,0,outLen);
-  if(s->has_ssm_pay_head_len){
-    set_SSM_pay_head_len(out, SSM_PAY_HEAD_len);
-  }
-  set_SSM_page_code(out, SM_pc_buffer);
-  set_SSM_page_len(out, SSM_PAGE_len);
-
-  if(s->s.source == SOURCE_ADF_DUPLEX){
-    set_SSM_BUFF_duplex(out, 1);
-  }
-  else if(s->s.source == SOURCE_FLATBED){
-    set_SSM_BUFF_fb(out, 1);
-  }
-  if(s->buffermode){
-    set_SSM_BUFF_async(out, 1);
-  }
-  if(0){
-    set_SSM_BUFF_ald(out, 1);
-  }
-  if(0){
-    set_SSM_BUFF_unk(out,1);
-  }
-
-  ret = do_cmd (
-      s, 1, 0,
-      cmd, cmdLen,
-      out, outLen,
-      NULL, NULL
-  );
 
   DBG (10, "ssm_buffer: finish\n");
 
@@ -2895,57 +3214,118 @@ ssm_df (struct scanner *s)
 {
   SANE_Status ret = SANE_STATUS_GOOD;
 
-  unsigned char cmd[SET_SCAN_MODE_len];
-  size_t cmdLen = SET_SCAN_MODE_len;
-
-  unsigned char out[SSM_PAY_len];
-  size_t outLen = SSM_PAY_len;
-
   DBG (10, "ssm_df: start\n");
-
-  if(!s->has_ssm || !s->has_df){
+  
+  if(!s->has_df){
     DBG (10, "ssm_df: unsupported, finishing\n");
     return ret;
   }
-
-  memset(cmd,0,cmdLen);
-  set_SCSI_opcode(cmd, SET_SCAN_MODE_code);
-  set_SSM_pf(cmd, 1);
-  set_SSM_pay_len(cmd, outLen);
-
-  memset(out,0,outLen);
-  if(s->has_ssm_pay_head_len){
-    set_SSM_pay_head_len(out, SSM_PAY_HEAD_len);
-  }
-  set_SSM_page_code(out, SM_pc_df);
-  set_SSM_page_len(out, SSM_PAGE_len);
-
-  /* deskew by roller */
-  if(s->rollerdeskew){
-    set_SSM_DF_deskew_roll(out, 1);
-  }
   
-  /* staple detection */
-  if(s->stapledetect){
-    set_SSM_DF_staple(out, 1);
-  }
+  if(s->has_ssm){
 
-  /* thickness */
-  if(s->df_thickness){
-    set_SSM_DF_thick(out, 1);
-  }
+    unsigned char cmd[SET_SCAN_MODE_len];
+    size_t cmdLen = SET_SCAN_MODE_len;
   
-  /* length */
-  if(s->df_length){
-    set_SSM_DF_len(out, 1);
+    unsigned char out[SSM_PAY_len];
+    size_t outLen = SSM_PAY_len;
+  
+    memset(cmd,0,cmdLen);
+    set_SCSI_opcode(cmd, SET_SCAN_MODE_code);
+    set_SSM_pf(cmd, 1);
+    set_SSM_pay_len(cmd, outLen);
+  
+    memset(out,0,outLen);
+    if(s->has_ssm_pay_head_len){
+      set_SSM_pay_head_len(out, SSM_PAY_HEAD_len);
+    }
+    set_SSM_page_code(out, SM_pc_df);
+    set_SSM_page_len(out, SSM_PAGE_len);
+  
+    /* deskew by roller */
+    if(s->rollerdeskew){
+      set_SSM_DF_deskew_roll(out, 1);
+    }
+    
+    /* staple detection */
+    if(s->stapledetect){
+      set_SSM_DF_staple(out, 1);
+    }
+  
+    /* thickness */
+    if(s->df_thickness){
+      set_SSM_DF_thick(out, 1);
+    }
+    
+    /* length */
+    if(s->df_length){
+      set_SSM_DF_len(out, 1);
+    }
+  
+    ret = do_cmd (
+        s, 1, 0,
+        cmd, cmdLen,
+        out, outLen,
+        NULL, NULL
+    );
+
   }
 
-  ret = do_cmd (
-      s, 1, 0,
-      cmd, cmdLen,
-      out, outLen,
-      NULL, NULL
-  );
+  else if(s->has_ssm2){
+
+    unsigned char cmd[SET_SCAN_MODE2_len];
+    size_t cmdLen = SET_SCAN_MODE2_len;
+  
+    unsigned char out[SSM2_PAY_len];
+    size_t outLen = SSM2_PAY_len;
+
+    /* send ultrasonic offsets first */
+    if(s->df_thickness && s->has_df_ultra){
+      memset(cmd,0,cmdLen);
+      set_SCSI_opcode(cmd, SET_SCAN_MODE2_code);
+      set_SSM2_page_code(cmd, SM2_pc_ultra);
+      set_SSM2_pay_len(cmd, outLen);
+    
+      memset(out,0,outLen);
+      set_SSM2_ULTRA_top(out, 0);
+      set_SSM2_ULTRA_bot(out, 0);
+  
+      ret = do_cmd (
+          s, 1, 0,
+          cmd, cmdLen,
+          out, outLen,
+          NULL, NULL
+      );
+    }
+
+    memset(cmd,0,cmdLen);
+    set_SCSI_opcode(cmd, SET_SCAN_MODE2_code);
+    set_SSM2_page_code(cmd, SM2_pc_df);
+    set_SSM2_pay_len(cmd, outLen);
+  
+    memset(out,0,outLen);
+  
+    /* thickness */
+    if(s->df_thickness){
+      set_SSM2_DF_thick(out, 1);
+    }
+    
+    /* length */
+    if(s->df_length){
+      set_SSM2_DF_len(out, 1);
+    }
+  
+    ret = do_cmd (
+        s, 1, 0,
+        cmd, cmdLen,
+        out, outLen,
+        NULL, NULL
+    );
+
+  }
+
+  else{
+    DBG (10, "ssm_df: unsupported\n");
+  }
 
   DBG (10, "ssm_df: finish\n");
 
@@ -2957,140 +3337,203 @@ ssm_do (struct scanner *s)
 {
   SANE_Status ret = SANE_STATUS_GOOD;
 
-  unsigned char cmd[SET_SCAN_MODE_len];
-  size_t cmdLen = SET_SCAN_MODE_len;
+ DBG (10, "ssm_do: start\n");
 
-  unsigned char out[SSM_PAY_len];
-  size_t outLen = SSM_PAY_len;
+ if(!s->can_color){
+   DBG (10, "ssm_do: unsupported, finishing\n");
+   return ret;
+ }
+  
+ if(s->has_ssm){
 
-  DBG (10, "ssm_do: start\n");
+    unsigned char cmd[SET_SCAN_MODE_len];
+    size_t cmdLen = SET_SCAN_MODE_len;
+  
+    unsigned char out[SSM_PAY_len];
+    size_t outLen = SSM_PAY_len;
+  
+    memset(cmd,0,cmdLen);
+    set_SCSI_opcode(cmd, SET_SCAN_MODE_code);
+    set_SSM_pf(cmd, 1);
+    set_SSM_pay_len(cmd, outLen);
+  
+    memset(out,0,outLen);
+    if(s->has_ssm_pay_head_len){
+      set_SSM_pay_head_len(out, SSM_PAY_HEAD_len);
+    }
+    set_SSM_page_code(out, SM_pc_dropout);
+    set_SSM_page_len(out, SSM_PAGE_len);
+  
+    set_SSM_DO_unk1(out, 0x03);
+  
+    switch(s->dropout_color_f){
+      case COLOR_RED:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_f_do(out,SSM_DO_red);
+        break;
+      case COLOR_GREEN:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_f_do(out,SSM_DO_green);
+        break;
+      case COLOR_BLUE:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_f_do(out,SSM_DO_blue);
+        break;
+      case COLOR_EN_RED:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_f_en(out,SSM_DO_red);
+        break;
+      case COLOR_EN_GREEN:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_f_en(out,SSM_DO_green);
+        break;
+      case COLOR_EN_BLUE:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_f_en(out,SSM_DO_blue);
+        break;
+    }
+  
+    switch(s->dropout_color_b){
+      case COLOR_RED:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_b_do(out,SSM_DO_red);
+        break;
+      case COLOR_GREEN:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_b_do(out,SSM_DO_green);
+        break;
+      case COLOR_BLUE:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_b_do(out,SSM_DO_blue);
+        break;
+      case COLOR_EN_RED:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_b_en(out,SSM_DO_red);
+        break;
+      case COLOR_EN_GREEN:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_b_en(out,SSM_DO_green);
+        break;
+      case COLOR_EN_BLUE:
+        set_SSM_DO_unk2(out, 0x05);
+        set_SSM_DO_b_en(out,SSM_DO_blue);
+        break;
+    }
+  
+    ret = do_cmd (
+        s, 1, 0,
+        cmd, cmdLen,
+        out, outLen,
+        NULL, NULL
+    );
 
-  if(!s->has_ssm || !s->can_color){
-    DBG (10, "ssm_do: unsupported, finishing\n");
-    return ret;
   }
 
-  memset(cmd,0,cmdLen);
-  set_SCSI_opcode(cmd, SET_SCAN_MODE_code);
-  set_SSM_pf(cmd, 1);
-  set_SSM_pay_len(cmd, outLen);
+  else if(s->has_ssm2){
 
-  memset(out,0,outLen);
-  if(s->has_ssm_pay_head_len){
-    set_SSM_pay_head_len(out, SSM_PAY_HEAD_len);
-  }
-  set_SSM_page_code(out, SM_pc_dropout);
-  set_SSM_page_len(out, SSM_PAGE_len);
+    unsigned char cmd[SET_SCAN_MODE2_len];
+    size_t cmdLen = SET_SCAN_MODE2_len;
+  
+    unsigned char out[SSM2_PAY_len];
+    size_t outLen = SSM2_PAY_len;
+  
+    memset(cmd,0,cmdLen);
+    set_SCSI_opcode(cmd, SET_SCAN_MODE2_code);
+    set_SSM2_page_code(cmd, SM2_pc_dropout);
+    set_SSM2_pay_len(cmd, outLen);
+  
+    memset(out,0,outLen);
+  
+    switch(s->dropout_color_f){
+      case COLOR_RED:
+        set_SSM2_DO_do(out,SSM_DO_red);
+        break;
+      case COLOR_GREEN:
+        set_SSM2_DO_do(out,SSM_DO_green);
+        break;
+      case COLOR_BLUE:
+        set_SSM2_DO_do(out,SSM_DO_blue);
+        break;
+      case COLOR_EN_RED:
+        set_SSM2_DO_en(out,SSM_DO_red);
+        break;
+      case COLOR_EN_GREEN:
+        set_SSM2_DO_en(out,SSM_DO_green);
+        break;
+      case COLOR_EN_BLUE:
+        set_SSM2_DO_en(out,SSM_DO_blue);
+        break;
+    }
 
-  set_SSM_DO_unk1(out, 0x03);
-
-  switch(s->dropout_color_f){
-    case COLOR_RED:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_f_do(out,SSM_DO_red);
-      break;
-    case COLOR_GREEN:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_f_do(out,SSM_DO_green);
-      break;
-    case COLOR_BLUE:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_f_do(out,SSM_DO_blue);
-      break;
-    case COLOR_EN_RED:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_f_en(out,SSM_DO_red);
-      break;
-    case COLOR_EN_GREEN:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_f_en(out,SSM_DO_green);
-      break;
-    case COLOR_EN_BLUE:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_f_en(out,SSM_DO_blue);
-      break;
-  }
-
-  switch(s->dropout_color_b){
-    case COLOR_RED:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_b_do(out,SSM_DO_red);
-      break;
-    case COLOR_GREEN:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_b_do(out,SSM_DO_green);
-      break;
-    case COLOR_BLUE:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_b_do(out,SSM_DO_blue);
-      break;
-    case COLOR_EN_RED:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_b_en(out,SSM_DO_red);
-      break;
-    case COLOR_EN_GREEN:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_b_en(out,SSM_DO_green);
-      break;
-    case COLOR_EN_BLUE:
-      set_SSM_DO_unk2(out, 0x05);
-      set_SSM_DO_b_en(out,SSM_DO_blue);
-      break;
+    ret = do_cmd (
+        s, 1, 0,
+        cmd, cmdLen,
+        out, outLen,
+        NULL, NULL
+    );
   }
 
-  ret = do_cmd (
-      s, 1, 0,
-      cmd, cmdLen,
-      out, outLen,
-      NULL, NULL
-  );
+  else{
+    DBG (10, "ssm_do: unsupported\n");
+  }
 
   DBG (10, "ssm_do: finish\n");
 
   return ret;
 }
 
-/* used by recent scanners. meaning of payloads unknown */
 static SANE_Status
-ssm2 (struct scanner *s)
+read_sensors(struct scanner *s,SANE_Int option)
 {
-  SANE_Status ret = SANE_STATUS_GOOD;
+  SANE_Status ret=SANE_STATUS_GOOD;
 
-  unsigned char cmd[SET_SCAN_MODE2_len];
-  size_t cmdLen = SET_SCAN_MODE2_len;
+  unsigned char cmd[READ_len];
+  size_t cmdLen = READ_len;
 
-  unsigned char out[SSM2_PAY_len];
-  size_t outLen = SSM2_PAY_len;
+  unsigned char in[R_SENSORS_len];
+  size_t inLen = R_SENSORS_len;
 
-  DBG (10, "ssm2:start\n");
-
-  if(!s->has_ssm2){
-    DBG (10, "ssm2: unsupported, finishing\n");
+  DBG (10, "read_sensors: start %d\n", option);
+ 
+  if(!s->can_read_sensors){
+    DBG (10, "read_sensors: unsupported, finishing\n");
     return ret;
   }
 
-  memset(cmd,0,cmdLen);
-  set_SCSI_opcode(cmd, SET_SCAN_MODE2_code);
-  /*FIXME: set this correctly */
-  set_SSM2_page_code(cmd, 0);
-  set_SSM2_pay_len(cmd, outLen);
+  /* only run this if frontend has already read the last time we got it */
+  /* or if we don't care for such bookkeeping (private use) */
+  if (!option || !s->sensors_read[option-OPT_ADF_LOADED]) {
 
-  /*FIXME: set these correctly */
-  memset(out,0,outLen);
-  set_SSM2_unk(out, 0);
-  set_SSM2_unk2(out, 0);
-  set_SSM2_unk3(out, 0);
+    DBG (15, "read_sensors: running\n");
 
-  /*
-  ret = do_cmd (
+    memset(cmd,0,cmdLen);
+    set_SCSI_opcode(cmd, READ_code);
+    set_R_datatype_code (cmd, SR_datatype_sensors);
+    set_R_xfer_length (cmd, inLen);
+    
+    ret = do_cmd (
       s, 1, 0,
       cmd, cmdLen,
-      out, outLen,
-      NULL, NULL
-  );*/
+      NULL, 0,
+      in, &inLen
+    );
+    
+    if (ret == SANE_STATUS_GOOD || ret == SANE_STATUS_EOF) {
+      /*set flags indicating there is data to read*/
+      memset(s->sensors_read,1,sizeof(s->sensors_read));
 
-  DBG (10, "ssm2: finish\n");
+      s->sensor_adf_loaded = get_R_SENSORS_adf(in);
+      s->sensor_card_loaded = get_R_SENSORS_card(in);
 
+      ret = SANE_STATUS_GOOD;
+    }
+  }
+  
+  if(option)
+    s->sensors_read[option-OPT_ADF_LOADED] = 0;
+
+  DBG (10, "read_sensors: finish\n");
+  
   return ret;
 }
 
@@ -3112,9 +3555,9 @@ read_panel(struct scanner *s,SANE_Int option)
     return ret;
   }
 
-  /* only run this if frontend has read previous value
-   * or if the caller does not want the data stored */
-  if (!option || !s->hw_read[option-OPT_START]) {
+  /* only run this if frontend has already read the last time we got it */
+  /* or if we don't care for such bookkeeping (private use) */
+  if (!option || !s->panel_read[option-OPT_START]) {
 
     DBG (15, "read_panel: running\n");
 
@@ -3132,8 +3575,7 @@ read_panel(struct scanner *s,SANE_Int option)
     
     if (ret == SANE_STATUS_GOOD || ret == SANE_STATUS_EOF) {
       /*set flags indicating there is data to read*/
-      if(option)
-        memset(s->hw_read,1,sizeof(s->hw_read));
+      memset(s->panel_read,1,sizeof(s->panel_read));
 
       s->panel_start = get_R_PANEL_start(in);
       s->panel_stop = get_R_PANEL_stop(in);
@@ -3143,12 +3585,13 @@ read_panel(struct scanner *s,SANE_Int option)
       s->panel_bypass_mode = get_R_PANEL_bypass_mode(in);
       s->panel_enable_led = get_R_PANEL_enable_led(in);
       s->panel_counter = get_R_PANEL_counter(in);
+
       ret = SANE_STATUS_GOOD;
     }
   }
   
   if(option)
-    s->hw_read[option-OPT_START] = 0;
+    s->panel_read[option-OPT_START] = 0;
 
   DBG (10, "read_panel: finish %d\n",s->panel_counter);
   
@@ -3294,14 +3737,12 @@ update_params(struct scanner *s, int calib)
     /* round down to pixel boundary for some scanners */
     s->u.width -= s->u.width % s->ppl_mod;
 
-#ifdef SANE_FRAME_JPEG
     /* jpeg requires 8x8 squares */
     if(s->compress == COMP_JPEG && s->u.mode >= MODE_GRAYSCALE){
       s->u.format = SANE_FRAME_JPEG;
       s->u.width -= s->u.width % 8;
       s->u.height -= s->u.height % 8;
     }
-#endif
 
     s->u.Bpl = s->u.width * s->u.bpp / 8;
     s->u.valid_Bpl = s->u.Bpl;
@@ -3396,7 +3837,8 @@ update_params(struct scanner *s, int calib)
     }
 
     /* some scanners need longer scans because front/back is offset */
-    if(s->u.source == SOURCE_ADF_DUPLEX && s->duplex_offset && !calib)
+    if((s->u.source == SOURCE_ADF_DUPLEX || s->u.source == SOURCE_CARD_DUPLEX)
+      && s->duplex_offset && !calib)
       s->s.height = (s->u.br_y-s->u.tl_y+s->duplex_offset) * s->u.dpi_y / 1200;
 
     /* round lines up to even number */
@@ -3421,7 +3863,7 @@ update_params(struct scanner *s, int calib)
     else{
       memcpy(&s->i,&s->u,sizeof(struct img_params));
       /*dumb scanners pad the top of front page in duplex*/
-      if(s->i.source == SOURCE_ADF_DUPLEX)
+      if(s->i.source == SOURCE_ADF_DUPLEX || s->i.source == SOURCE_CARD_DUPLEX)
         s->i.skip_lines[s->duplex_offset_side] = s->duplex_offset * s->i.dpi_y / 1200;
     }
 
@@ -3485,7 +3927,7 @@ sane_start (SANE_Handle handle)
   if(!s->started){
 
     /* load side marker */
-    if(s->u.source == SOURCE_ADF_BACK){
+    if(s->u.source == SOURCE_ADF_BACK || s->u.source == SOURCE_CARD_BACK){
       s->side = SIDE_BACK;
     }
     else{
@@ -3549,7 +3991,7 @@ sane_start (SANE_Handle handle)
       goto errors;
     }
 
-    /* buffer/duplex/ald command */
+    /* buffer/duplex/ald/fb/card command */
     ret = ssm_buffer(s);
     if (ret != SANE_STATUS_GOOD) {
       DBG (5, "sane_start: ERROR: cannot ssm buffer\n");
@@ -3591,18 +4033,21 @@ sane_start (SANE_Handle handle)
       goto errors;
     }
 
-    /* grab next page */
-    ret = object_position (s, SANE_TRUE);
-    if (ret != SANE_STATUS_GOOD) {
-      DBG (5, "sane_start: ERROR: cannot load page\n");
-      goto errors;
-    }
-
-    /* wait for scanner to finish load */
-    ret = wait_scanner (s);
-    if (ret != SANE_STATUS_GOOD) {
-      DBG (5, "sane_start: ERROR: cannot wait scanner\n");
-      goto errors;
+    /* card reader dislikes op? */
+    if(s->s.source < SOURCE_CARD_FRONT){
+      /* grab next page */
+      ret = object_position (s, SANE_TRUE);
+      if (ret != SANE_STATUS_GOOD) {
+        DBG (5, "sane_start: ERROR: cannot load page\n");
+        goto errors;
+      }
+  
+      /* wait for scanner to finish load */
+      ret = wait_scanner (s);
+      if (ret != SANE_STATUS_GOOD) {
+        DBG (5, "sane_start: ERROR: cannot wait scanner\n");
+        goto errors;
+      }
     }
 
     /* start scanning */
@@ -3619,7 +4064,7 @@ sane_start (SANE_Handle handle)
   else{
 
     /* duplex needs to switch sides */
-    if(s->s.source == SOURCE_ADF_DUPLEX){
+    if(s->s.source == SOURCE_ADF_DUPLEX || s->s.source == SOURCE_CARD_DUPLEX){
       s->side = !s->side;
     }
 
@@ -3635,7 +4080,7 @@ sane_start (SANE_Handle handle)
     /* otherwise buffered back page will be lost */
     /* ingest paper with adf (no-op for fb) */
     /* dont call object pos or scan on back side of duplex scan */
-    if(s->side == SIDE_FRONT || s->s.source == SOURCE_ADF_BACK){
+    if(s->side == SIDE_FRONT || s->s.source == SOURCE_ADF_BACK || s->s.source == SOURCE_CARD_BACK){
 
       /* clean scan params for new scan */
       ret = clean_params(s);
@@ -3694,9 +4139,7 @@ sane_start (SANE_Handle handle)
    * API has no way to inform the frontend of this,
    * so we block and buffer. yuck */
   if( (s->swdeskew || s->swdespeck || s->swcrop)
-#ifdef SANE_FRAME_JPEG
     && s->s.format != SANE_FRAME_JPEG
-#endif
   ){
 
     /* get image */
@@ -3772,23 +4215,26 @@ clean_params (struct scanner *s)
   s->s.bytes_tot[1]=0;
 
   /* store the number of front bytes */ 
-  if ( s->u.source != SOURCE_ADF_BACK )
+  if ( s->u.source != SOURCE_ADF_BACK && s->u.source != SOURCE_CARD_BACK )
     s->u.bytes_tot[SIDE_FRONT] = s->u.Bpl * s->u.height;
 
-  if ( s->i.source != SOURCE_ADF_BACK )
+  if ( s->i.source != SOURCE_ADF_BACK && s->i.source != SOURCE_CARD_BACK )
     s->i.bytes_tot[SIDE_FRONT] = s->i.Bpl * s->i.height;
 
-  if ( s->s.source != SOURCE_ADF_BACK )
+  if ( s->s.source != SOURCE_ADF_BACK && s->s.source != SOURCE_CARD_BACK )
     s->s.bytes_tot[SIDE_FRONT] = s->s.Bpl * s->s.height;
 
   /* store the number of back bytes */ 
-  if ( s->u.source == SOURCE_ADF_DUPLEX || s->u.source == SOURCE_ADF_BACK )
+  if ( s->u.source == SOURCE_ADF_DUPLEX || s->u.source == SOURCE_ADF_BACK 
+    || s->u.source == SOURCE_CARD_DUPLEX || s->u.source == SOURCE_CARD_BACK )
     s->u.bytes_tot[SIDE_BACK] = s->u.Bpl * s->u.height;
 
-  if ( s->i.source == SOURCE_ADF_DUPLEX || s->i.source == SOURCE_ADF_BACK )
+  if ( s->i.source == SOURCE_ADF_DUPLEX || s->i.source == SOURCE_ADF_BACK
+    || s->i.source == SOURCE_CARD_DUPLEX || s->i.source == SOURCE_CARD_BACK )
     s->i.bytes_tot[SIDE_BACK] = s->i.Bpl * s->i.height;
 
-  if ( s->s.source == SOURCE_ADF_DUPLEX || s->s.source == SOURCE_ADF_BACK )
+  if ( s->s.source == SOURCE_ADF_DUPLEX || s->s.source == SOURCE_ADF_BACK
+    || s->s.source == SOURCE_CARD_DUPLEX || s->s.source == SOURCE_CARD_BACK )
     s->s.bytes_tot[SIDE_BACK] = s->s.Bpl * s->s.height;
 
   DBG (10, "clean_params: finish\n");
@@ -3863,7 +4309,7 @@ set_window (struct scanner *s)
   set_WPDB_wdblen(header, SW_desc_len);
 
   /* init the window block */
-  if (s->s.source == SOURCE_ADF_BACK) {
+  if (s->s.source == SOURCE_ADF_BACK || s->s.source == SOURCE_CARD_BACK) {
     set_WD_wid (desc1, WD_wid_back);
   }
   else{
@@ -3933,13 +4379,11 @@ set_window (struct scanner *s)
   set_WD_compress_type(desc1, COMP_NONE);
   set_WD_compress_arg(desc1, 0);
 
-#ifdef SANE_FRAME_JPEG
   /* some scanners support jpeg image compression, for color/gs only */
   if(s->s.format == SANE_FRAME_JPEG){
     set_WD_compress_type(desc1, COMP_JPEG);
     set_WD_compress_arg(desc1, s->compress_arg);
   }
-#endif
 
   /*build the command*/
   memset(cmd,0,cmdLen);
@@ -3953,7 +4397,7 @@ set_window (struct scanner *s)
     NULL, NULL
   );
 
-  if (!ret && s->s.source == SOURCE_ADF_DUPLEX) {
+  if (!ret && (s->s.source == SOURCE_ADF_DUPLEX || s->s.source == SOURCE_CARD_DUPLEX)) {
       set_WD_wid (desc1, WD_wid_back);
       ret = do_cmd (
         s, 1, 0,
@@ -4037,9 +4481,9 @@ start_scan (struct scanner *s, int type)
     out[1] = type;
   }
 
-  if (s->s.source != SOURCE_ADF_DUPLEX) {
+  if (s->s.source != SOURCE_ADF_DUPLEX && s->s.source != SOURCE_CARD_DUPLEX) {
     outLen--;
-    if(s->s.source == SOURCE_ADF_BACK) {
+    if(s->s.source == SOURCE_ADF_BACK || s->s.source == SOURCE_CARD_BACK) {
       out[0] = WD_wid_back;
     }
   }
@@ -4100,7 +4544,7 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len, SANE_Int * len
   s->reading = 1;
 
   /* double width pnm interlacing */
-  if(s->s.source == SOURCE_ADF_DUPLEX
+  if((s->s.source == SOURCE_ADF_DUPLEX || s->s.source == SOURCE_CARD_DUPLEX)
     && s->s.format <= SANE_FRAME_RGB
     && s->duplex_interlace != DUPLEX_INTERLACE_NONE
   ){
@@ -4225,7 +4669,6 @@ read_from_scanner(struct scanner *s, int side, int exact)
     inLen = 0;
   }
 
-#ifdef SANE_FRAME_JPEG
   /* this is jpeg data, we need to fix the missing image size */
   if(s->s.format == SANE_FRAME_JPEG){
 
@@ -4275,7 +4718,6 @@ read_from_scanner(struct scanner *s, int side, int exact)
       }
     }
   }
-#endif
 
   /*scanner may have sent more data than we asked for, chop it*/
   if(inLen > remain){
@@ -4301,37 +4743,32 @@ read_from_scanner(struct scanner *s, int side, int exact)
 
   if(ret == SANE_STATUS_EOF){
 
-    switch (s->s.format){
+    /* this is jpeg data, we need to change the total size */
+    if(s->s.format == SANE_FRAME_JPEG){
+      s->s.bytes_tot[side] = s->s.bytes_sent[side];
+      s->i.bytes_tot[side] = s->i.bytes_sent[side];
+      s->u.bytes_tot[side] = s->i.bytes_sent[side];
+    } 
 
-#ifdef SANE_FRAME_JPEG
-      /* this is jpeg data, we need to change the total size */
-      case SANE_FRAME_JPEG:
-        s->s.bytes_tot[side] = s->s.bytes_sent[side];
-        s->i.bytes_tot[side] = s->i.bytes_sent[side];
-        s->u.bytes_tot[side] = s->i.bytes_sent[side];
-        break;
-#endif
+    /* this is non-jpeg data, fill remainder, change rx'd size */
+    else{
 
-      /* this is non-jpeg data, fill remainder, change rx'd size */
-      default:
+      DBG (15, "read_from_scanner: eof: %d %d\n", s->i.bytes_tot[side], s->i.bytes_sent[side]);
 
-        DBG (15, "read_from_scanner: eof: %d %d\n", s->i.bytes_tot[side], s->i.bytes_sent[side]);
+      /* clone the last line repeatedly until the end */
+      while(s->i.bytes_tot[side] > s->i.bytes_sent[side]){
+        memcpy(
+          s->buffers[side]+s->i.bytes_sent[side]-s->i.Bpl,
+          s->buffers[side]+s->i.bytes_sent[side],
+          s->i.Bpl
+        );
+        s->i.bytes_sent[side] += s->i.Bpl;
+      }
 
-        /* clone the last line repeatedly until the end */
-        while(s->i.bytes_tot[side] > s->i.bytes_sent[side]){
-          memcpy(
-            s->buffers[side]+s->i.bytes_sent[side]-s->i.Bpl,
-            s->buffers[side]+s->i.bytes_sent[side],
-            s->i.Bpl
-          );
-          s->i.bytes_sent[side] += s->i.Bpl;
-        }
+      DBG (15, "read_from_scanner: eof2: %d %d\n", s->i.bytes_tot[side], s->i.bytes_sent[side]);
 
-        DBG (15, "read_from_scanner: eof2: %d %d\n", s->i.bytes_tot[side], s->i.bytes_sent[side]);
-
-        /* pretend we got all the data from scanner */
-        s->s.bytes_sent[side] = s->s.bytes_tot[side];
-        break;
+      /* pretend we got all the data from scanner */
+      s->s.bytes_sent[side] = s->s.bytes_tot[side];
     }
 
     s->i.eof[side] = 1;
@@ -4441,57 +4878,52 @@ read_from_scanner_duplex(struct scanner *s,int exact)
 
   if(ret == SANE_STATUS_EOF){
 
-    switch (s->s.format){
+    /* this is jpeg data, we need to change the total size */
+    if(s->s.format == SANE_FRAME_JPEG){
+      s->s.bytes_tot[SIDE_FRONT] = s->s.bytes_sent[SIDE_FRONT];
+      s->s.bytes_tot[SIDE_BACK] = s->s.bytes_sent[SIDE_BACK];
+      s->i.bytes_tot[SIDE_FRONT] = s->i.bytes_sent[SIDE_FRONT];
+      s->i.bytes_tot[SIDE_BACK] = s->i.bytes_sent[SIDE_BACK];
+      s->u.bytes_tot[SIDE_FRONT] = s->i.bytes_sent[SIDE_FRONT];
+      s->u.bytes_tot[SIDE_BACK] = s->i.bytes_sent[SIDE_BACK];
+    }
 
-#ifdef SANE_FRAME_JPEG
-      /* this is jpeg data, we need to change the total size */
-      case SANE_FRAME_JPEG:
-        s->s.bytes_tot[SIDE_FRONT] = s->s.bytes_sent[SIDE_FRONT];
-        s->s.bytes_tot[SIDE_BACK] = s->s.bytes_sent[SIDE_BACK];
-        s->i.bytes_tot[SIDE_FRONT] = s->i.bytes_sent[SIDE_FRONT];
-        s->i.bytes_tot[SIDE_BACK] = s->i.bytes_sent[SIDE_BACK];
-        s->u.bytes_tot[SIDE_FRONT] = s->i.bytes_sent[SIDE_FRONT];
-        s->u.bytes_tot[SIDE_BACK] = s->i.bytes_sent[SIDE_BACK];
-        break;
-#endif
+    /* this is non-jpeg data, fill remainder, change rx'd size */
+    else{
 
-      /* this is non-jpeg data, fill remainder, change rx'd size */
-      default:
+      DBG (15, "read_from_scanner_duplex: eof: %d %d %d %d\n",
+        s->i.bytes_tot[SIDE_FRONT], s->i.bytes_sent[SIDE_FRONT],
+        s->i.bytes_tot[SIDE_BACK], s->i.bytes_sent[SIDE_BACK]
+      );
 
-        DBG (15, "read_from_scanner_duplex: eof: %d %d %d %d\n",
-          s->i.bytes_tot[SIDE_FRONT], s->i.bytes_sent[SIDE_FRONT],
-          s->i.bytes_tot[SIDE_BACK], s->i.bytes_sent[SIDE_BACK]
+      /* clone the last line repeatedly until the end */
+      while(s->i.bytes_tot[SIDE_FRONT] > s->i.bytes_sent[SIDE_FRONT]){
+        memcpy(
+          s->buffers[SIDE_FRONT]+s->i.bytes_sent[SIDE_FRONT]-s->i.Bpl,
+          s->buffers[SIDE_FRONT]+s->i.bytes_sent[SIDE_FRONT],
+          s->i.Bpl
         );
+        s->i.bytes_sent[SIDE_FRONT] += s->i.Bpl;
+      }
 
-        /* clone the last line repeatedly until the end */
-        while(s->i.bytes_tot[SIDE_FRONT] > s->i.bytes_sent[SIDE_FRONT]){
-          memcpy(
-            s->buffers[SIDE_FRONT]+s->i.bytes_sent[SIDE_FRONT]-s->i.Bpl,
-            s->buffers[SIDE_FRONT]+s->i.bytes_sent[SIDE_FRONT],
-            s->i.Bpl
-          );
-          s->i.bytes_sent[SIDE_FRONT] += s->i.Bpl;
-        }
-
-        /* clone the last line repeatedly until the end */
-        while(s->i.bytes_tot[SIDE_BACK] > s->i.bytes_sent[SIDE_BACK]){
-          memcpy(
-            s->buffers[SIDE_BACK]+s->i.bytes_sent[SIDE_BACK]-s->i.Bpl,
-            s->buffers[SIDE_BACK]+s->i.bytes_sent[SIDE_BACK],
-            s->i.Bpl
-          );
-          s->i.bytes_sent[SIDE_BACK] += s->i.Bpl;
-        }
-
-        DBG (15, "read_from_scanner_duplex: eof2: %d %d %d %d\n",
-          s->i.bytes_tot[SIDE_FRONT], s->i.bytes_sent[SIDE_FRONT],
-          s->i.bytes_tot[SIDE_BACK], s->i.bytes_sent[SIDE_BACK]
+      /* clone the last line repeatedly until the end */
+      while(s->i.bytes_tot[SIDE_BACK] > s->i.bytes_sent[SIDE_BACK]){
+        memcpy(
+          s->buffers[SIDE_BACK]+s->i.bytes_sent[SIDE_BACK]-s->i.Bpl,
+          s->buffers[SIDE_BACK]+s->i.bytes_sent[SIDE_BACK],
+          s->i.Bpl
         );
+        s->i.bytes_sent[SIDE_BACK] += s->i.Bpl;
+      }
 
-        /* pretend we got all the data from scanner */
-        s->s.bytes_sent[SIDE_FRONT] = s->s.bytes_tot[SIDE_FRONT];
-        s->s.bytes_sent[SIDE_BACK] = s->s.bytes_tot[SIDE_BACK];
-        break;
+      DBG (15, "read_from_scanner_duplex: eof2: %d %d %d %d\n",
+        s->i.bytes_tot[SIDE_FRONT], s->i.bytes_sent[SIDE_FRONT],
+        s->i.bytes_tot[SIDE_BACK], s->i.bytes_sent[SIDE_BACK]
+      );
+
+      /* pretend we got all the data from scanner */
+      s->s.bytes_sent[SIDE_FRONT] = s->s.bytes_tot[SIDE_FRONT];
+      s->s.bytes_sent[SIDE_BACK] = s->s.bytes_tot[SIDE_BACK];
     }
 
     s->i.eof[SIDE_FRONT] = 1;
@@ -4522,6 +4954,7 @@ copy_simplex(struct scanner *s, unsigned char * buf, int len, int side)
 
   unsigned char * line = NULL;
   int line_next = 0;
+  int inter = get_color_inter(s,side,s->s.dpi_x);
 
   /* jpeg data should not pass thru this function, so copy and bail out */
   if(s->s.format > SANE_FRAME_RGB){
@@ -4592,7 +5025,7 @@ copy_simplex(struct scanner *s, unsigned char * buf, int len, int side)
   
     else if (s->s.format == SANE_FRAME_RGB){
   
-      switch (s->color_interlace[side]) {
+      switch (inter) {
     
         /* scanner returns color data as bgrbgr... */
         case COLOR_INTERLACE_BGR:
@@ -4600,6 +5033,26 @@ copy_simplex(struct scanner *s, unsigned char * buf, int len, int side)
           for (j=0; j<pwidth; j++){
             line[line_next++] = buf[i+j*3+2];
             line[line_next++] = buf[i+j*3+1];
+            line[line_next++] = buf[i+j*3];
+          }
+          break;
+    
+        /* scanner returns color data as gbrgbr... */
+        case COLOR_INTERLACE_GBR:
+          DBG (17, "copy_simplex: color, GBR\n");
+          for (j=0; j<pwidth; j++){
+            line[line_next++] = buf[i+j*3+2];
+            line[line_next++] = buf[i+j*3];
+            line[line_next++] = buf[i+j*3+1];
+          }
+          break;
+    
+        /* scanner returns color data as brgbrg... */
+        case COLOR_INTERLACE_BRG:
+          DBG (17, "copy_simplex: color, BRG\n");
+          for (j=0; j<pwidth; j++){
+            line[line_next++] = buf[i+j*3+1];
+            line[line_next++] = buf[i+j*3+2];
             line[line_next++] = buf[i+j*3];
           }
           break;
@@ -4768,7 +5221,7 @@ copy_duplex(struct scanner *s, unsigned char * buf, int len)
     }
   }
 
-  /* no scanners use this? */
+  /* full line of front, then full line of back */
   else if(s->duplex_interlace == DUPLEX_INTERLACE_FFBB){
     for(i=0; i<len; i+=dbwidth){
       memcpy(front+flen,buf+i,bwidth);
@@ -4877,7 +5330,7 @@ copy_line(struct scanner *s, unsigned char * buff, int side)
   
   /* scan is wider than user wanted, skip some pixels on left side */
   if(s->i.width != s->s.width){
-    offset = ((s->valid_x-s->i.page_x) / 2 + s->i.tl_x) * s->i.dpi_x/1200*3;
+    offset = ((s->valid_x-s->i.page_x) / 2 + s->i.tl_x) * s->i.dpi_x/1200;
   }
 
   /* change mode, store line in buffer */
@@ -4905,7 +5358,7 @@ copy_line(struct scanner *s, unsigned char * buff, int side)
 
         /*loop over output bits*/
         for(j=0;j<8;j++){
-          int source = (offset+i)*24 + j*3;
+          int source = offset*3 + i*24 + j*3;
           if( (line[source] + line[source+1] + line[source+2]) < thresh ){
             curr |= 1 << (7-j); 
           }
@@ -5967,6 +6420,7 @@ default_globals(void)
 {
   global_buffer_size = global_buffer_size_default;
   global_padded_read = global_padded_read_default;
+  global_extra_status = global_extra_status_default;
   global_duplex_offset = global_duplex_offset_default;
   global_vendor_name[0] = 0;
   global_model_name[0] = 0;
@@ -6252,7 +6706,6 @@ do_scsi_cmd(struct scanner *s, int runRS, int shortTime,
 )
 {
   int ret;
-  size_t actLen = 0;
 
   /*shut up compiler*/
   runRS=runRS;
@@ -6270,7 +6723,6 @@ do_scsi_cmd(struct scanner *s, int runRS, int shortTime,
   if (inBuff && inLen){
     DBG(25, "in: reading %d bytes\n", (int)*inLen);
     memset(inBuff,0,*inLen);
-    actLen = *inLen;
   }
 
   ret = sanei_scsi_cmd2(s->fd, cmdBuff, cmdLen, outBuff, outLen, inBuff, inLen);
@@ -6285,7 +6737,7 @@ do_scsi_cmd(struct scanner *s, int runRS, int shortTime,
       DBG(25, "in: short read, remainder %lu bytes\n", (u_long)s->rs_info);
       *inLen -= s->rs_info;
     }
-    hexdump(30, "in: <<", inBuff, *inLen);
+    hexdump(31, "in: <<", inBuff, *inLen);
     DBG(25, "in: read %d bytes\n", (int)*inLen);
   }
 
@@ -6319,16 +6771,15 @@ do_usb_cmd(struct scanner *s, int runRS, int shortTime,
     unsigned char * inBuffer = NULL;
     int inTimeout = 0;
 
-    size_t statOffset = 0;
-    size_t statLength = 0;
-    size_t statActual = 0;
-    unsigned char * statBuffer = NULL;
-    int statTimeout = 0;
+    size_t extraLength = 0;
 
     int ret = 0;
     int ret2 = 0;
 
-    DBG (10, "do_usb_cmd: start\n");
+    struct timeval timer;
+    gettimeofday(&timer,NULL);
+
+    DBG (10, "do_usb_cmd: start %lu %lu\n", (long unsigned int)timer.tv_sec, (long unsigned int)timer.tv_usec);
 
     /****************************************************************/
     /* the command stage */
@@ -6373,6 +6824,20 @@ do_usb_cmd(struct scanner *s, int runRS, int shortTime,
         return ret;
       }
       free(cmdBuffer);
+    }
+
+    /****************************************************************/
+    /* the extra status stage, used by few scanners                 */
+    /* this is like the regular status block, with an additional    */
+    /* length component at the end */
+    if(s->extra_status){
+      ret2 = do_usb_status(s,runRS,shortTime,&extraLength);
+
+      /* bail out on bad RS status */
+      if(ret2){
+        DBG(5,"extra: bad RS status, %d\n", ret2);
+        return ret2;
+      }
     }
 
     /****************************************************************/
@@ -6432,6 +6897,12 @@ do_usb_cmd(struct scanner *s, int runRS, int shortTime,
       inLength = inOffset+*inLen;
       inActual = inLength;
 
+      /* use the extra length to alter the amount of in we request */
+      if(s->extra_status && extraLength && *inLen > extraLength){
+        DBG(5,"in: adjust extra, %d %d\n", (int)*inLen, (int)extraLength);
+        inActual = inOffset+extraLength;
+      }
+
       /*blast caller's copy in case we error out*/
       *inLen = 0;
 
@@ -6443,16 +6914,16 @@ do_usb_cmd(struct scanner *s, int runRS, int shortTime,
       sanei_usb_set_timeout(inTimeout);
 
       /* build inBuffer */
-      inBuffer = calloc(inLength,1);
+      inBuffer = calloc(inActual,1);
       if(!inBuffer){
         DBG(5,"in: no mem\n");
         return SANE_STATUS_NO_MEM;
       }
   
-      DBG(25, "in: reading %d bytes, timeout %d\n", (int)inLength, inTimeout);
+      DBG(25, "in: reading %d bytes, timeout %d\n", (int)inActual, inTimeout);
       ret = sanei_usb_read_bulk(s->fd, inBuffer, &inActual);
       DBG(25, "in: read %d bytes, retval %d\n", (int)inActual, ret);
-      hexdump(30, "in: <<", inBuffer, inActual);
+      hexdump(31, "in: <<", inBuffer, inActual);
 
       if(!inActual){
         DBG(5,"in: got no data, clearing\n");
@@ -6474,49 +6945,8 @@ do_usb_cmd(struct scanner *s, int runRS, int shortTime,
     }
 
     /****************************************************************/
-    /* the status stage */
-    statOffset = 0;
-    if(s->padded_read)
-      statOffset = USB_HEADER_LEN;
-
-    statLength = statOffset+USB_STATUS_LEN;
-    statActual = statLength;
-    statTimeout = USB_STATUS_TIME;
-
-    /* change timeout */
-    if(shortTime)
-      statTimeout/=60;
-    sanei_usb_set_timeout(statTimeout);
-
-    /* build statBuffer */
-    statBuffer = calloc(statLength,1);
-    if(!statBuffer){
-      DBG(5,"stat: no mem\n");
-      if(inBuffer) free(inBuffer);
-      return SANE_STATUS_NO_MEM;
-    }
-  
-    DBG(25, "stat: reading %d bytes, timeout %d\n", (int)statLength, statTimeout);
-    ret2 = sanei_usb_read_bulk(s->fd, statBuffer, &statActual);
-    DBG(25, "stat: read %d bytes, retval %d\n", (int)statActual, ret2);
-    hexdump(30, "stat: <<", statBuffer, statActual);
-  
-    /*weird status*/
-    if(ret2 != SANE_STATUS_GOOD){
-      DBG(5,"stat: clearing error '%s'\n",sane_strstatus(ret2));
-      ret2 = do_usb_clear(s,1,runRS);
-    }
-    /*short read*/
-    else if(statLength != statActual){
-      DBG(5,"stat: clearing short %d/%d\n",(int)statLength,(int)statActual);
-      ret2 = do_usb_clear(s,1,runRS);
-    }
-    /*inspect the last byte of the status response*/
-    else if(statBuffer[statLength-1]){
-      DBG(5,"stat: status %d\n",statBuffer[statLength-1]);
-      ret2 = do_usb_clear(s,0,runRS);
-    }
-    free(statBuffer);
+    /* the normal status stage */
+    ret2 = do_usb_status(s,runRS,shortTime,&extraLength);
 
     /* if status said EOF, adjust input with remainder count */
     if(ret2 == SANE_STATUS_EOF && inBuffer){
@@ -6524,11 +6954,11 @@ do_usb_cmd(struct scanner *s, int runRS, int shortTime,
       /* EOF is ok */
       ret2 = SANE_STATUS_GOOD;
 
-      if(inActual <= inLength - s->rs_info){
-        DBG(5,"in: we read <= RS, ignoring RS: %d <= %d (%d-%d)\n",
+      if(inActual < inLength - s->rs_info){
+        DBG(5,"in: we read < RS, ignoring RS: %d < %d (%d-%d)\n",
           (int)inActual,(int)(inLength-s->rs_info),(int)inLength,(int)s->rs_info);
       }
-      else if(s->rs_info){
+      else if(inActual > inLength - s->rs_info){
         DBG(5,"in: we read > RS, using RS: %d to %d (%d-%d)\n",
           (int)inActual,(int)(inLength-s->rs_info),(int)inLength,(int)s->rs_info);
         inActual = inLength - s->rs_info;
@@ -6556,7 +6986,80 @@ do_usb_cmd(struct scanner *s, int runRS, int shortTime,
       free(inBuffer);
     }
 
-    DBG (10, "do_usb_cmd: finish\n");
+    gettimeofday(&timer,NULL);
+
+    DBG (10, "do_usb_cmd: finish %lu %lu\n", (long unsigned int)timer.tv_sec, (long unsigned int)timer.tv_usec);
+
+    return ret;
+}
+
+static SANE_Status
+do_usb_status(struct scanner *s, int runRS, int shortTime, size_t * extraLength)
+{
+
+#define EXTRA_READ_len 4
+
+    size_t statPadding = 0;
+    size_t statOffset = 0;
+    size_t statLength = 0;
+    size_t statActual = 0;
+    unsigned char * statBuffer = NULL;
+    int statTimeout = 0;
+
+    int ret = 0;
+
+    if(s->padded_read)
+      statPadding = USB_HEADER_LEN;
+
+    statLength = statPadding+USB_STATUS_LEN;
+    statOffset = statLength-1;
+
+    if(s->extra_status)
+      statLength += EXTRA_READ_len;
+
+    statActual = statLength;
+    statTimeout = USB_STATUS_TIME;
+
+    /* change timeout */
+    if(shortTime)
+      statTimeout/=60;
+    sanei_usb_set_timeout(statTimeout);
+
+    /* build statBuffer */
+    statBuffer = calloc(statLength,1);
+    if(!statBuffer){
+      DBG(5,"stat: no mem\n");
+      return SANE_STATUS_NO_MEM;
+    }
+  
+    DBG(25, "stat: reading %d bytes, timeout %d\n", (int)statLength, statTimeout);
+    ret = sanei_usb_read_bulk(s->fd, statBuffer, &statActual);
+    DBG(25, "stat: read %d bytes, retval %d\n", (int)statActual, ret);
+    hexdump(30, "stat: <<", statBuffer, statActual);
+  
+    /*weird status*/
+    if(ret != SANE_STATUS_GOOD){
+      DBG(5,"stat: clearing error '%s'\n",sane_strstatus(ret));
+      ret = do_usb_clear(s,1,runRS);
+    }
+    /*short read*/
+    else if(statLength != statActual){
+      DBG(5,"stat: clearing short %d/%d\n",(int)statLength,(int)statActual);
+      ret = do_usb_clear(s,1,runRS);
+    }
+    /*inspect the status byte of the response*/
+    else if(statBuffer[statOffset]){
+      DBG(5,"stat: status %d\n",statBuffer[statLength-1-4]);
+      ret = do_usb_clear(s,0,runRS);
+    }
+
+    /*extract the extra length byte of the response*/
+    if(s->extra_status){
+      *extraLength = get_ES_length(statBuffer);
+      DBG(15,"stat: extra %d\n",(int)*extraLength);
+    }
+
+    free(statBuffer);
 
     return ret;
 }
@@ -6668,6 +7171,26 @@ wait_scanner(struct scanner *s)
   DBG (10, "wait_scanner: finish\n");
 
   return ret;
+}
+
+/* Some scanners have per-resolution
+ * color interlacing values, but most
+ * don't. This helper can tell the 
+ * difference.
+ */
+static int
+get_color_inter(struct scanner *s, int side, int res) 
+{
+  int i;
+  for(i=0;i<DPI_1200;i++){
+    if(res == dpi_list[i])
+      break;
+  }
+
+  if(s->color_inter_by_res[i])
+    return s->color_inter_by_res[i];
+
+  return s->color_interlace[side];
 }
 
 /* s->u.page_x stores the user setting
@@ -6789,7 +7312,8 @@ hexdump (int level, char *comment, unsigned char *p, int l)
   }
 
   /* print last (partial) line */
-  DBG (level, "%s\n", line);
+  if (i)
+    DBG (level, "%s\n", line);
 }
 
 /**

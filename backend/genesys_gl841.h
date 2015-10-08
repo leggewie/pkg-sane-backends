@@ -3,42 +3,42 @@
    Copyright (C) 2011-2013 Stéphane Voltz <stef.dev@free.fr>
 
    This file is part of the SANE package.
-   
+
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
    published by the Free Software Foundation; either version 2 of the
    License, or (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful, but
    WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place - Suite 330, Boston,
    MA 02111-1307, USA.
-   
+
    As a special exception, the authors of SANE give permission for
    additional uses of the libraries contained in this release of SANE.
-   
+
    The exception is that, if you link a SANE library with other files
    to produce an executable, this does not by itself cause the
    resulting executable to be covered by the GNU General Public
    License.  Your use of that executable is in no way restricted on
    account of linking the SANE library code into it.
-   
+
    This exception does not, however, invalidate any other reasons why
    the executable file might be covered by the GNU General Public
    License.
-   
+
    If you submit changes to SANE to the maintainers to be included in
    a subsequent release, you agree by submitting the changes that
    those changes may be distributed with this exception intact.
 
    If you write modifications of your own for SANE, it is your choice
    whether to permit this exception to apply to your modifications.
-   If you do not wish that, delete this exception notice. 
+   If you do not wish that, delete this exception notice.
 */
 
 #include "genesys.h"
@@ -157,10 +157,24 @@
 #define REG1DS_TGSHLD   0
 
 
+#define REG1E       	0x1e
 #define REG1E_WDTIME	0xf0
 #define REG1ES_WDTIME   4
 #define REG1E_LINESEL	0x0f
 #define REG1ES_LINESEL  0
+
+#define REG_EXPR        0x10
+#define REG_EXPG        0x12
+#define REG_EXPB        0x14
+#define REG_STEPNO      0x21
+#define REG_FWDSTEP     0x22
+#define REG_BWDSTEP     0x23
+#define REG_FASTNO      0x24
+#define REG_LINCNT      0x25
+#define REG_DPISET      0x2c
+#define REG_STRPIXEL    0x30
+#define REG_ENDPIXEL    0x32
+#define REG_LPERIOD     0x38
 
 #define REG40_HISPDFLG  0x04
 #define REG40_MOTMFLG   0x02
@@ -231,8 +245,8 @@
 #define REG6C_GPIOL	0xff
 
 #define REG6D      	0x6d
-
 #define REG6E      	0x6e
+#define REG6F      	0x6f
 
 #define REG87_LEDADD    0x04
 
@@ -348,8 +362,13 @@ enum
   reg_0x85,
   reg_0x86,
   reg_0x87,
+  reg_0x88,
+  reg_0x89,
   GENESYS_GL841_MAX_REGS
 };
+
+#define INITREG(adr,val) {dev->reg[index].address=adr;dev->reg[index].value=val;index++;}
+
 /**
  * prototypes declaration in case of unit testing
  */
@@ -387,4 +406,51 @@ sanei_gl841_repark_head (Genesys_Device * dev);
 SANE_Status
 gl841_feed (Genesys_Device * dev, int steps);
 
+SANE_Status
+gl841_init_motor_regs_scan(Genesys_Device * dev,
+		      Genesys_Register_Set * reg,
+		      unsigned int scan_exposure_time,
+		      float scan_yres,
+		      int scan_step_type,
+		      unsigned int scan_lines,
+		      unsigned int scan_dummy,
+		      unsigned int feed_steps,
+		      int scan_power_mode,
+		      unsigned int flags) ;
+
+SANE_Status
+gl841_stop_action (Genesys_Device * dev);
+
+SANE_Status
+gl841_start_action (Genesys_Device * dev);
+
+SANE_Status
+gl841_init_motor_regs(Genesys_Device * dev,
+		      Genesys_Register_Set * reg,
+		      unsigned int feed_steps,
+		      unsigned int action,
+		      unsigned int flags);
+
+SANE_Status gl841_send_slope_table (Genesys_Device * dev, int table_nr, uint16_t * slope_table, int steps);
+
+SANE_Status gl841_bulk_write_data_gamma (Genesys_Device * dev, uint8_t addr, uint8_t * data, size_t len);
+
+SANE_Status gl841_offset_calibration (Genesys_Device * dev);
+
+SANE_Status gl841_coarse_gain_calibration (Genesys_Device * dev, int dpi);
+
+SANE_Status gl841_led_calibration (Genesys_Device * dev);
+
+SANE_Status gl841_send_shading_data (Genesys_Device * dev, uint8_t * data, int size);
+
+int gl841_scan_step_type(Genesys_Device *dev, int yres);
+SANE_Status gl841_write_freq(Genesys_Device *dev, unsigned int ydpi);
 #endif
+
+GENESYS_STATIC
+int gl841_exposure_time(Genesys_Device *dev,
+                    float slope_dpi,
+                    int scan_step_type,
+                    int start,
+                    int used_pixels,
+                    int *scan_power_mode);

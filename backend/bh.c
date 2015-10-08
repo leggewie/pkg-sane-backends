@@ -66,6 +66,7 @@
 #define MIN(x,y) ((x)<(y) ? (x) : (y))
 #define MAX(x,y) ((x)>(y) ? (x) : (y))
 
+static const SANE_Device **devlist = 0;
 static int num_devices = 0;
 static BH_Device *first_dev = NULL;
 static BH_Scanner *first_handle = NULL;
@@ -1862,10 +1863,9 @@ start_scan (BH_Scanner *s)
 
 		  strncpy(s->barfname, "/tmp/bhXXXXXX", sizeof(s->barfname));
 		  s->barfname[sizeof(s->barfname)-1] = '\0';
+		  fd = mkstemp(s->barfname);
 
-		  if ((mktemp(s->barfname) == NULL) &&
-		      ((fd = open(s->barfname, O_CREAT | O_EXCL | O_WRONLY, 0600)) != -1) &&
-		      ((fp = fdopen(fd, "w")) != NULL))
+		  if (fd !=-1 && (fp = fdopen(fd, "w")) != NULL)
 		    {
 		      fprintf(fp, "<xml-stream>\n");
 
@@ -3231,7 +3231,6 @@ sane_init (SANE_Int *version_code, SANE_Auth_Callback authorize)
 SANE_Status 
 sane_get_devices (const SANE_Device ***device_list, SANE_Bool local)
 {
-    static const SANE_Device **devlist = 0;
     BH_Device *dev;
     int i;
     DBG(3, "sane_get_devices called\n");
@@ -3879,5 +3878,8 @@ sane_exit (void)
       next = dev->next;
       free (dev);
     }
+  
+  if (devlist)
+    free (devlist);
 }
 

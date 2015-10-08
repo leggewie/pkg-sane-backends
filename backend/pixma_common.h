@@ -1,7 +1,7 @@
 /* SANE - Scanner Access Now Easy.
 
+   Copyright (C) 2011-2015 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2006-2007 Wittawat Yamwong <wittawat@web.de>
-   Copyright (C) 2011-2013 Rolf Bensch <rolf at bensch hyphen online dot de>
 
    This file is part of the SANE package.
 
@@ -147,7 +147,7 @@ struct pixma_scan_ops_t
      * -# Fill the buffer pointed by ib->wptr directly and leave
      *    ib->rptr and ib->rend untouched. The length of the buffer is
      *    ib->wend - ib->wptr. It must update ib->wptr accordingly.
-     * -# Update ib->rptr and ib->rend to point to the the beginning and
+     * -# Update ib->rptr and ib->rend to point to the beginning and
      *    the end of the internal buffer resp. The length of the buffer
      *    is ib->rend - ib->rptr. This function is called again if
      *    and only if pixma_read_image() has copied the whole buffer.

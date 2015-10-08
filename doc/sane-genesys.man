@@ -10,7 +10,7 @@ access to USB flatbed scanners based on the Genesys GL646, GL841, GL843, GL847 a
 At present, the following scanners are known to work with this backend:
 .PP 
 .RS
-Canon LiDE 35/40/50/60/100/110/200/210/700
+Canon LiDE 35/40/50/60/100/110/200/210/220/700
 .br
 Hewlett-Packard HP2300C/HP2400/HP3670/HP3690/G4010/G4050
 .br
@@ -48,11 +48,18 @@ GL841, GL843, GL847 or GL124 chipset, you can try to add it to the backend.
 .SH "CALIBRATION"
 To give correct image quality, sheet fed scanners need to be calibrated using the
 calibration sheet sold with the scanner. To do calibration, you must insert this target
-in the feeder then start calibration either by passing the --calibrate option to scanimage
+in the feeder then start calibration either by passing the \-\-calibrate option to scanimage
 or by clicking on the available 'calibrate' button in the 'advanced options' in a graphical
 frontend. The result of the calibration is stored in a file in the home directory of the user doing it.
 If you plug the scanner in another machine or use it with another account, calibration
-will have to be redone.
+will have to be redone, unles you use the \-\-calibration\-file option.
+If no home directory is defined,
+USERAPPPROFILE will be used, then TMPDIR or TMP. If none of these directories exist, the backend will try
+to write in the current working directory. Flatbed scanners also make use of the calibration file as a cache
+to avoid calibration before each scan. Calibration file name is the name of the scanner model if only
+one scanner is detected. In the case of several identical model, the file name will be the name
+of the logical USB device name. The expiration time manages the time a calibration is valid in cache.
+A value of -1 means forever, 0 means no cache.
 
 .SH EXTRAS SCAN OPTIONS
 
@@ -69,13 +76,13 @@ whith brightness below that value will be scanned as black.
 
 .B \-\-brightness value
 .RS
-	-100..100 (in steps of 1). Set the brightness enhancement. 0 for no enhancement, negative
+	\-100..100 (in steps of 1). Set the brightness enhancement. 0 for no enhancement, negative
 values to decrease brigthness, and positive values to increase it.
 .RE
 
 .B \-\-contrast value
 .RS
-	-100..100 (in steps of 1). Set the contrast enhancement. 0 for no enhancement, negative
+	\-100..100 (in steps of 1). Set the contrast enhancement. 0 for no enhancement, negative
 values to decrease contrast, and positive values to increase it.
 .RE
 
@@ -112,9 +119,16 @@ next scan will happen.
 .B \-\-calibration\-file
 .RS
         Specify the calibration file name to use. At least the directory containing the file
-must exist, since it won't be created. This allow to handle the case of several identical devices
-that would otherwise use the same calibration data. This option is disabled if the backend is ran
-as root.
+must exist, since it won't be created. This option is disabled if the backend is ran
+as root. It maybe used in case of sheet-fed scanners to share a calibration file for several
+users.
+.RE
+
+.B \-\-expiration\-time
+.RS
+        Specify the time (in minutes) a cached calibration is considered valid. If older than the given value, a new
+calibration is done. A value of -1 means no expiration and cached value are kept forever unless cleared by
+userwith the calibration clear option. A value of 0 means cache is disabled.
 .RE
 
 .PP
@@ -268,6 +282,9 @@ cncsolutions (http://www.cncsolutions.com.br) sponsored and supported the work o
 .TP
 Brian Paavo from Benthic Science Limited for donating a Canoscan LiDE 700F.
 .br
+.TP
+Dany Qumsiyeh for donating a Canoscan LiDE 210 and a LiDE 220.
+.br
 
 .SH "SEE ALSO"
 .BR sane (7),
@@ -295,7 +312,7 @@ Alexey Osipov <simba@lerlan.ru> for HP2400 final support
 Powersaving isn't implemented for gl646 based scanner. Dynamic (emulated from gray data and with dithering) isn't enabled for gl646 scanners. Hardware lineart is limited up to 600 dpi for gl847 based scanners, due to the way image sensors are built.
 .br
 .TP
-This backend will be much slower if not using libusb-1.0. So be sure that sane-backends is built with the --enable-libusb_1_0 option.
+This backend will be much slower if not using libusb\-1.0. So be sure that sane\-backends is built with the \-\-enable-libusb_1_0 option.
 .br
 
 .SH "BUGS"

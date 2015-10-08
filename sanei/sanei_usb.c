@@ -154,6 +154,7 @@ typedef struct
   SANE_Int control_in_ep;
   SANE_Int control_out_ep;
   SANE_Int interface_nr;
+  SANE_Int alt_setting;
   SANE_Int missing;
 #ifdef HAVE_LIBUSB
   usb_dev_handle *libusb_handle;
@@ -460,8 +461,6 @@ sanei_libusb_strerror (int errcode)
       default:
 	return "Unknown libusb-1.0 error code";
     }
-
-  return "Unknown libusb-1.0 error code";
 }
 #endif /* HAVE_LIBUSB_1_0 */
 
@@ -635,6 +634,7 @@ static void usbcall_scan_devices(void)
 	  device.product = pDevDesc->idProduct;
 	  device.method = sanei_usb_method_usbcalls;
 	  device.interface_nr = interface;
+	  device.alt_setting = 0;
 	  DBG (4, "%s: found usbcalls device (0x%04x/0x%04x) as device number %s\n", __func__,
 	       pDevDesc->idVendor, pDevDesc->idProduct,device.devname);
 	  store_device(device);
@@ -821,7 +821,7 @@ static void libusb_scan_devices(void)
 		     "scanner (%d/%d)\n", __func__, dev->descriptor.idVendor,
 		     dev->descriptor.idProduct, interface,
 		     dev->descriptor.bDeviceClass,
-		     dev->config[0].interface[interface].altsetting != 0
+		     dev->config[0].interface[interface].num_altsetting != 0
                        ? dev->config[0].interface[interface].altsetting[0].
 		       bInterfaceClass : -1);
 	    }
@@ -845,6 +845,7 @@ static void libusb_scan_devices(void)
 	  device.product = dev->descriptor.idProduct;
 	  device.method = sanei_usb_method_libusb;
 	  device.interface_nr = interface;
+	  device.alt_setting = 0;
 	  DBG (4,
 	       "%s: found libusb device (0x%04x/0x%04x) interface "
                "%d  at %s\n", __func__,
@@ -991,7 +992,7 @@ static void libusb_scan_devices(void)
 		 "%s: device 0x%04x/0x%04x, interface %d "
 		 "doesn't look like a scanner (%d/%d)\n", __func__,
 		 vid, pid, interface, desc.bDeviceClass,
-		 (config0->interface[interface].altsetting != 0)
+		 (config0->interface[interface].num_altsetting != 0)
 		 ? config0->interface[interface].altsetting[0].bInterfaceClass : -1);
 	}
 
@@ -1018,6 +1019,7 @@ static void libusb_scan_devices(void)
       device.product = pid;
       device.method = sanei_usb_method_libusb;
       device.interface_nr = interface;
+      device.alt_setting = 0;
       DBG (4,
 	   "%s: found libusb-1.0 device (0x%04x/0x%04x) interface "
 	   "%d at %s\n", __func__,
@@ -1381,30 +1383,32 @@ sanei_usb_open (SANE_String_Const devname, SANE_Int * dn)
 	       "configuration (%d), choosing first config (%d)\n",
 	       dev->descriptor.bNumConfigurations,
 	       dev->config[0].bConfigurationValue);
-	}
-      result = usb_set_configuration (devices[devcount].libusb_handle,
-				      dev->config[0].bConfigurationValue);
-      if (result < 0)
-	{
-	  SANE_Status status = SANE_STATUS_INVAL;
 
-	  DBG (1, "sanei_usb_open: libusb complained: %s\n", usb_strerror ());
-	  if (errno == EPERM || errno == EACCES)
+	  result = usb_set_configuration (devices[devcount].libusb_handle,
+					  dev->config[0].bConfigurationValue);
+	  if (result < 0)
 	    {
-	      DBG (1, "Make sure you run as root or set appropriate "
-		   "permissions\n");
-	      status = SANE_STATUS_ACCESS_DENIED;
-	    }
-	  else if (errno == EBUSY)
-	    {
-	      DBG (3, "Maybe the kernel scanner driver or usblp claims the "
-		   "interface? Ignoring this error...\n");
-	      status = SANE_STATUS_GOOD;
-	    }
-	  if (status != SANE_STATUS_GOOD)
-	    {
-	      usb_close (devices[devcount].libusb_handle);
-	      return status;
+	      SANE_Status status = SANE_STATUS_INVAL;
+
+	      DBG (1, "sanei_usb_open: libusb complained: %s\n",
+		   usb_strerror ());
+	      if (errno == EPERM || errno == EACCES)
+		{
+		  DBG (1, "Make sure you run as root or set appropriate "
+		       "permissions\n");
+		  status = SANE_STATUS_ACCESS_DENIED;
+		}
+	      else if (errno == EBUSY)
+		{
+		  DBG (3, "Maybe the kernel scanner driver or usblp claims the "
+		       "interface? Ignoring this error...\n");
+		  status = SANE_STATUS_GOOD;
+		}
+	      if (status != SANE_STATUS_GOOD)
+		{
+		  usb_close (devices[devcount].libusb_handle);
+		  return status;
+		}
 	    }
 	}
 
@@ -1445,13 +1449,13 @@ sanei_usb_open (SANE_String_Const devname, SANE_Int * dn)
 		  DBG (5, "sanei_usb_open:     interface nr: %d\n", i);
 		  DBG (5, "sanei_usb_open:   alt_setting nr: %d\n", a);
 
-                  /* Start by interfaces found in sanei_usb_init */
-                  if (c == 0 && i != devices[devcount].interface_nr)
-                    {
-                      DBG (5, "sanei_usb_open: interface %d not detected as "
-                        "a scanner by sanei_usb_init, ignoring.\n", i);
-                      continue;
-                     }
+		  /* Start by interfaces found in sanei_usb_init */
+		  if (c == 0 && i != devices[devcount].interface_nr)
+		    {
+		      DBG (5, "sanei_usb_open: interface %d not detected as "
+			"a scanner by sanei_usb_init, ignoring.\n", i);
+		      continue;
+		     }
 
 		  interface = &dev->config[c].interface[i].altsetting[a];
 
@@ -1672,37 +1676,40 @@ sanei_usb_open (SANE_String_Const devname, SANE_Int * dn)
 	       "configuration (%d), choosing first config (%d)\n",
 	       desc.bNumConfigurations,
 	       config0->bConfigurationValue);
-	}
-      result = libusb_set_configuration (devices[devcount].lu_handle,
-					 config0->bConfigurationValue);
 
+	  result = 0;
+	  if (config != config0->bConfigurationValue)
+	    result = libusb_set_configuration (devices[devcount].lu_handle,
+					       config0->bConfigurationValue);
+
+	  if (result < 0)
+	    {
+	      SANE_Status status = SANE_STATUS_INVAL;
+
+	      DBG (1, "sanei_usb_open: libusb complained: %s\n",
+		   sanei_libusb_strerror (result));
+	      if (result == LIBUSB_ERROR_ACCESS)
+		{
+		  DBG (1, "Make sure you run as root or set appropriate "
+		       "permissions\n");
+		  status = SANE_STATUS_ACCESS_DENIED;
+		}
+	      else if (result == LIBUSB_ERROR_BUSY)
+		{
+		  DBG (3, "Maybe the kernel scanner driver or usblp claims "
+		       "the interface? Ignoring this error...\n");
+		  status = SANE_STATUS_GOOD;
+		}
+
+	      if (status != SANE_STATUS_GOOD)
+		{
+		  libusb_close (devices[devcount].lu_handle);
+		  libusb_free_config_descriptor (config0);
+		  return status;
+		}
+	    }
+	}
       libusb_free_config_descriptor (config0);
-
-      if (result < 0)
-	{
-	  SANE_Status status = SANE_STATUS_INVAL;
-
-	  DBG (1, "sanei_usb_open: libusb complained: %s\n",
-	       sanei_libusb_strerror (result));
-	  if (result == LIBUSB_ERROR_ACCESS)
-	    {
-	      DBG (1, "Make sure you run as root or set appropriate "
-		   "permissions\n");
-	      status = SANE_STATUS_ACCESS_DENIED;
-	    }
-	  else if (result == LIBUSB_ERROR_BUSY)
-	    {
-	      DBG (3, "Maybe the kernel scanner driver or usblp claims the "
-		   "interface? Ignoring this error...\n");
-	      status = SANE_STATUS_GOOD;
-	    }
-
-	  if (status != SANE_STATUS_GOOD)
-	    {
-	      libusb_close (devices[devcount].lu_handle);
-	      return status;
-	    }
-	}
 
       /* Claim the interface */
       result = libusb_claim_interface (devices[devcount].lu_handle,
@@ -2128,22 +2135,24 @@ sanei_usb_close (SANE_Int dn)
   else
 #ifdef HAVE_LIBUSB
     {
-#if 0
-      /* Should only be done in case of a stall */
-      usb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_in_ep);
-      usb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_out_ep);
-      usb_clear_halt (devices[dn].libusb_handle, devices[dn].iso_in_ep);
-      /* be careful, we don't know if we are in DATA0 stage now */
-      usb_resetep (devices[dn].libusb_handle, devices[dn].bulk_in_ep);
-      usb_resetep (devices[dn].libusb_handle, devices[dn].bulk_out_ep);
-      usb_resetep (devices[dn].libusb_handle, devices[dn].iso_in_ep);
-#endif /* 0 */
+      /* This call seems to be required by Linux xhci driver
+       * even though it should be a no-op. Without it, the
+       * host or driver does not reset it's data toggle bit.
+       * We intentionally ignore the return val */
+      sanei_usb_set_altinterface (dn, devices[dn].alt_setting);
+
       usb_release_interface (devices[dn].libusb_handle,
 			     devices[dn].interface_nr);
       usb_close (devices[dn].libusb_handle);
     }
 #elif defined(HAVE_LIBUSB_1_0)
     {
+      /* This call seems to be required by Linux xhci driver
+       * even though it should be a no-op. Without it, the
+       * host or driver does not reset it's data toggle bit.
+       * We intentionally ignore the return val */
+      sanei_usb_set_altinterface (dn, devices[dn].alt_setting);
+
       libusb_release_interface (devices[dn].lu_handle,
 				devices[dn].interface_nr);
       libusb_close (devices[dn].lu_handle);
@@ -2168,7 +2177,6 @@ sanei_usb_set_timeout (SANE_Int timeout)
 SANE_Status
 sanei_usb_clear_halt (SANE_Int dn)
 {
-#ifdef HAVE_LIBUSB
   int ret;
 
   if (dn >= device_number || dn < 0)
@@ -2176,6 +2184,14 @@ sanei_usb_clear_halt (SANE_Int dn)
       DBG (1, "sanei_usb_clear_halt: dn >= device number || dn < 0\n");
       return SANE_STATUS_INVAL;
     }
+
+#ifdef HAVE_LIBUSB
+
+  /* This call seems to be required by Linux xhci driver
+   * even though it should be a no-op. Without it, the
+   * host or driver does not send the clear to the device.
+   * We intentionally ignore the return val */
+  sanei_usb_set_altinterface (dn, devices[dn].alt_setting);
 
   ret = usb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_in_ep);
   if (ret){
@@ -2189,18 +2205,13 @@ sanei_usb_clear_halt (SANE_Int dn)
     return SANE_STATUS_INVAL;
   }
 
-  /* be careful, we don't know if we are in DATA0 stage now
-  ret = usb_resetep (devices[dn].libusb_handle, devices[dn].bulk_in_ep);
-  ret = usb_resetep (devices[dn].libusb_handle, devices[dn].bulk_out_ep);
-  */
 #elif defined(HAVE_LIBUSB_1_0)
-  int ret;
 
-  if (dn >= device_number || dn < 0)
-    {
-      DBG (1, "sanei_usb_clear_halt: dn >= device number || dn < 0\n");
-      return SANE_STATUS_INVAL;
-    }
+  /* This call seems to be required by Linux xhci driver
+   * even though it should be a no-op. Without it, the
+   * host or driver does not send the clear to the device.
+   * We intentionally ignore the return val */
+  sanei_usb_set_altinterface (dn, devices[dn].alt_setting);
 
   ret = libusb_clear_halt (devices[dn].lu_handle, devices[dn].bulk_in_ep);
   if (ret){
@@ -3037,6 +3048,8 @@ sanei_usb_set_altinterface (SANE_Int dn, SANE_Int alternate)
     }
 
   DBG (5, "sanei_usb_set_altinterface: alternate = %d\n", alternate);
+
+  devices[dn].alt_setting = alternate;
 
   if (devices[dn].method == sanei_usb_method_scanner_driver)
     {
