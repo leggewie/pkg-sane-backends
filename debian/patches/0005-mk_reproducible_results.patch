@@ -64,3 +64,29 @@ Index: trunk/doc/Makefile.in
  LD = @LD@
  LDFLAGS = @LDFLAGS@
  LIBOBJS = @LIBOBJS@
+Index: trunk/testsuite/tools/data/html-backends-split.ref
+===================================================================
+--- trunk.orig/testsuite/tools/data/html-backends-split.ref
++++ trunk/testsuite/tools/data/html-backends-split.ref
+@@ -16496,7 +16496,6 @@ Grandtek Scopecam
+ >Contact</a>
+ </address>
+ <font size=-1>
+-This page was last updated on Wed Jul 31 07:52:48 2013
+- by sane-desc 3.5 from sane-backends 1.0.24git
++This page was last updated by sane-desc 3.5 from sane-backends 1.0.25
+ </font>
+ </body> </html>
+Index: trunk/testsuite/tools/data/html-mfgs.ref
+===================================================================
+--- trunk.orig/testsuite/tools/data/html-mfgs.ref
++++ trunk/testsuite/tools/data/html-mfgs.ref
+@@ -23910,7 +23910,6 @@ qcam<br>(unmaintained)
+ >Contact</a>
+ </address>
+ <font size=-1>
+-This page was last updated on Wed Jul 31 07:52:48 2013
+- by sane-desc 3.5 from sane-backends 1.0.24git
++This page was last updated by sane-desc 3.5 from sane-backends 1.0.25
+ </font>
+ </body> </html>

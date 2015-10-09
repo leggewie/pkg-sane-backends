@@ -3,9 +3,11 @@ Description: Use a generic multiarch path in man pages
  a generic /usr/lib/arch_triplet/sane path instead.
 Author: Julien BLACHE <jblache@debian.org>
 
---- a/doc/Makefile.in
-+++ b/doc/Makefile.in
-@@ -901,7 +901,7 @@
+Index: trunk/doc/Makefile.in
+===================================================================
+--- trunk.orig/doc/Makefile.in
++++ trunk/doc/Makefile.in
+@@ -906,7 +906,7 @@ all: bemans $(STANDARD) html-pages
  	@sed -e 's|@DATADIR@|$(datadir)|g' \
  	  -e 's|@CONFIGDIR@|$(configdir)|g' \
  	  -e 's|@DOCDIR@|$(docdir)|g' \

@@ -9,7 +9,7 @@ Index: trunk/doc/scanimage.man
 ===================================================================
 --- trunk.orig/doc/scanimage.man
 +++ trunk/doc/scanimage.man
-@@ -73,6 +73,9 @@ To print all available options:
+@@ -74,6 +74,9 @@ To print all available options:
    scanimage \-h
  
  .SH OPTIONS

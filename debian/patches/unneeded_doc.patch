@@ -13,9 +13,11 @@ Original Author: Julien BLACHE <jblache@debian.org>
  doc/Makefile.in | 2 +-
  2 files changed, 2 insertions(+), 6 deletions(-)
 
---- a/Makefile.in
-+++ b/Makefile.in
-@@ -398,11 +398,7 @@
+Index: trunk/Makefile.in
+===================================================================
+--- trunk.orig/Makefile.in
++++ trunk/Makefile.in
+@@ -402,11 +402,7 @@ top_builddir = @top_builddir@
  top_srcdir = @top_srcdir@
  SUBDIRS = include lib sanei backend frontend tools doc po testsuite
  DIST_SUBDIRS = include lib sanei backend frontend tools doc po japi testsuite
@@ -28,9 +30,11 @@ Original Author: Julien BLACHE <jblache@debian.org>
  
  EXTRA_DIST = ChangeLog-1.0.0 ChangeLog-1.0.1  ChangeLog-1.0.2 \
   ChangeLog-1.0.3 ChangeLog-1.0.4 ChangeLog-1.0.5 ChangeLog-1.0.6 \
---- a/doc/Makefile.in
-+++ b/doc/Makefile.in
-@@ -410,7 +410,7 @@
+Index: trunk/doc/Makefile.in
+===================================================================
+--- trunk.orig/doc/Makefile.in
++++ trunk/doc/Makefile.in
+@@ -414,7 +414,7 @@ DLH = TEXINPUTS="$(srcdir):$$TEXINPUTS"
  MAN2HTML = nroff -c -man |\
  	  man2html -compress -topm 6 -botm 6 -nodepage -title $${page} \
            -cgiurl '$$title.$$section.html'|\

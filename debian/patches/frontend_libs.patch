@@ -9,9 +9,11 @@ libraries.
  frontend/Makefile.in | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
---- a/frontend/Makefile.in
-+++ b/frontend/Makefile.in
-@@ -238,7 +238,7 @@
+Index: trunk/frontend/Makefile.in
+===================================================================
+--- trunk.orig/frontend/Makefile.in
++++ trunk/frontend/Makefile.in
+@@ -238,7 +238,7 @@ LATEX = @LATEX@
  LD = @LD@
  LDFLAGS = @LDFLAGS@
  LIBOBJS = @LIBOBJS@
@@ -20,7 +22,7 @@ libraries.
  LIBTOOL = @LIBTOOL@
  LIBUSB_1_0_CFLAGS = @LIBUSB_1_0_CFLAGS@
  LIBUSB_1_0_LIBS = @LIBUSB_1_0_LIBS@
-@@ -361,7 +361,7 @@
+@@ -365,7 +365,7 @@ scanimage_LDADD = ../backend/libsane.la
  
  saned_SOURCES = saned.c
  saned_LDADD = ../backend/libsane.la ../sanei/libsanei.la ../lib/liblib.la \

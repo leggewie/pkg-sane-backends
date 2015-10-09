@@ -5,8 +5,10 @@ Description: Add a header to dll.conf
  Also remove the pint backend as it's not available on our platforms.
 Author: Julien BLACHE <jblache@debian.org>
 
---- a/backend/dll.conf.in
-+++ b/backend/dll.conf.in
+Index: trunk/backend/dll.conf.in
+===================================================================
+--- trunk.orig/backend/dll.conf.in
++++ trunk/backend/dll.conf.in
 @@ -1,4 +1,12 @@
 -# enable the next line if you want to allow access through the network:
 +# /etc/sane.d/dll.conf - Configuration file for the SANE dynamic backend loader
@@ -21,7 +23,7 @@ Author: Julien BLACHE <jblache@debian.org>
  net
  abaton
  agfafocus
-@@ -57,7 +65,6 @@
+@@ -58,7 +66,6 @@ nec
  niash
  #p5
  pie
