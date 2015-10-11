@@ -1,6 +1,11 @@
 sane-backends (1.0.25-1) UNRELEASED; urgency=medium
 
   * New upstream release.
+  * Refresh patches:
+    -
+  * Remove upstream applied patches:
+    -
+  * Remove obsolete lintian-overrides.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 08 Oct 2015 12:34:57 +0200
 

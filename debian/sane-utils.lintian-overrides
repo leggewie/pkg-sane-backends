@@ -16,4 +16,4 @@ maintainer-script-ignores-errors
 #
 # False positives. See Debian bug #797395
 #
-maintainer-script-should-not-use-adduser-system-without-home
+#maintainer-script-should-not-use-adduser-system-without-home
