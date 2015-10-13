@@ -1,0 +1,18 @@
+Description: Correct source typos
+Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
+Last-Update: 2015-10-13
+----
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: trunk/backend/hp-scl.c
+===================================================================
+--- trunk.orig/backend/hp-scl.c
++++ trunk/backend/hp-scl.c
+@@ -2083,7 +2083,7 @@ hp_scl_strerror (int errnum)
+       case 1024: return "ADF Paper Jam";
+       case 1025: return "Home Position Missing";
+       case 1026: return "Paper Not Loaded";
+-      default: return "??Unkown Error??";
++      default: return "??Unknown Error??";
+       }
+ }
+ 

@@ -1,19 +1,4 @@
 #
-# User enabled. See sane-utils.README.Debian
-#
-postrm-contains-additional-updaterc.d-calls
-
-#
-# False positives. See Debian bug #
-#
-systemd-no-service-for-init-script
-
-#
 # disabled during piuparts error
 #
 maintainer-script-ignores-errors
-
-#
-# False positives. See Debian bug #797395
-#
-#maintainer-script-should-not-use-adduser-system-without-home

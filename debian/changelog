@@ -1,10 +1,28 @@
-sane-backends (1.0.25-1) UNRELEASED; urgency=medium
+sane-backends (1.0.25-1) unstable; urgency=medium
 
   * New upstream release.
   * Refresh patches:
-    -
+    - debian/patches/0005-mk_reproducible_results.patch
+    - debian/patches/001-scanimage_manpage.patch
+    - debian/patches/ppc64el.patch
+    - debian/patches/unneeded_doc.patch
+    - debian/patches/libsane_deps.patch
+    - debian/patches/frontend_libs.patch
+    - debian/patches/multiarch_manpages_libdir.patch
+    - debian/patches/dll_backend_conf.patch
+    - debian/patches/sane-desc.c_debian_mods.patch
   * Remove upstream applied patches:
-    -
+    - debian/patches/0105-artec_missing_home_environment.patch
+    - debian/patches/multiarch_dll_search_path.patch
+    - debian/patches/fix-FTBFS-format-not-a-string-literal-error.patch
+    - debian/patches/kodakaio.patch
+    - debian/patches/saned.man.patch
+    - debian/patches/man-page-spelling.patch
+    - debian/patches/source-spelling.patch
+    - debian/patches/hp5370c.patch
+    - debian/patches/out_of_bounds.patch
+    - debian/patches/0500-systemd_configure.patch
+    - debian/patches/0100-usb3-corrections.patch
   * Remove obsolete lintian-overrides.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 08 Oct 2015 12:34:57 +0200
