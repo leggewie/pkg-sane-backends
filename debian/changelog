@@ -1,6 +1,6 @@
 sane-backends (1.0.25-1) unstable; urgency=medium
 
-  * New upstream release (Closes: #740256, #803535).
+  * New upstream release (Closes: #740256).
   * Refresh patches:
     - debian/patches/0005-mk_reproducible_results.patch
     - debian/patches/001-scanimage_manpage.patch
@@ -11,7 +11,7 @@ sane-backends (1.0.25-1) unstable; urgency=medium
     - debian/patches/multiarch_manpages_libdir.patch
     - debian/patches/dll_backend_conf.patch
     - debian/patches/sane-desc.c_debian_mods.patch
-  * Remove upstream applied patches:
+  * Remove patches applied upstream:
     - debian/patches/0105-artec_missing_home_environment.patch
     - debian/patches/multiarch_dll_search_path.patch
     - debian/patches/fix-FTBFS-format-not-a-string-literal-error.patch
@@ -26,11 +26,16 @@ sane-backends (1.0.25-1) unstable; urgency=medium
   * Remove obsolete lintian-overrides.
   * Rename and reorder patches.
   * New debian/patches/0100-source_spelling.patch:
-    - Correct tyypo at backend/hp-scl.c
+    - Correct typo in backend/hp-scl.c
+  * debian/libsane-common.postrm:
+    - Move #DEBHELPER# token to the end of the script.
+  * debian/libsane-common.preinst:
+    - Use dpkg-maintscript-helper to remove obsolete configuration
+      file /etc/sane.d/v4l.conf during upgrade (Closes: #803535).
   * debian/rules:
-    - Remove Parameter -c0 from dh_makeshlibs call.
+    - Remove parameter -c0 from dh_makeshlibs call.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 01 Nov 2015 15:39:32 +0100
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Mon, 02 Nov 2015 09:04:17 +0100
 
 sane-backends (1.0.24-14) unstable; urgency=medium
 
