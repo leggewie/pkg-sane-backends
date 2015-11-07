@@ -1,3 +1,10 @@
+sane-backends (1.0.25-2) unstable; urgency=medium
+
+  * Undelete, refresh and rename
+    debian/patches/0125-multiarch_dll_search_path.patch.
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 07 Nov 2015 04:49:15 +0100
+
 sane-backends (1.0.25-1) unstable; urgency=medium
 
   * New upstream release (Closes: #740256).
