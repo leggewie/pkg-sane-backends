@@ -86,6 +86,7 @@ BACKEND_CONFS= abaton.conf agfafocus.conf apple.conf artec.conf \
 	       epson.conf epsonds.conf fujitsu.conf genesys.conf gphoto2.conf \
 	       gt68xx.conf hp3900.conf hp4200.conf hp5400.conf \
 	       hp.conf hpsj5s.conf hs2p.conf ibm.conf kodak.conf kodakaio.conf\
+	       kvs1025.conf \
 	       leo.conf lexmark.conf ma1509.conf magicolor.conf \
 	       matsushita.conf microtek2.conf microtek.conf mustek.conf \
 	       mustek_pp.conf mustek_usb.conf nec.conf net.conf \
@@ -351,7 +352,7 @@ libcanon_dr_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=canon_dr
 nodist_libsane_canon_dr_la_SOURCES = canon_dr-s.c 
 libsane_canon_dr_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=canon_dr
 libsane_canon_dr_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
-libsane_canon_dr_la_LIBADD = $(COMMON_LIBS) libcanon_dr.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo $(MATH_LIB) $(SCSI_LIBS) $(USB_LIBS) $(RESMGR_LIBS)
+libsane_canon_dr_la_LIBADD = $(COMMON_LIBS) libcanon_dr.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo ../sanei/sanei_magic.lo $(MATH_LIB) $(SCSI_LIBS) $(USB_LIBS) $(RESMGR_LIBS)
 EXTRA_DIST += canon_dr.conf.in
 
 libcanon_pp_la_SOURCES = canon_pp.c canon_pp.h canon_pp-io.c canon_pp-io.h canon_pp-dev.c canon_pp-dev.h
@@ -651,6 +652,7 @@ nodist_libsane_kvs1025_la_SOURCES = kvs1025-s.c
 libsane_kvs1025_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=kvs1025
 libsane_kvs1025_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
 libsane_kvs1025_la_LIBADD = $(COMMON_LIBS) libkvs1025.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo ../sanei/sanei_config.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_magic.lo $(MATH_LIB) $(USB_LIBS) $(RESMGR_LIBS)
+EXTRA_DIST += kvs1025.conf.in
 
 libkvs20xx_la_SOURCES = kvs20xx.c kvs20xx_cmd.c kvs20xx_opt.c \
  kvs20xx_cmd.h kvs20xx.h 
@@ -700,12 +702,12 @@ libsane_ma1509_la_LIBADD = $(COMMON_LIBS) libma1509.la ../sanei/sanei_init_debug
 EXTRA_DIST += ma1509.conf.in
 
 libmagicolor_la_SOURCES = magicolor.c magicolor.h
-libmagicolor_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=magicolor
+libmagicolor_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=magicolor $(SNMP_CFLAGS)
 
 nodist_libsane_magicolor_la_SOURCES = magicolor-s.c
 libsane_magicolor_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=magicolor
 libsane_magicolor_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
-libsane_magicolor_la_LIBADD = $(COMMON_LIBS) libmagicolor.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo  ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo ../sanei/sanei_tcp.lo ../sanei/sanei_udp.lo  $(USB_LIBS) $(SOCKET_LIBS) $(MATH_LIB) $(RESMGR_LIBS)
+libsane_magicolor_la_LIBADD = $(COMMON_LIBS) libmagicolor.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo  ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo ../sanei/sanei_tcp.lo ../sanei/sanei_udp.lo  $(USB_LIBS) $(SOCKET_LIBS) $(MATH_LIB) $(RESMGR_LIBS) $(SNMP_LIBS)
 EXTRA_DIST += magicolor.conf.in
 
 libmatsushita_la_SOURCES = matsushita.c matsushita.h

@@ -265,7 +265,9 @@ SCSI_LIBS = @SCSI_LIBS@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SNMP_CFLAGS = @SNMP_CFLAGS@
 SNMP_CONFIG_PATH = @SNMP_CONFIG_PATH@
+SNMP_LIBS = @SNMP_LIBS@
 SOCKET_LIBS = @SOCKET_LIBS@
 STRICT_LDFLAGS = @STRICT_LDFLAGS@
 STRIP = @STRIP@
@@ -500,6 +502,7 @@ DESC_EXT_FILES = descriptions-external/brother2.desc \
   descriptions-external/primax.desc \
   descriptions-external/samsung.desc \
   descriptions-external/scanwit.desc \
+  descriptions-external/utsushi.desc \
   descriptions-external/v4l2.desc \
   descriptions-external/viceo.desc
 

@@ -82,6 +82,8 @@
 #include <pwd.h>
 #include <grp.h>
 
+#include "lgetopt.h"
+
 #if defined(HAVE_SYS_POLL_H) && defined(HAVE_POLL)
 # include <sys/poll.h>
 #else
@@ -247,6 +249,7 @@ static int num_handles;
 static int debug;
 static int run_mode;
 static Handle *handle;
+static char *bind_addr;
 static union
 {
   int w;
@@ -2807,13 +2810,13 @@ do_bindings (int *nfds, struct pollfd **fds)
   hints.ai_flags = AI_PASSIVE;
   hints.ai_socktype = SOCK_STREAM;
 
-  err = getaddrinfo (NULL, SANED_SERVICE_NAME, &hints, &res);
+  err = getaddrinfo (bind_addr, SANED_SERVICE_NAME, &hints, &res);
   if (err)
     {
       DBG (DBG_WARN, "do_bindings: \" %s \" service unknown on your host; you should add\n", SANED_SERVICE_NAME);
       DBG (DBG_WARN, "do_bindings:      %s %d/tcp saned # SANE network scanner daemon\n", SANED_SERVICE_NAME, SANED_SERVICE_PORT);
       DBG (DBG_WARN, "do_bindings: to your /etc/services file (or equivalent). Proceeding anyway.\n");
-      err = getaddrinfo (NULL, SANED_SERVICE_PORT_S, &hints, &res);
+      err = getaddrinfo (bind_addr, SANED_SERVICE_PORT_S, &hints, &res);
       if (err)
 	{
 	  DBG (DBG_ERR, "do_bindings: getaddrinfo() failed even with numeric port: %s\n", gai_strerror (err));
@@ -2891,7 +2894,10 @@ do_bindings (int *nfds, struct pollfd **fds)
   memset (&sin, 0, sizeof (sin));
 
   sin.sin_family = AF_INET;
-  sin.sin_addr.s_addr = INADDR_ANY;
+  if(bind_addr)
+    sin.sin_addr.s_addr = inet_addr(bind_addr);
+  else
+    sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = port;
 
   DBG (DBG_DBG, "do_bindings: socket ()\n");
@@ -2923,7 +2929,7 @@ do_bindings (int *nfds, struct pollfd **fds)
 
 
 static void
-run_standalone (int argc, char **argv)
+run_standalone (char *user)
 {
   struct pollfd *fds = NULL;
   struct pollfd *fdp = NULL;
@@ -2944,13 +2950,13 @@ run_standalone (int argc, char **argv)
 
   if (run_mode != SANED_RUN_DEBUG)
     {
-      if (argc > 2)
+      if (user)
 	{
-	  pwent = getpwnam(argv[2]);
+	  pwent = getpwnam(user);
 
 	  if (pwent == NULL)
 	    {
-	      DBG (DBG_ERR, "FATAL ERROR: user %s not found on system\n", argv[2]);
+	      DBG (DBG_ERR, "FATAL ERROR: user %s not found on system\n", user);
 	      bail_out (1);
 	    }
 
@@ -2981,7 +2987,7 @@ run_standalone (int argc, char **argv)
 
               while (grp->gr_mem[i])
 		{
-                  if (strcmp(grp->gr_mem[i], argv[2]) == 0)
+                  if (strcmp(grp->gr_mem[i], user) == 0)
                     {
                       int need_to_add = 1, j;
 
@@ -3172,7 +3178,7 @@ run_standalone (int argc, char **argv)
 
 
 static void
-run_inetd (int argc, char **argv)
+run_inetd (char *sock)
 {
   
   int fd = -1;
@@ -3238,18 +3244,13 @@ run_inetd (int argc, char **argv)
 
       close (dave_null);
     }
-#ifndef HAVE_OS2_H
-  /* Unused in this function */
-  argc = argc;
-  argv = argv;
-
-#else
+#ifdef HAVE_OS2_H
   /* under OS/2, the socket handle is passed as argument on the command
      line; the socket handle is relative to IBM TCP/IP, so a call
      to impsockethandle() is required to add it to the EMX runtime */
-  if (argc == 2)
+  if (sock)
     {
-      fd = _impsockhandle (atoi (argv[1]), 0);
+      fd = _impsockhandle (atoi (sock), 0);
       if (fd == -1)
 	perror ("impsockhandle");
     }
@@ -3258,11 +3259,44 @@ run_inetd (int argc, char **argv)
   handle_connection(fd);
 }
 
+static void usage(char *me, int err)
+{
+  fprintf (stderr,
+       "Usage: %s [OPTIONS]\n\n"
+       " Options:\n\n"
+       "  -a, --alone[=user]	run standalone and fork in background as `user'\n"
+       "  -d, --debug[=level]	run foreground with output to stdout\n"
+       "			and debug level `level' (default is 2)\n"
+       "  -s, --syslog[=level]	run foreground with output to syslog\n"
+       "			and debug level `level' (default is 2)\n"
+       "  -b, --bind=addr	bind address `addr'\n"
+       "  -h, --help		show this help message and exit\n", me);
+
+  exit(err);
+}
+
+static int debug;
+
+static struct option long_options[] =
+{
+/* These options set a flag. */
+  {"help",	no_argument,		0, 'h'},
+  {"alone",	optional_argument,	0, 'a'},
+  {"debug",	optional_argument,	0, 'd'},
+  {"syslog",	optional_argument,	0, 's'},
+  {"bind",	required_argument,	0, 'b'},
+  {0,		0,			0,  0 }
+};
 
 int
 main (int argc, char *argv[])
 {
   char options[64] = "";
+  char *user = NULL;
+  char *sock = NULL;
+  int c;
+  int long_index = 0;
+
   debug = DBG_WARN;
 
   prog_name = strrchr (argv[0], '/');
@@ -3274,34 +3308,30 @@ main (int argc, char *argv[])
   numchildren = 0;
   run_mode = SANED_RUN_INETD;
 
-  if (argc >= 2)
+  while((c = getopt_long(argc, argv,"ha::d::s::b:", long_options, &long_index )) != -1)
     {
-      if (strncmp (argv[1], "-a", 2) == 0)
+      switch(c) {
+      case 'a':
 	run_mode = SANED_RUN_ALONE;
-      else if (strncmp (argv[1], "-d", 2) == 0)
-	{
-	  run_mode = SANED_RUN_DEBUG;
-	  log_to_syslog = SANE_FALSE;
-	}
-      else if (strncmp (argv[1], "-s", 2) == 0)
+	user = optarg;
+	break;
+      case 'd':
+	log_to_syslog = SANE_FALSE;
+      case 's':
 	run_mode = SANED_RUN_DEBUG;
-      else
-        {
-          printf ("Usage: saned [ -a [ username ] | -d [ n ] | -s [ n ] ] | -h\n");
-          if ((strncmp (argv[1], "-h", 2) == 0) ||
-               (strncmp (argv[1], "--help", 6) == 0))
-            exit (EXIT_SUCCESS);
-          else
-            exit (EXIT_FAILURE);
-        }
-    }
-
-  if (run_mode == SANED_RUN_DEBUG)
-    {
-      if (argv[1][2])
-	debug = atoi (argv[1] + 2);
-
-      DBG (DBG_WARN, "main: starting debug mode (level %d)\n", debug);
+	if(optarg)
+	  debug = atoi(optarg);
+	break;
+      case 'b':
+	bind_addr = optarg;
+	break;
+      case 'h':
+	usage(argv[0], EXIT_SUCCESS);
+	break;
+      default:
+	usage(argv[0], EXIT_FAILURE);
+	break;
+      }
     }
 
   if (log_to_syslog)
@@ -3342,11 +3372,15 @@ main (int argc, char *argv[])
 
   if ((run_mode == SANED_RUN_ALONE) || (run_mode == SANED_RUN_DEBUG))
     {
-      run_standalone(argc, argv);
+      run_standalone(user);
     }
   else
     {
-      run_inetd(argc, argv);
+#ifdef HAVE_OS2_H
+      if (argc == 2)
+	sock = argv[1];
+#endif
+      run_inetd(sock);
     }
 
   DBG (DBG_WARN, "saned exiting\n");

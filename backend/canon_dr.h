@@ -21,12 +21,12 @@ enum scanner_Option
   OPT_RES,    /*a range or a list*/
 
   OPT_GEOMETRY_GROUP,
+  OPT_PAGE_WIDTH,
+  OPT_PAGE_HEIGHT,
   OPT_TL_X,
   OPT_TL_Y,
   OPT_BR_X,
   OPT_BR_Y,
-  OPT_PAGE_WIDTH,
-  OPT_PAGE_HEIGHT,
 
   OPT_ENHANCEMENT_GROUP,
   OPT_BRIGHTNESS,
@@ -43,6 +43,7 @@ enum scanner_Option
   OPT_SWDESKEW,
   OPT_SWDESPECK,
   OPT_SWCROP,
+  OPT_SWSKIP,
   OPT_STAPLEDETECT,
   OPT_DROPOUT_COLOR_F,
   OPT_DROPOUT_COLOR_B,
@@ -253,6 +254,7 @@ struct scanner
   SANE_String_Const compress_list[3];
   SANE_Range compress_arg_range;
   SANE_Range swdespeck_range;
+  SANE_Range swskip_range;
   SANE_String_Const do_color_list[8];
 
   /*sensor group*/
@@ -276,13 +278,13 @@ struct scanner
   int compress_arg;
   int df_length;
   int df_thickness;
-  int dropout_color_f;
-  int dropout_color_b;
+  int dropout_color[2];
   int buffermode;
   int rollerdeskew;
   int swdeskew;
   int swdespeck;
   int swcrop;
+  int swskip;
   int stapledetect;
 
   /* --------------------------------------------------------------------- */
@@ -297,6 +299,24 @@ struct scanner
 
   /* the brightness/contrast LUT for dumb scanners */
   unsigned char lut[256];
+
+  /* --------------------------------------------------------------------- */
+  /* values used by the software enhancment code (deskew, crop, etc)       */
+  SANE_Status deskew_stat;
+  int deskew_vals[2];
+  double deskew_slope;
+
+  int crop_vals[4];
+
+  /* this is defined in sane spec as a struct containing:
+        SANE_Frame format;
+        SANE_Bool last_frame;
+        SANE_Int lines;
+        SANE_Int depth; ( binary=1, gray=8, color=8 (!24) )
+        SANE_Int pixels_per_line;
+        SANE_Int bytes_per_line;
+  */
+  SANE_Parameters s_params;
 
   /* --------------------------------------------------------------------- */
   /* values which are set by calibration functions                         */
@@ -563,27 +583,16 @@ static SANE_Status read_from_scanner_duplex(struct scanner *s, int exact);
 static SANE_Status copy_simplex(struct scanner *s, unsigned char * buf, int len, int side);
 static SANE_Status copy_duplex(struct scanner *s, unsigned char * buf, int len);
 static SANE_Status copy_line(struct scanner *s, unsigned char * buf, int side);
+static SANE_Status fill_image(struct scanner *s,int side);
+
+static int must_downsample (struct scanner *s);
+static int must_fully_buffer (struct scanner *s);
+static unsigned char calc_bg_color(struct scanner *s);
 
 static SANE_Status buffer_despeck(struct scanner *s, int side);
 static SANE_Status buffer_deskew(struct scanner *s, int side);
 static SANE_Status buffer_crop(struct scanner *s, int side);
-
-int * getTransitionsY (struct scanner *s, int side, int top);
-int * getTransitionsX (struct scanner *s, int side, int top);
-
-SANE_Status getEdgeIterate (int width, int height, int resolution,
-  int * buff, double * finSlope, int * finXInter, int * finYInter);
-
-SANE_Status getEdgeSlope (int width, int height, int * top, int * bot,
-  double slope, int * finXInter, int * finYInter);
-
-SANE_Status rotateOnCenter (struct scanner *s, int side,
-  int centerX, int centerY, double slope);
-
-static SANE_Status getLine (int height, int width, int * buff,
- int slopes, double minSlope, double maxSlope,
- int offsets, int minOffset, int maxOffset,
- double * finSlope, int * finOffset, int * finDensity);
+static int buffer_isblank(struct scanner *s, int side);
 
 static SANE_Status load_lut (unsigned char * lut, int in_bits, int out_bits,
   int out_min, int out_max, int slope, int offset);

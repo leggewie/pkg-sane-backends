@@ -3,10 +3,10 @@ dnl Process this file with autoconf to produce a configure script. -*-m4-*-
 dnl ***********************************************************************
 dnl When preparing a release, increase the numeric and string version numbers,
 dnl remove the "cvs" suffix, and set is_release=yes
-AC_INIT([sane-backends],[1.0.25git],[sane-devel@lists.alioth.debian.org])
+AC_INIT([sane-backends],[1.0.26git],[sane-devel@lists.alioth.debian.org])
 V_MAJOR=1
 V_MINOR=0
-V_REV=25
+V_REV=26
 is_release=no
 dnl ***********************************************************************
 
@@ -82,7 +82,6 @@ AM_CONDITIONAL(CROSS_COMPILING, test x$cross_compiling = xyes)
 dnl ***********************************************************************
 dnl set compiler/linker flags
 dnl ***********************************************************************
-AC_SUBST(INCLUDES)
 SANE_SET_CFLAGS([$is_release])
 SANE_SET_LDFLAGS
 SANE_LINKER_RPATH
@@ -185,8 +184,8 @@ else
 fi
 
 if test "$with_snmp" = "yes" -a "${LIBSNMP_EXISTS}x" = "yesx"; then
-	LIBS="$LIBS $SNMP_LIBS"
-	CFLAGS="$CFLAGS $SNMP_CFLAGS"
+	AC_SUBST(SNMP_LIBS)
+	AC_SUBST(SNMP_CFLAGS)
 	AC_DEFINE(HAVE_LIBSNMP, 1, [Define to 1 if you have the net-snmp library.])
 else
 	AC_MSG_WARN([*** Warning: net-snmp library disabled, autodetecting network scanners will not be supported.])
@@ -547,7 +546,7 @@ AC_SUBST(SCSI_LIBS)
 AC_ARG_ENABLE(scsibuffersize, 
   AC_HELP_STRING([--enable-scsibuffersize=N],
                  [specify the default size in bytes of the buffer for SCSI
-                  commands [[default=131072]]]),
+                  commands @<:@default=131072@:>@]),
   [set_scsibuffersize="$enableval"], [set_scsibuffersize=131072])
 AC_DEFINE_UNQUOTED(SCSIBUFFERSIZE, $set_scsibuffersize,
                    [SCSI command buffer size])

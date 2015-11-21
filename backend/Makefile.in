@@ -491,8 +491,9 @@ libsane_canon_dr_la_DEPENDENCIES = $(COMMON_LIBS) libcanon_dr.la \
 	../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo \
 	../sanei/sanei_config.lo ../sanei/sanei_config2.lo \
 	sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo \
+	../sanei/sanei_magic.lo $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1)
 nodist_libsane_canon_dr_la_OBJECTS =  \
 	libsane_canon_dr_la-canon_dr-s.lo
 libsane_canon_dr_la_OBJECTS = $(nodist_libsane_canon_dr_la_OBJECTS)
@@ -938,7 +939,8 @@ libsane_magicolor_la_DEPENDENCIES = $(COMMON_LIBS) libmagicolor.la \
 	sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo \
 	../sanei/sanei_tcp.lo ../sanei/sanei_udp.lo \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 nodist_libsane_magicolor_la_OBJECTS =  \
 	libsane_magicolor_la-magicolor-s.lo
 libsane_magicolor_la_OBJECTS = $(nodist_libsane_magicolor_la_OBJECTS)
@@ -1779,7 +1781,6 @@ GPHOTO2_LIBS = @GPHOTO2_LIBS@
 GREP = @GREP@
 HAVE_GPHOTO2 = @HAVE_GPHOTO2@
 IEEE1284_LIBS = @IEEE1284_LIBS@ 
-INCLUDES = @INCLUDES@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_LOCKPATH = @INSTALL_LOCKPATH@
@@ -1842,7 +1843,9 @@ SCSI_LIBS = @SCSI_LIBS@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SNMP_CFLAGS = @SNMP_CFLAGS@
 SNMP_CONFIG_PATH = @SNMP_CONFIG_PATH@
+SNMP_LIBS = @SNMP_LIBS@
 SOCKET_LIBS = @SOCKET_LIBS@ 
 STRICT_LDFLAGS = @STRICT_LDFLAGS@
 STRIP = @STRIP@
@@ -1975,16 +1978,16 @@ EXTRA_DIST = sane_strstatus.c stubs.c saned.conf.in abaton.conf.in \
 	hp5590_cmds.c hp5590_cmds.h hp5590_low.c hp5590_low.h \
 	hpsj5s.conf.in hs2p.conf.in hs2p-scsi.c hs2p-scsi.h \
 	ibm.conf.in ibm-scsi.c kodak.conf.in kodakaio.conf.in \
-	leo.conf.in lexmark.conf.in lexmark_models.c lexmark_sensors.c \
-	ma1509.conf.in magicolor.conf.in matsushita.conf.in \
-	microtek.conf.in microtek2.conf.in mustek.conf.in \
-	mustek_scsi_pp.c mustek_scsi_pp.h mustek_pp.conf.in \
-	mustek_pp_ccd300.c mustek_pp_ccd300.h mustek_pp_cis.c \
-	mustek_pp_cis.h mustek_pp_null.c mustek_usb.conf.in \
-	mustek_usb_high.c mustek_usb_high.h mustek_usb_low.c \
-	mustek_usb_low.h mustek_usb_mid.c mustek_usb_mid.h \
-	mustek_usb2_asic.c mustek_usb2_asic.h mustek_usb2_high.c \
-	mustek_usb2_high.h mustek_usb2_reflective.c \
+	kvs1025.conf.in leo.conf.in lexmark.conf.in lexmark_models.c \
+	lexmark_sensors.c ma1509.conf.in magicolor.conf.in \
+	matsushita.conf.in microtek.conf.in microtek2.conf.in \
+	mustek.conf.in mustek_scsi_pp.c mustek_scsi_pp.h \
+	mustek_pp.conf.in mustek_pp_ccd300.c mustek_pp_ccd300.h \
+	mustek_pp_cis.c mustek_pp_cis.h mustek_pp_null.c \
+	mustek_usb.conf.in mustek_usb_high.c mustek_usb_high.h \
+	mustek_usb_low.c mustek_usb_low.h mustek_usb_mid.c \
+	mustek_usb_mid.h mustek_usb2_asic.c mustek_usb2_asic.h \
+	mustek_usb2_high.c mustek_usb2_high.h mustek_usb2_reflective.c \
 	mustek_usb2_transparent.c nec.conf.in net.conf.in niash_core.c \
 	niash_core.h niash_xfer.c niash_xfer.h pie.conf.in \
 	pieusb.conf.in p5.conf.in p5_device.c pixma.conf.in \
@@ -2032,6 +2035,7 @@ BACKEND_CONFS = abaton.conf agfafocus.conf apple.conf artec.conf \
 	       epson.conf epsonds.conf fujitsu.conf genesys.conf gphoto2.conf \
 	       gt68xx.conf hp3900.conf hp4200.conf hp5400.conf \
 	       hp.conf hpsj5s.conf hs2p.conf ibm.conf kodak.conf kodakaio.conf\
+	       kvs1025.conf \
 	       leo.conf lexmark.conf ma1509.conf magicolor.conf \
 	       matsushita.conf microtek2.conf microtek.conf mustek.conf \
 	       mustek_pp.conf mustek_usb.conf nec.conf net.conf \
@@ -2210,7 +2214,7 @@ libcanon_dr_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=canon_dr
 nodist_libsane_canon_dr_la_SOURCES = canon_dr-s.c 
 libsane_canon_dr_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=canon_dr
 libsane_canon_dr_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
-libsane_canon_dr_la_LIBADD = $(COMMON_LIBS) libcanon_dr.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo $(MATH_LIB) $(SCSI_LIBS) $(USB_LIBS) $(RESMGR_LIBS)
+libsane_canon_dr_la_LIBADD = $(COMMON_LIBS) libcanon_dr.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo ../sanei/sanei_magic.lo $(MATH_LIB) $(SCSI_LIBS) $(USB_LIBS) $(RESMGR_LIBS)
 libcanon_pp_la_SOURCES = canon_pp.c canon_pp.h canon_pp-io.c canon_pp-io.h canon_pp-dev.c canon_pp-dev.h
 libcanon_pp_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=canon_pp
 nodist_libsane_canon_pp_la_SOURCES = canon_pp-s.c
@@ -2440,11 +2444,11 @@ libsane_ma1509_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=ma1509
 libsane_ma1509_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
 libsane_ma1509_la_LIBADD = $(COMMON_LIBS) libma1509.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo ../sanei/sanei_config.lo  sane_strstatus.lo ../sanei/sanei_usb.lo $(USB_LIBS) $(RESMGR_LIBS)
 libmagicolor_la_SOURCES = magicolor.c magicolor.h
-libmagicolor_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=magicolor
+libmagicolor_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=magicolor $(SNMP_CFLAGS)
 nodist_libsane_magicolor_la_SOURCES = magicolor-s.c
 libsane_magicolor_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=magicolor
 libsane_magicolor_la_LDFLAGS = $(DIST_SANELIBS_LDFLAGS)
-libsane_magicolor_la_LIBADD = $(COMMON_LIBS) libmagicolor.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo  ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo ../sanei/sanei_tcp.lo ../sanei/sanei_udp.lo  $(USB_LIBS) $(SOCKET_LIBS) $(MATH_LIB) $(RESMGR_LIBS)
+libsane_magicolor_la_LIBADD = $(COMMON_LIBS) libmagicolor.la ../sanei/sanei_init_debug.lo ../sanei/sanei_constrain_value.lo  ../sanei/sanei_config.lo ../sanei/sanei_config2.lo sane_strstatus.lo ../sanei/sanei_usb.lo ../sanei/sanei_scsi.lo ../sanei/sanei_tcp.lo ../sanei/sanei_udp.lo  $(USB_LIBS) $(SOCKET_LIBS) $(MATH_LIB) $(RESMGR_LIBS) $(SNMP_LIBS)
 libmatsushita_la_SOURCES = matsushita.c matsushita.h
 libmatsushita_la_CPPFLAGS = $(AM_CPPFLAGS) -DBACKEND_NAME=matsushita
 nodist_libsane_matsushita_la_SOURCES = matsushita-s.c

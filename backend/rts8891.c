@@ -617,7 +617,7 @@ set_automatic_value (Rts8891_Session * s, int option, SANE_Int * myinfo)
 {
   SANE_Status status = SANE_STATUS_GOOD;
   SANE_Int i, min;
-  SANE_Word *dpi_list;
+  const SANE_Word *dpi_list;
 
   switch (option)
     {
@@ -639,7 +639,7 @@ set_automatic_value (Rts8891_Session * s, int option, SANE_Int * myinfo)
       break;
     case OPT_RESOLUTION:
       /* we set up to the lowest available dpi value */
-      dpi_list = (SANE_Word *) s->opt[OPT_RESOLUTION].constraint.word_list;
+      dpi_list = s->opt[OPT_RESOLUTION].constraint.word_list;
       min = 65536;
       for (i = 1; i < dpi_list[0]; i++)
 	{
@@ -2233,11 +2233,11 @@ sane_close (SANE_Handle handle)
   if (session->dev->model->gamma != session->val[OPT_GAMMA_VECTOR_B].wa)
     free (session->val[OPT_GAMMA_VECTOR_B].wa);
   free (session->val[OPT_MODE].s);
-  free (session->opt[OPT_RESOLUTION].constraint.word_list);
+  free ((void *) session->opt[OPT_RESOLUTION].constraint.word_list);
   for (i = OPT_BUTTON_1; i <= OPT_BUTTON_11; i++)
     {
-      free (session->opt[i].name);
-      free (session->opt[i].title);
+      free ((void *) session->opt[i].name);
+      free ((void *) session->opt[i].title);
     }
 
   free (session);
