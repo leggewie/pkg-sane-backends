@@ -402,11 +402,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = include lib sanei backend frontend tools doc po testsuite
 DIST_SUBDIRS = include lib sanei backend frontend tools doc po japi testsuite
-dist_doc_DATA = AUTHORS ChangeLog COPYING LICENSE NEWS PROBLEMS PROJECTS \
- README README.aix README.beos README.darwin README.djpeg README.freebsd \
- README.hp-ux README.linux README.netbsd README.openbsd README.os2 \
- README.solaris README.unixware2 README.unixware7 README.windows \
- README.zeta
+dist_doc_DATA = README AUTHORS NEWS PROBLEMS PROJECTS
 
 EXTRA_DIST = ChangeLog-1.0.0 ChangeLog-1.0.1  ChangeLog-1.0.2 \
  ChangeLog-1.0.3 ChangeLog-1.0.4 ChangeLog-1.0.5 ChangeLog-1.0.6 \

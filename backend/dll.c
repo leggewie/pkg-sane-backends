@@ -430,7 +430,7 @@ load (struct backend *be)
 
   if (path)
     {
-      src_len = strlen (path) + strlen (LIBDIR) + 1 + 1;
+      src_len = strlen (path) + strlen (DEB_DLL_LIBDIR) + 1 + 1;
       src = malloc (src_len);
       if (!src)
 	{
@@ -438,12 +438,11 @@ load (struct backend *be)
 	  return SANE_STATUS_NO_MEM;
 	}
       orig_src = src;
-      snprintf (src, src_len, "%s:%s", path, LIBDIR);
+      snprintf (src, src_len, "%s:%s", path, DEB_DLL_LIBDIR);
     }
   else
     {
-      src = LIBDIR;
-      src = strdup (src);
+      src = strdup (DEB_DLL_LIBDIR);
       if (!src)
 	{
 	  DBG (1, "load: strdup failed: %s\n", strerror (errno));

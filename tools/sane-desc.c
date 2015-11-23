@@ -47,7 +47,7 @@
 
 #define SANE_DESC_VERSION "3.5"
 
-#define MAN_PAGE_LINK "http://www.sane-project.org/man/%s.5.html"
+#define MAN_PAGE_LINK "/usr/share/doc/libsane/html/%s.5.html"
 #define COLOR_MINIMAL      "\"#B00000\""
 #define COLOR_BASIC        "\"#FF9000\""
 #define COLOR_GOOD         "\"#90B000\""
@@ -2785,8 +2785,8 @@ html_print_header (void)
   printf
     ("</head>\n"
      "<body bgcolor=FFFFFF>\n"
-     "<div align=center>\n"
-     "<img src=\"http://www.sane-project.org/images/sane.png\" alt=\"SANE\">\n");
+     "<div align=center>\n");
+  /*     "<img src=\"http://www.sane-project.org/images/sane.png\" alt=\"SANE\">\n"); */
   printf ("<h1>%s</h1>\n", title);
   printf ("</div>\n" "<hr>\n");
   printf ("%s\n", intro);
@@ -2816,8 +2816,10 @@ html_print_footer (void)
      "<address>\n"
      "<a href=\"http://www.sane-project.org/imprint.html\"\n"
      ">Contact</a>\n" "</address>\n" "<font size=-1>\n");
-  printf ("This page was last updated on %s by sane-desc %s from %s\n",
-	  asctime (localtime (&current_time)), SANE_DESC_VERSION, PACKAGE_STRING);
+/*  printf ("This page was last updated on %s by sane-desc %s from %s\n",
+	  asctime (localtime (&current_time)), SANE_DESC_VERSION, PACKAGE_STRING); */
+  printf ("This page was last updated by sane-desc %s from %s\n",
+	  SANE_DESC_VERSION, PACKAGE_STRING);
   printf ("</font>\n");
   printf ("</body> </html>\n");
 }
@@ -3463,8 +3465,8 @@ print_udev_header (void)
 {
   time_t current_time = time (0);
   printf ("# This file was automatically created based on description files (*.desc)\n"
-	  "# by sane-desc %s from %s on %s",
-	  SANE_DESC_VERSION, PACKAGE_STRING, asctime (localtime (&current_time)));
+	  "# by sane-desc %s from %s\n",
+	  SANE_DESC_VERSION, PACKAGE_STRING);
 
   printf
     ("#\n"

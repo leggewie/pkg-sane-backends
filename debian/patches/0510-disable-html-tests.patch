@@ -18,18 +18,18 @@ Index: experimental/testsuite/tools/Makefile.am
 -	@for mode in ascii html-backends-split html-mfgs xml statistics usermap db udev udev+acl udev+hwdb hwdb plist hal hal-new; \
 +	@for mode in ascii xml statistics usermap db udev udev+acl udev+hwdb hwdb plist hal hal-new; \
  	do \
- 	echo "PASS: sane-desc -m $$mode -s $(srcdir)/data"; \
  	  $(SANEDESC) -m $$mode -s $(srcdir)/data >$$mode.res ;\
+ 	  if diff -I "[ 012][0-9]:[0-5][0-9]:[0-6][0-9] 20[0-9][0-9]" \
 Index: experimental/testsuite/tools/Makefile.in
 ===================================================================
 --- experimental.orig/testsuite/tools/Makefile.in
 +++ experimental/testsuite/tools/Makefile.in
-@@ -501,7 +501,7 @@ check: check.local
+@@ -503,7 +503,7 @@ check: check.local
  
  check.local: 
  	@echo "**** Testing $(SANEDESC) with $(TESTFILE)"
 -	@for mode in ascii html-backends-split html-mfgs xml statistics usermap db udev udev+acl udev+hwdb hwdb plist hal hal-new; \
 +	@for mode in ascii xml statistics usermap db udev udev+acl udev+hwdb hwdb plist hal hal-new; \
  	do \
- 	echo "PASS: sane-desc -m $$mode -s $(srcdir)/data"; \
  	  $(SANEDESC) -m $$mode -s $(srcdir)/data >$$mode.res ;\
+ 	  if diff -I "[ 012][0-9]:[0-5][0-9]:[0-6][0-9] 20[0-9][0-9]" \

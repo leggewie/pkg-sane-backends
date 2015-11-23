@@ -1,0 +1,6 @@
+sane-backends (1.0.24-14) unstable; urgency=medium
+
+  Starting with this release sane-config are moved to
+  the new package libsane-bin.
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 30 Aug 2015 19:02:57 +0200

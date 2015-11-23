@@ -414,7 +414,7 @@ DLH = TEXINPUTS="$(srcdir):$$TEXINPUTS" dlh
 MAN2HTML = nroff -c -man |\
 	  man2html -compress -topm 6 -botm 6 -nodepage -title $${page} \
           -cgiurl '$$title.$$section.html'|\
-	  sed 's,<BODY>,<BODY BGCOLOR=\#FFFFFF TEXT=\#000000><H1 ALIGN=CENTER><IMG SRC="/images/sane.png" HEIGHT=117 WIDTH=346></H1>,'
+	  sed 's,<BODY>,<BODY BGCOLOR=\#FFFFFF TEXT=\#000000></H1>,'
 
 beman5dir = $(mandir)/man5
 BEDOCS = canon/canon.changes canon/canon.install2700F.txt \
@@ -907,7 +907,7 @@ all: bemans $(STANDARD) html-pages
 	@sed -e 's|@DATADIR@|$(datadir)|g' \
 	  -e 's|@CONFIGDIR@|$(configdir)|g' \
 	  -e 's|@DOCDIR@|$(docdir)|g' \
-	  -e 's|@LIBDIR@|$(libdir)/sane|g' \
+	  -e 's|@LIBDIR@|/usr/lib/arch_triplet/sane|g' \
 	  -e 's|@BINDIR@|$(bindir)|g' \
 	  -e 's|@SBINDIR@|$(sbindir)|g' \
 	  -e 's|@PACKAGEVERSION@|$(package_version)|g' $^ >$@

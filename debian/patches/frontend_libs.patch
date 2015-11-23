@@ -22,7 +22,7 @@ Index: experimental/frontend/Makefile.in
  LIBTOOL = @LIBTOOL@
  LIBUSB_1_0_CFLAGS = @LIBUSB_1_0_CFLAGS@
  LIBUSB_1_0_LIBS = @LIBUSB_1_0_LIBS@
-@@ -363,7 +363,7 @@ scanimage_LDADD = ../backend/libsane.la
+@@ -365,7 +365,7 @@ scanimage_LDADD = ../backend/libsane.la
  
  saned_SOURCES = saned.c
  saned_LDADD = ../backend/libsane.la ../sanei/libsanei.la ../lib/liblib.la \

@@ -1,4 +1,12 @@
-# enable the next line if you want to allow access through the network:
+# /etc/sane.d/dll.conf - Configuration file for the SANE dynamic backend loader
+#
+# Backends can also be enabled by configuration snippets under
+# /etc/sane.d/dll.d directory -- packages providing backends should drop
+# a config file similar to dll.conf in this directory, named after the package.
+#
+
+# The next line enables the network backend; comment it out if you don't need
+# to use a remote SANE scanner over the network - see sane-net(5) and saned(8)
 net
 abaton
 agfafocus
@@ -58,7 +66,6 @@ nec
 niash
 #p5
 pie
-pint
 pixma
 plustek
 #plustek_pp

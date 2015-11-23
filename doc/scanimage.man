@@ -74,6 +74,9 @@ To print all available options:
   scanimage \-h
 
 .SH OPTIONS
+\fBRemark:\fR Parameter are defined by the backends. So are \-\-mode Gray and \-\-mode Grayscale in use.
+Please read the backend documentation first.
+
 Parameters are separated by a blank from single-character options (e.g.
 \-d epson) and by a "=" from multi-character options (e.g. \-\-device\-name=epson).
 

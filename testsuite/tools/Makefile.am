@@ -28,7 +28,7 @@ check: check.local
 
 check.local: 
 	@echo "**** Testing $(SANEDESC) with $(TESTFILE)"
-	@for mode in ascii html-backends-split html-mfgs xml statistics usermap db udev udev+acl udev+hwdb hwdb plist hal hal-new; \
+	@for mode in ascii xml statistics usermap db udev udev+acl udev+hwdb hwdb plist hal hal-new; \
 	do \
 	  $(SANEDESC) -m $$mode -s $(srcdir)/data >$$mode.res ;\
 	  if diff -I "[ 012][0-9]:[0-5][0-9]:[0-6][0-9] 20[0-9][0-9]" \

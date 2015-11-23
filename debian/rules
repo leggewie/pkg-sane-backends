@@ -10,6 +10,7 @@ DEB_HOST_MULTIARCH  ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 DEB_HOST_ARCH       ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
 DEB_HOST_ARCH_OS    ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_OS)
 
+VERSION = $(shell head -n1 debian/changelog | sed -e 's/.*(//;s/~.*).*//;s/\+/\-/')
 
 ifeq ($(DEB_HOST_ARCH_OS),)
   DEB_HOST_ARCH_OS := $(subst -gnu,,$(shell dpkg-architecture -qDEB_HOST_GNU_SYSTEM))
@@ -27,14 +28,14 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	STRIP = ""
 endif
 
-VERSION = $(shell head -n1 debian/changelog | sed -e 's/.*(//;s/+.*).*//;s/\+/\-/')
-
 %:
 	dh $@ --parallel --with autotools_dev,systemd
 
 override_dh_auto_configure:
-	autoconf
-	./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) \
+#	autoconf
+	./configure \
+		--host=$(DEB_HOST_GNU_TYPE) \
+		--build=$(DEB_BUILD_GNU_TYPE) \
 		--prefix=/usr \
 		--libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH) \
 		--sysconfdir=/etc \
@@ -42,7 +43,6 @@ override_dh_auto_configure:
 		--datadir=\$${prefix}/share \
 		--mandir=\$${prefix}/share/man \
 		--with-docdir=\$${prefix}/share/doc/libsane \
-		--with-snmp=no \
 		--disable-locking \
 		--enable-static \
 		--enable-pthread \
@@ -94,8 +94,6 @@ override_dh_install:
 	#
 	mkdir -p $(CURDIR)/debian//sane-utils/usr/share/man/man5/
 	cp $(CURDIR)/doc/sane-umax_pp.man $(CURDIR)/debian/sane-utils/usr/share/man/man5/umax_pp.5
-	#
-	#mv ${CURDIR}/debian/libsane-dev/usr/bin/sane-config ${CURDIR}/debian/libsane-dev/usr/bin/sane-config.${DEB_HOST_MULTIARCH}
 
 override_dh_installdocs:
 	dh_installdocs
@@ -141,4 +139,4 @@ override_dh_strip:
 	dh_strip --dbg-package=libsane-dbg
 
 override_dh_makeshlibs:
-	dh_makeshlibs -- -c0 -v$(VERSION) -Pdebian/libsane -plibsane
+	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane -plibsane

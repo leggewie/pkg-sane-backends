@@ -73,7 +73,9 @@
 #endif
 
 #ifdef HAVE_MACHINE_CPUFUNC_H
+#ifndef __GLIBC__
 #include <machine/cpufunc.h>
+#endif
 #endif
 
 #ifdef HAVE_I386_SET_IOPERM

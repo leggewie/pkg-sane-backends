@@ -17,7 +17,7 @@ Index: experimental/Makefile.in
 ===================================================================
 --- experimental.orig/Makefile.in
 +++ experimental/Makefile.in
-@@ -400,11 +400,7 @@ top_builddir = @top_builddir@
+@@ -402,11 +402,7 @@ top_builddir = @top_builddir@
  top_srcdir = @top_srcdir@
  SUBDIRS = include lib sanei backend frontend tools doc po testsuite
  DIST_SUBDIRS = include lib sanei backend frontend tools doc po japi testsuite
@@ -34,7 +34,7 @@ Index: experimental/doc/Makefile.in
 ===================================================================
 --- experimental.orig/doc/Makefile.in
 +++ experimental/doc/Makefile.in
-@@ -412,7 +412,7 @@ DLH = TEXINPUTS="$(srcdir):$$TEXINPUTS"
+@@ -414,7 +414,7 @@ DLH = TEXINPUTS="$(srcdir):$$TEXINPUTS"
  MAN2HTML = nroff -c -man |\
  	  man2html -compress -topm 6 -botm 6 -nodepage -title $${page} \
            -cgiurl '$$title.$$section.html'|\
