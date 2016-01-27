@@ -1,0 +1,30 @@
+Description: Add timeout before usb bulk write
+Author: Steve Graham <bugs@annaghvarn.plus.com>
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=810919
+Forwarded: https://alioth.debian.org/tracker/index.php?func=detail&aid=315288&group_id=30186&atid=410366
+Last-Update: 2016-01-25
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: trunk/sanei/sanei_usb.c
+===================================================================
+--- trunk.orig/sanei/sanei_usb.c
++++ trunk/sanei/sanei_usb.c
+@@ -2411,6 +2411,10 @@ SANE_Status
+ sanei_usb_write_bulk (SANE_Int dn, const SANE_Byte * buffer, size_t * size)
+ {
+   ssize_t write_size = 0;
++  struct timespec sleepytime, sleepyremain;
++
++  sleepytime.tv_nsec = 50000L; /* nanoseconds */
++  sleepytime.tv_sec  = 0;
+ 
+   if (!size)
+     {
+@@ -2439,6 +2443,7 @@ sanei_usb_write_bulk (SANE_Int dn, const
+   else if (devices[dn].method == sanei_usb_method_libusb)
+ #ifdef HAVE_LIBUSB
+     {
++      nanosleep(&sleepytime, &sleepyremain);        /* sg */
+       if (devices[dn].bulk_out_ep)
+ 	{
+ 	  write_size = usb_bulk_write (devices[dn].libusb_handle,

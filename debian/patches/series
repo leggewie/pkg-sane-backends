@@ -16,3 +16,4 @@
 0705-kfreebsd.patch
 0710-sane-desc.c_debian_mods.patch
 0125-multiarch_dll_search_path.patch
+0130-usb-timeout.patch
