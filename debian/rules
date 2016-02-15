@@ -51,7 +51,7 @@ override_dh_auto_configure:
 		--enable-pnm-backend \
 		--without-v4l
 
-override_dh_auto_build:
+override_dh_auto_build-indep:
 	# generate POT file for translators
 	(cd po && make sane-backends.pot)
 	$(MAKE)
@@ -65,7 +65,7 @@ override_dh_auto_clean:
 	$(RM) debian/libsane.udev
 	dh_auto_clean
 
-override_dh_auto_install:
+override_dh_auto_install-arch:
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	# remove /usr/lib/sane/libsane.so.1 (libtool side-effect ?)
 	$(RM) debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/sane/libsane.so.1
@@ -80,7 +80,7 @@ override_dh_auto_install:
 	find debian/tmp/usr -name "*.la" -type f -exec sed -e "s,^dependency_libs=.*,dependency_libs=''," -i {} \;
 	
 
-override_dh_install:
+override_dh_install-arch:
 	dh_install
 	# Install HAL fdi file
 	mkdir -p $(CURDIR)/debian/libsane-common/usr/share/hal/fdi/preprobe/10osvendor
@@ -93,11 +93,11 @@ override_dh_install:
 	mkdir -p $(CURDIR)/debian//sane-utils/usr/share/man/man5/
 	cp $(CURDIR)/doc/sane-umax_pp.man $(CURDIR)/debian/sane-utils/usr/share/man/man5/umax_pp.5
 
-override_dh_installdocs:
+override_dh_installdocs-indep:
 	dh_installdocs
 	# move files that belong to libsane-dev
-	mv debian/tmp/usr/share/doc/libsane/sane.ps debian/libsane-dev/usr/share/doc/libsane-dev/
-	mv debian/tmp/usr/share/doc/libsane/backend-writing.txt debian/libsane-dev/usr/share/doc/libsane-dev/
+#	mv debian/tmp/usr/share/doc/libsane/sane.ps debian/libsane-dev/usr/share/doc/libsane-dev/
+#	mv debian/tmp/usr/share/doc/libsane/backend-writing.txt debian/libsane-dev/usr/share/doc/libsane-dev/
 	# Platform-specific documentation
 	# move the html files into html/
 	install -d debian/libsane-common/usr/share/doc/libsane/html
@@ -114,7 +114,7 @@ endif
 	$(RM) $(CURDIR)/debian/libsane-common/usr/share/doc/libsane/*.html
 	$(RM) $(CURDIR)/debian/tmp/usr/share/doc/libsane/*.html
 
-override_dh_installudev:
+override_dh_installudev-arch:
 ifeq (linux,$(DEB_HOST_ARCH_OS))
 	# udev support
 	# Generate the udev rules file
@@ -127,14 +127,14 @@ endif
 	chrpath -d debian/sane-utils/usr/bin/scanimage
 	chrpath -d debian/sane-utils/usr/bin/sane-find-scanner
 
-override_dh_installinit:
+override_dh_installinit-arch:
 	dh_installinit -psane-utils --name=saned --error-handler=saned_eh
 
-override_dh_systemd_enable:
+override_dh_systemd_enable-arch:
 	dh_systemd_enable --no-enable saned.socket
 
-override_dh_strip:
+override_dh_strip-arch:
 	dh_strip --dbg-package=libsane-dbg
 
-override_dh_makeshlibs:
+override_dh_makeshlibs-arch:
 	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane -plibsane

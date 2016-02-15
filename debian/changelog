@@ -4,6 +4,8 @@ sane-backends (1.0.25-3) UNRELEASED; urgency=low
     - Add a timeout to prevent "Resource temporarily unavailable" error
       (Closes: #810919).
       Thanks to Steve Graham <bugs@annaghvarn.plus.com>.
+  * debian/rules: Split rules into *-arch and *-indep to
+    prevent build errors (Closes: #806104).
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 16 Jan 2016 21:30:19 +0100
 
