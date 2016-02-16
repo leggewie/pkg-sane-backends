@@ -1,5 +1,5 @@
 #
 # watch file for sane-backends
 #
-version=3
+version=4
 https://alioth.debian.org/frs/?group_id=30186 .*/sane-backends-(.*).(?:tar\.xz|txz|tar\.bz2|tbz2|tar\.gz|tgz)
