@@ -19,6 +19,7 @@ sane-backends (1.0.25-3) UNRELEASED; urgency=low
   * Refresh and correct new typos:
     - debian/patches/0100-source_spelling.patch
     - debian/patches/0605-man_typo.patch.
+  * Add year 2016 to debian/* at debian/copyright.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 16 Jan 2016 21:30:19 +0100
 
