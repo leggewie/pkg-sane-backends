@@ -4,8 +4,11 @@ sane-backends (1.0.25-3) UNRELEASED; urgency=low
     - Add a timeout to prevent "Resource temporarily unavailable" error
       (Closes: #810919).
       Thanks to Steve Graham <bugs@annaghvarn.plus.com>.
-  * debian/rules: Split rules into *-arch and *-indep to
-    prevent build errors (Closes: #806104).
+  * debian/rules:
+    - Split rules into *-arch and *-indep to prevent build errors
+      (Closes: #806104).
+    - To prevent lintian errors move Empty dependency_libs in all .la
+      files to override_dh_makeshlibs-arch.
   * debian/watch:
     - bump version to 4 (no changes required).
   * debian/control:

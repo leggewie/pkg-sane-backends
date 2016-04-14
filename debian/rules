@@ -78,7 +78,7 @@ override_dh_auto_install-arch:
 		test -e debian/tmp/$$mp && echo $$mp >> debian/libsane-common.install; done }
 	# Empty dependency_libs in all .la files
 	find debian/tmp/usr -name "*.la" -type f -exec sed -e "s,^dependency_libs=.*,dependency_libs=''," -i {} \;
-	
+	find debian -name "*.la" -type f -exec sed -i "/dependency_libs/ s/'.*'/''/" -i {} \;
 
 override_dh_install-arch:
 	dh_install
@@ -138,3 +138,6 @@ override_dh_strip-arch:
 
 override_dh_makeshlibs-arch:
 	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane -plibsane
+	# Empty dependency_libs in all .la files
+	find debian/tmp/usr -name "*.la" -type f -exec sed -e "s,^dependency_libs=.*,dependency_libs=''," -i {} \;
+	find debian -name "*.la" -type f -exec sed -i "/dependency_libs/ s/'.*'/''/" -i {} \;
