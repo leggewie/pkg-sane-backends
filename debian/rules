@@ -90,11 +90,14 @@ override_dh_install-arch:
 	mkdir -p $(CURDIR)/debian//sane-utils/usr/share/man/man5/
 	cp $(CURDIR)/doc/sane-umax_pp.man $(CURDIR)/debian/sane-utils/usr/share/man/man5/umax_pp.5
 
-override_dh_installdocs-indep:
+override_dh_installdocs-arch:
 	dh_installdocs
 	# move files that belong to libsane-dev
 	mv debian/tmp/usr/share/doc/libsane/sane.ps debian/libsane-dev/usr/share/doc/libsane-dev/
 	mv debian/tmp/usr/share/doc/libsane/backend-writing.txt debian/libsane-dev/usr/share/doc/libsane-dev/
+
+override_dh_installdocs-indep:
+	dh_installdocs
 	# Platform-specific documentation
 	# move the html files into html/
 	install -d debian/libsane-common/usr/share/doc/libsane/html

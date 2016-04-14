@@ -1,4 +1,4 @@
-sane-backends (1.0.25-3) UNRELEASED; urgency=low
+sane-backends (1.0.25-3) unstable; urgency=low
 
   * New debian/patches/0130-usb-timeout.patch:
     - Add a timeout to prevent "Resource temporarily unavailable" error
@@ -9,6 +9,7 @@ sane-backends (1.0.25-3) UNRELEASED; urgency=low
       (Closes: #806104).
     - To prevent lintian errors move "empty dependency_libs in all .la
       files" to override_dh_makeshlibs-arch.
+    - Move docu install for libsane-dev to override_dh_installdocs-arch.
   * debian/watch:
     - bump version to 4 (no changes required).
   * debian/control:
@@ -22,7 +23,7 @@ sane-backends (1.0.25-3) UNRELEASED; urgency=low
   * Add year 2016 to debian/* at debian/copyright.
   * New debian/libsane-dev.dirs to prevent build errors.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 16 Jan 2016 21:30:19 +0100
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 14 Apr 2016 22:54:23 +0200
 
 sane-backends (1.0.25-2) unstable; urgency=medium
 
