@@ -1,6 +1,6 @@
 Description: Correct source typos
 Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
-Last-Update: 2015-10-13
+Last-Update: 2016-04-14
 ----
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 Index: trunk/backend/hp-scl.c
@@ -16,3 +16,177 @@ Index: trunk/backend/hp-scl.c
        }
  }
  
+Index: trunk/backend/coolscan.c
+===================================================================
+--- trunk.orig/backend/coolscan.c
++++ trunk/backend/coolscan.c
+@@ -238,7 +238,7 @@ request_sense_parse (unsigned char *sens
+ 
+     case 0x6:
+       if ((0x29 == asc) && (0x0 == ascq))
+-	DBG (1, "\t%d/%d/%d: Power On, Reset, or Bus Device Reset Occured\n", sense, asc, ascq);
++	DBG (1, "\t%d/%d/%d: Power On, Reset, or Bus Device Reset Occurred\n", sense, asc, ascq);
+       else if ((0x2a == asc) && (0x1 == ascq))
+ 	DBG (1, "\t%d/%d/%d: Mode Parameters Changed\n", sense, asc, ascq);
+       else
+Index: trunk/backend/as6e.c
+===================================================================
+--- trunk.orig/backend/as6e.c
++++ trunk/backend/as6e.c
+@@ -577,7 +577,7 @@ as6e_open (AS6E_Scan * s)
+ 		    outpipe_desc, datapipe_desc, (char *) 0);
+ 	  DBG (1, "The SANE backend was unable to start \"as6edriver\".\n");
+ 	  DBG (1, "This must be installed in a driectory in your PATH.\n");
+-	  DBG (1, "To aquire the as6edriver program,\n");
++	  DBG (1, "To acquire the as6edriver program,\n");
+ 	  DBG (1, "go to http://as6edriver.sourceforge.net.\n");
+ 	  write (ctlinpipe[WRITEPIPE], &exec_result, sizeof (exec_result));
+ 	  exit (-1);
+Index: trunk/backend/fujitsu.c
+===================================================================
+--- trunk.orig/backend/fujitsu.c
++++ trunk/backend/fujitsu.c
+@@ -1720,7 +1720,7 @@ init_vpd (struct fujitsu *s)
+               DBG (15, "  sync next feed: %d\n", get_IN_sync_next_feed(in));
+ 
+               s->has_op_halt = get_IN_op_halt(in);
+-              DBG (15, "  object postion halt: %d\n", s->has_op_halt);
++              DBG (15, "  object position halt: %d\n", s->has_op_halt);
+           }
+ 
+           ret = SANE_STATUS_GOOD;
+Index: trunk/backend/genesys_gl646.c
+===================================================================
+--- trunk.orig/backend/genesys_gl646.c
++++ trunk/backend/genesys_gl646.c
+@@ -1999,7 +1999,7 @@ gl646_set_fe (Genesys_Device * dev, uint
+   /* Wolfson type frontend */
+   if ((dev->reg[reg_0x04].value & REG04_FESET) != 0x03)
+     {
+-      DBG (DBG_proc, "gl646_set_fe(): unspported frontend type %d\n",
++      DBG (DBG_proc, "gl646_set_fe(): unsupported frontend type %d\n",
+ 	   dev->reg[reg_0x04].value & REG04_FESET);
+       return SANE_STATUS_UNSUPPORTED;
+     }
+Index: trunk/backend/hs2p-scsi.c
+===================================================================
+--- trunk.orig/backend/hs2p-scsi.c
++++ trunk/backend/hs2p-scsi.c
+@@ -373,7 +373,7 @@ print_sense_data (int dbg_level, SENSE_D
+        (data->sense_key & 0x0F));
+   DBG (dbg_level, "Information Byte = %lu\n", _4btol (data->information));
+   DBG (dbg_level, "Additional Sense Length = %d\n", data->sense_length);
+-  DBG (dbg_level, "Command Specific Infomation = %lu\n",
++  DBG (dbg_level, "Command Specific Information = %lu\n",
+        _4btol (data->command_specific_information));
+   DBG (dbg_level, "Additional Sense Code = %#x\n", data->sense_code);
+   DBG (dbg_level, "Additional Sense Code Qualifier = %#x\n",
+Index: trunk/backend/microtek2.c
+===================================================================
+--- trunk.orig/backend/microtek2.c
++++ trunk/backend/microtek2.c
+@@ -5152,7 +5152,7 @@ scsi_sense_handler (int fd, u_char *sens
+           else if ( asc == 0x3d  && ascq == 0x00)
+               DBG(5, "scsi_sense_handler: Invalid bit in IDENTIFY\n");
+           else if ( asc == 0x2c && ascq == 0x02 )
+-/* Ok */      DBG(5, "scsi_sense_handler: Invalid comb. of windows specfied\n");
++/* Ok */      DBG(5, "scsi_sense_handler: Invalid comb. of windows specified\n");
+           else if ( asc == 0x20 && ascq == 0x00 )
+ /* Ok */      DBG(5, "scsi_sense_handler: Invalid command opcode\n");
+           else if ( asc == 0x24 && ascq == 0x00 )
+Index: trunk/sanei/sanei_pa4s2.c
+===================================================================
+--- trunk.orig/sanei/sanei_pa4s2.c
++++ trunk/sanei/sanei_pa4s2.c
+@@ -309,7 +309,7 @@ pa4s2_init (SANE_Status *status)
+ 
+   if (first_time == SANE_FALSE)
+     {
+-      DBG (5, "pa4s2_init: sanei already initalized\n");
++      DBG (5, "pa4s2_init: sanei already initialized\n");
+       status = SANE_STATUS_GOOD;
+       return 0;
+     }
+Index: trunk/sanei/sanei_pp.c
+===================================================================
+--- trunk.orig/sanei/sanei_pp.c
++++ trunk/sanei/sanei_pp.c
+@@ -697,7 +697,7 @@ pp_init( void )
+ #endif
+ 
+ 	if( first_time == SANE_FALSE ) {
+-		DBG( 5, "pp_init: already initalized\n" );
++		DBG( 5, "pp_init: already initialized\n" );
+ 		return SANE_STATUS_GOOD;
+     }
+ 
+Index: trunk/backend/mustek_usb2_asic.c
+===================================================================
+--- trunk.orig/backend/mustek_usb2_asic.c
++++ trunk/backend/mustek_usb2_asic.c
+@@ -4318,7 +4318,7 @@ Asic_SetSource (PAsic chip, LIGHTSOURCE
+       DBG (DBG_ASIC, "Asic_SetSource: Source is Reflect\n");
+       break;
+     case 2:
+-      DBG (DBG_ASIC, "Asic_SetSource: Source is Postion\n");
++      DBG (DBG_ASIC, "Asic_SetSource: Source is Position\n");
+       break;
+     case 4:
+       DBG (DBG_ASIC, "Asic_SetSource: Source is Negtive\n");
+Index: trunk/backend/rts8891.c
+===================================================================
+--- trunk.orig/backend/rts8891.c
++++ trunk/backend/rts8891.c
+@@ -7702,7 +7702,7 @@ park_head (struct Rts8891_Device *dev, S
+   sanei_rts88xx_read_reg (dev->devnum, CONTROLER_REG, &reg);
+   if (reg != 0x20)
+     {
+-      DBG (DBG_warn, "park_head: unexpected controler value 0x%02x\n", reg);
++      DBG (DBG_warn, "park_head: unexpected controller value 0x%02x\n", reg);
+     }
+ 
+   /* head parking */
+Index: trunk/backend/rts88xx_lib.c
+===================================================================
+--- trunk.orig/backend/rts88xx_lib.c
++++ trunk/backend/rts88xx_lib.c
+@@ -686,7 +686,7 @@ sanei_rts88xx_setup_nvram (SANE_Int devn
+   if (status != SANE_STATUS_GOOD)
+     {
+       DBG (DBG_error,
+-           "sanei_rts88xx_setup_nvram : controler register write failed\n");
++           "sanei_rts88xx_setup_nvram : controller register write failed\n");
+       return status;
+     }
+   reg = 1;
+@@ -694,7 +694,7 @@ sanei_rts88xx_setup_nvram (SANE_Int devn
+   if (status != SANE_STATUS_GOOD)
+     {
+       DBG (DBG_error,
+-           "sanei_rts88xx_setup_nvram : controler register write failed\n");
++           "sanei_rts88xx_setup_nvram : controller register write failed\n");
+       return status;
+     }
+   return status;
+Index: trunk/backend/sharp.c
+===================================================================
+--- trunk.orig/backend/sharp.c
++++ trunk/backend/sharp.c
+@@ -370,7 +370,7 @@ sense_handler(int __sane_unused__ fd, u_
+                 DBG(10, "error: invalid field in parameter list\n");
+                 return SANE_STATUS_IO_ERROR;
+               case 0x29:
+-                DBG(10, "note: reset occured\n");
++                DBG(10, "note: reset occurred\n");
+                 return SANE_STATUS_GOOD;
+               case 0x2a:
+                 DBG(10, "note: mode parameter change\n");
+@@ -495,7 +495,7 @@ sense_handler(int __sane_unused__ fd, u_
+                 switch (add_sense_code)
+                   {
+                     case 0x29:
+-                      DBG(5, "unit attention: reset occured\n");
++                      DBG(5, "unit attention: reset occurred\n");
+                       return SANE_STATUS_GOOD;
+                     case 0x2a:
+                       DBG(5, "unit attention: parameter changed by "

@@ -1,7 +1,7 @@
 Description: format error in man page
 Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
 Forwarded: not-needed
-Last-Update: 2014-10-13
+Last-Update: 2016-04-14
 ---
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 Index: trunk/doc/sane-mustek_usb.man
@@ -16,3 +16,38 @@ Index: trunk/doc/sane-mustek_usb.man
  .I @DOCDIR@/mustek_usb/mustek_usb.TODO
  .br
  .I http://www.meier\-geinitz.de/sane/mustek_usb\-backend/
+Index: trunk/doc/sane-genesys.man
+===================================================================
+--- trunk.orig/doc/sane-genesys.man
++++ trunk/doc/sane-genesys.man
+@@ -52,7 +52,7 @@ in the feeder then start calibration eit
+ or by clicking on the available 'calibrate' button in the 'advanced options' in a graphical
+ frontend. The result of the calibration is stored in a file in the home directory of the user doing it.
+ If you plug the scanner in another machine or use it with another account, calibration
+-will have to be redone, unles you use the \-\-calibration\-file option.
++will have to be redone, unless you use the \-\-calibration\-file option.
+ If no home directory is defined,
+ USERAPPPROFILE will be used, then TMPDIR or TMP. If none of these directories exist, the backend will try
+ to write in the current working directory. Flatbed scanners also make use of the calibration file as a cache
+Index: trunk/doc/saned.man
+===================================================================
+--- trunk.orig/doc/saned.man
++++ trunk/doc/saned.man
+@@ -226,7 +226,7 @@ compiled in, but then logging of debug i
+ The systemd configuration is different for the 2 options, so
+ both are described below.
+ .SH Systemd configuration for saned with systemd support compiled in
+-for the systemd configuration we need to add 2 configuation files in 
++for the systemd configuration we need to add 2 configuration files in 
+ .I /etc/systemd/system.
+ .PP
+ The first file we need to add here is called 
+@@ -301,7 +301,7 @@ forwarded to the system log.
+ This configuration will also work when Saned is compiled WITH systemd integration
+ support, but it does not allow debugging information to be logged.
+ .PP
+-for systemd configuration for saned, we need to add 2 configuation files in
++for systemd configuration for saned, we need to add 2 configuration files in
+ .I /etc/systemd/system.
+ .PP
+ The first file we need to add here is called
