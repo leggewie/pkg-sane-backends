@@ -9,8 +9,8 @@ sane-backends (1.0.25-3) UNRELEASED; urgency=low
   * debian/watch:
     - bump version to 4 (no changes required).
   * debian/control:
-    - Bump Standards-Version to 3.9.7 (no changes required).
-    - Change VCS-* to secure uri.
+    - Bump Standards-Version to 3.9.8 (no changes required).
+    - Change Vcs-* to secure uri.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 16 Jan 2016 21:30:19 +0100
 

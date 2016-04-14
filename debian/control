@@ -2,7 +2,7 @@ Source: sane-backends
 Section: graphics
 Priority: optional
 Maintainer: Jörg Frings-Fürst <debian@jff-webhosting.net>
-Standards-Version: 3.9.7
+Standards-Version: 3.9.8
 Build-Depends:
  autotools-dev,
  autoconf,
@@ -27,7 +27,7 @@ Build-Depends:
  xutils-dev
 Testsuite: autopkgtest
 Homepage: http://www.sane-project.org
-Vcs-Git: https://anonscm.debian.org/collab-maint/sane-backends.git
+Vcs-Git: https://anonscm.debian.org/cgit/collab-maint/sane-backends.git
 Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/sane-backends.git
 
 Package: sane-utils
