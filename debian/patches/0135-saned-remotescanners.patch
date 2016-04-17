@@ -1,0 +1,159 @@
+Description: saned option to report network-attached devices to clients
+Author: Jens-U. Mozdzen <jmozdzen@nde.ag>
+Author: Dhionel Díaz <ddiaz@cenditel.gob.ve>
+Bug: https://alioth.debian.org/tracker/index.php?func=detail&aid=314768&group_id=30186&atid=410366
+Last-Update: 2016-04-13
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/doc/saned.man
++++ b/doc/saned.man
+@@ -10,6 +10,7 @@
+ .I [ n ]
+ .B | \-s
+ .I [ n ]
++.B | \-r
+ .B | \-h
+ .B ]
+ .SH DESCRIPTION
+@@ -37,6 +38,14 @@
+ .B saned
+ will drop root privileges and run as this user (and group).
+ .PP
++If the
++.B \-r
++flag is specified, saned will also report remote scanners (those that are accessed
++via saned's "net" backend) when receiving an inquiry to list all devices. As the
++remote scanner may not be available at the time of the request, enabling this
++option may cause a significant delay, experienced by the remote client.
++Default is not to report those scanners.
++.PP
+ The
+ .B \-d
+ and
+@@ -94,6 +103,14 @@
+ machine, we strongly recommend using the Netfilter
+ \fInf_conntrack_sane\fP module instead.
+ .PP
++\fBreexport_remote_scanners\fP = \fI[ true | yes | 1 ]\fP
++Enables reporting remote scanners (those accessed via saned's "net"
++backend) to clients. As the remote scanner may not be available at
++the time of the request, enabling this option may cause a significant
++delay, experienced by the remote client.
++Any value other than "true", "yes" or "1" will keep this option disabled,
++which is the default when this option nor the command line flag "-r" is specified.
++.PP
+ The access list is a list of host names, IP addresses or IP subnets
+ (CIDR notation) that are permitted to use local SANE devices. IPv6
+ addresses must be enclosed in brackets, and should always be specified
+--- a/frontend/saned.c
++++ b/frontend/saned.c
+@@ -246,6 +246,7 @@
+ static int num_handles;
+ static int debug;
+ static int run_mode;
++static SANE_Bool reexport_remote_scanners_disabled = SANE_TRUE;
+ static Handle *handle;
+ static union
+ {
+@@ -1834,7 +1835,7 @@
+ 
+ 	reply.status =
+ 	  sane_get_devices ((const SANE_Device ***) &reply.device_list,
+-			    SANE_TRUE);
++			    reexport_remote_scanners_disabled);
+ 	sanei_w_reply (w, (WireCodecFunc) sanei_w_get_devices_reply, &reply);
+       }
+       break;
+@@ -2697,6 +2698,23 @@
+                   DBG (DBG_INFO, "read_config: data port range: %d - %d\n", data_port_lo, data_port_hi);
+                 }
+             }
++          else if (strstr(config_line, "reexport_remote_scanners") != NULL)
++            {
++              optval = sanei_config_skip_whitespace (++optval);
++	      if ((optval != NULL) && (*optval != '\0'))
++	        {
++		  if (optval == endval)
++		    {
++                      DBG (DBG_ERR, "read_config: invalid value for data_portrange\n");
++                      continue;
++                    }
++		  else if ((strcmp( optval, "yes") == 0) || (strcmp( optval, "true") == 0) ||(strcmp( optval, "1") == 0))
++		    {
++                      reexport_remote_scanners_disabled = SANE_FALSE;
++                      DBG (DBG_INFO, "main: enabled serving remote scanner devices\n");
++		    }
++		}
++            }
+         }
+       fclose (fp);
+       DBG (DBG_INFO, "read_config: done reading config\n");
+@@ -3274,35 +3292,43 @@
+   numchildren = 0;
+   run_mode = SANED_RUN_INETD;
+ 
+-  if (argc >= 2)
+-    {
+-      if (strncmp (argv[1], "-a", 2) == 0)
+-	run_mode = SANED_RUN_ALONE;
+-      else if (strncmp (argv[1], "-d", 2) == 0)
+-	{
+-	  run_mode = SANED_RUN_DEBUG;
+-	  log_to_syslog = SANE_FALSE;
+-	}
+-      else if (strncmp (argv[1], "-s", 2) == 0)
+-	run_mode = SANED_RUN_DEBUG;
+-      else
+-        {
+-          printf ("Usage: saned [ -a [ username ] | -d [ n ] | -s [ n ] ] | -h\n");
+-          if ((strncmp (argv[1], "-h", 2) == 0) ||
+-               (strncmp (argv[1], "--help", 6) == 0))
+-            exit (EXIT_SUCCESS);
+-          else
+-            exit (EXIT_FAILURE);
+-        }
+-    }
++  int optc;
+ 
+-  if (run_mode == SANED_RUN_DEBUG)
+-    {
+-      if (argv[1][2])
+-	debug = atoi (argv[1] + 2);
++  opterr = 0; /* wir wollen keine fremden Ausgaben */
++
++  do {
++    switch (optc = getopt(argc, argv, "ad:s:r")) {
++
++    case 'a': /* stand-alone */
++      run_mode = SANED_RUN_ALONE;
++      break;
++    case 'd': /* debug */
++      run_mode = SANED_RUN_DEBUG;
++      log_to_syslog = SANE_FALSE;
+ 
++      debug = atoi( optarg);
+       DBG (DBG_WARN, "main: starting debug mode (level %d)\n", debug);
++      break;
++    case 's': /* debug to syslog */
++      run_mode = SANED_RUN_DEBUG;
++
++      debug = atoi( optarg);
++      DBG (DBG_WARN, "main: starting debug mode (level %d)\n", debug);
++      break;
++    case 'r': /* re-export network-attached scanners */
++      reexport_remote_scanners_disabled = SANE_FALSE;
++      DBG (DBG_INFO, "main: enabled serving remote scanner devices\n");
++      break;
++    case '?': /* unknown option */
++      printf ("Usage: saned [ -a [ username ] | -d [ n ] | -s [ n ] ] | -r | -h\n");
++      if ((strncmp (argv[1], "-h", 2) == 0) ||
++           (strncmp (argv[1], "--help", 6) == 0))
++        exit (EXIT_SUCCESS);
++      else
++        exit (EXIT_FAILURE);
++      break;
+     }
++  } while (optc != -1);
+ 
+   if (log_to_syslog)
+     openlog ("saned", LOG_PID | LOG_CONS, LOG_DAEMON);
