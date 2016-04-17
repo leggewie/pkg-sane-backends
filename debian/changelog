@@ -13,7 +13,7 @@ sane-backends (1.0.25-3) unstable; urgency=medium
         override_dh_installdocs-arch.
       + New debian/libsane-dev.dirs.
   * Remove package libsane-bin by reason of some Multi-Arch Issues (lintian
-    error: old-style-config-script-multiarch-path) (Closes :#820964):
+    error: old-style-config-script-multiarch-path) (Closes: #820964):
     - At debian/control remove the part of libsane-bin and the depends on it.
     - Remove debian/libsane-bin.*.
     - New NEWS.Debian.
