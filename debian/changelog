@@ -26,8 +26,11 @@ sane-backends (1.0.25-3) unstable; urgency=medium
     - Bump Standards-Version to 3.9.8 (no changes required).
     - Change Vcs-* to secure uri.
   * Add year 2016 to debian/* at debian/copyright.
+  * New debian/patches/0135-saned-remotescanners.patch to report
+    network-attached devices (Closes: #821255).
+    Thanks to Dhionel Díaz <ddiaz@cenditel.gob.ve>.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 16 Apr 2016 23:02:57 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 17 Apr 2016 21:11:18 +0200
 
 sane-backends (1.0.25-2) unstable; urgency=medium
 
