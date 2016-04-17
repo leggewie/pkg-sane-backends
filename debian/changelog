@@ -1,4 +1,4 @@
-sane-backends (1.0.25-3) unstable; urgency=low
+sane-backends (1.0.25-3) unstable; urgency=medium
 
   * New debian/patches/0130-usb-timeout.patch:
     - For the "Resource temporarily unavailable" error add a timeout to
@@ -12,9 +12,11 @@ sane-backends (1.0.25-3) unstable; urgency=low
       + Move documentation install for libsane-dev to
         override_dh_installdocs-arch.
       + New debian/libsane-dev.dirs.
-  * New libsane-bin.lintian-overrides:
-    - Override lintian error old-style-config-script-multiarch-path
-      (See bug #820964).
+  * Remove package libsane-bin by reason of some Multi-Arch Issues (lintian
+    error: old-style-config-script-multiarch-path) (Closes :#820964):
+    - At debian/control remove the part of libsane-bin and the depends on it.
+    - Remove debian/libsane-bin.*.
+    - New NEWS.Debian.
   * Refresh and correct new typos:
     - debian/patches/0100-source_spelling.patch
     - debian/patches/0605-man_typo.patch.
@@ -25,7 +27,7 @@ sane-backends (1.0.25-3) unstable; urgency=low
     - Change Vcs-* to secure uri.
   * Add year 2016 to debian/* at debian/copyright.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 14 Apr 2016 22:54:23 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 16 Apr 2016 23:02:57 +0200
 
 sane-backends (1.0.25-2) unstable; urgency=medium
 

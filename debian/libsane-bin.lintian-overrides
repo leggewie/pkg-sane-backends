@@ -1,6 +1,0 @@
-# The package is marked as Multi-Arch: Foreign
-# The output are architecture independent
-#
-# See bug #820964
-#
-old-style-config-script-multiarch-path

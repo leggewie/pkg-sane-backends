@@ -1,0 +1,12 @@
+sane-backends (1.0.25-3) unstable; urgency=medium
+
+  With release 1.0.24-14 sane-config must move from the Multi-Arch same
+  packages libsane-dev to the new Multi-Arch foreign package libsane-bin.
+  .
+  Now I get the lintian error "old-style-config-script-multiarch-path". After
+  the diskussion at https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=820964
+  I think it is the best to remove sane-config from Debian.
+  .
+  All other options are still not Multi-Aarch conform.
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 16 Apr 2016 23:02:57 +0200
