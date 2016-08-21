@@ -1,9 +1,5 @@
 sane-backends (1.0.25-3) unstable; urgency=medium
 
-  * New debian/patches/0130-usb-timeout.patch:
-    - For the "Resource temporarily unavailable" error add a timeout to
-      function libusb_bulk_write (Closes: #810919).
-      Thanks to Steve Graham <bugs@annaghvarn.plus.com>.
   * debian/rules:
     - For FTBFS on built with dpkg-buildpackage -A (Closes: #806104):
       + Split rules into *-arch and *-indep.
@@ -29,8 +25,11 @@ sane-backends (1.0.25-3) unstable; urgency=medium
   * New debian/patches/0135-saned-remotescanners.patch to report
     network-attached devices (Closes: #821255).
     Thanks to Dhionel Díaz <ddiaz@cenditel.gob.ve>.
+  * At debian/sane-utils.saned.init correct handling of the stop and
+    restart actions (Closes: #829244).
+    Thanks to Chris Lamb <lamby@debian.org>.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 17 Apr 2016 21:11:18 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 18 Jun 2016 05:47:21 +0200
 
 sane-backends (1.0.25-2) unstable; urgency=medium
 

@@ -52,7 +52,7 @@ case "$1" in
   stop)
 	log_daemon_msg "Stopping $DESC" "$NAME"
 	start-stop-daemon --stop --oknodo --quiet --pidfile /var/run/$NAME.pid \
-		--exec $DAEMON
+		--retry --exec $DAEMON
 	log_end_msg $?
 	;;
   force-reload)
@@ -64,12 +64,8 @@ case "$1" in
 	;;
   restart)
 	log_daemon_msg "Restarting $DESC" "$NAME"
-	start-stop-daemon --stop --oknodo --quiet --pidfile \
-		/var/run/$NAME.pid --exec $DAEMON
-	sleep 1
-	start-stop-daemon --start --quiet --pidfile \
-		/var/run/$NAME.pid --exec $DAEMON -- $DAEMON_OPTS
-	log_end_msg $?
+	$0 stop
+	$0 start
 	;;
   status)
 	if [ -s /var/run/$NAME.pid ]; then
@@ -97,5 +93,3 @@ case "$1" in
 	exit 1
 	;;
 esac
-
-exit 0
