@@ -1,6 +1,6 @@
 Description: Correct source typos
 Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
-Last-Update: 2016-04-14
+Last-Update: 2016-08-21
 ----
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
 Index: trunk/backend/hp-scl.c
@@ -190,3 +190,132 @@ Index: trunk/backend/sharp.c
                        return SANE_STATUS_GOOD;
                      case 0x2a:
                        DBG(5, "unit attention: parameter changed by "
+Index: trunk/backend/gphoto2.c
+===================================================================
+--- trunk.orig/backend/gphoto2.c
++++ trunk/backend/gphoto2.c
+@@ -1738,13 +1738,13 @@ read_dir (SANE_String dir, SANE_Bool rea
+     {
+       if (gp_list_free (dir_list) < 0)
+ 	{
+-	  DBG (0, "%s: errror: gp_list_free failed\n", f);
++	  DBG (0, "%s: error: gp_list_free failed\n", f);
+ 	}
+       dir_list = NULL;
+     }
+   if (gp_list_new (&dir_list) < 0)
+     {
+-      DBG (0, "%s: errror: gp_list_new failed\n", f);
++      DBG (0, "%s: error: gp_list_new failed\n", f);
+     }
+ 
+   if (read_files)
+Index: trunk/backend/gt68xx.c
+===================================================================
+--- trunk.orig/backend/gt68xx.c
++++ trunk/backend/gt68xx.c
+@@ -2346,7 +2346,7 @@ sane_cancel (SANE_Handle handle)
+   else
+     {
+       DBG (4, "sane_cancel: scan has not been initiated yet, "
+-           "or it is allready aborted\n");
++           "or it is already aborted\n");
+     }
+ 
+   DBG (5, "sane_cancel: exit\n");
+Index: trunk/backend/mustek.c
+===================================================================
+--- trunk.orig/backend/mustek.c
++++ trunk/backend/mustek.c
+@@ -1669,7 +1669,7 @@ attach (SANE_String_Const devname, Muste
+       DBG (0,
+ 	   "WARNING: Your scanner was detected by the SANE Mustek backend, "
+ 	   "but\n  it is not fully tested. It may or may not work. Be "
+-	   "carefull and read\n  the PROBLEMS file in the sane directory. "
++	   "careful and read\n  the PROBLEMS file in the sane directory. "
+ 	   "Please set the debug level of this\n  backend to maximum "
+ 	   "(export SANE_DEBUG_MUSTEK=255) and send the output of\n  "
+ 	   "scanimage -L to the SANE mailing list sane-devel@lists.alioth.debian.org. "
+Index: trunk/backend/mustek_usb.c
+===================================================================
+--- trunk.orig/backend/mustek_usb.c
++++ trunk/backend/mustek_usb.c
+@@ -1572,7 +1572,7 @@ sane_cancel (SANE_Handle handle)
+   else
+     {
+       DBG (4, "sane_cancel: scan has not been initiated yet, "
+-	   "or it is allready aborted\n");
++	   "or it is already aborted\n");
+     }
+   DBG (5, "sane_cancel: exit\n");
+   return;
+Index: trunk/backend/umax.c
+===================================================================
+--- trunk.orig/backend/umax.c
++++ trunk/backend/umax.c
+@@ -399,7 +399,7 @@ static void umax_print_inquiry(Umax_Devi
+   DBG_inq_nz(" - relative address\n", get_inquiry_scsi_reladr(inquiry_block));
+   DBG_inq_nz(" - wide bus 32 bit\n",  get_inquiry_scsi_wbus32(inquiry_block));
+   DBG_inq_nz(" - wide bus 16 bit\n",  get_inquiry_scsi_wbus16(inquiry_block));
+-  DBG_inq_nz(" - syncronous neg.\n",  get_inquiry_scsi_sync(inquiry_block));
++  DBG_inq_nz(" - synchronous neg.\n", get_inquiry_scsi_sync(inquiry_block));
+   DBG_inq_nz(" - linked commands\n",  get_inquiry_scsi_linked(inquiry_block));
+   DBG_inq_nz(" - (reserved)\n",       get_inquiry_scsi_R(inquiry_block));
+   DBG_inq_nz(" - command queueing\n", get_inquiry_scsi_cmdqueue(inquiry_block));
+@@ -7624,7 +7624,7 @@ SANE_Status sane_start(SANE_Handle handl
+     /* of the x-origin defined by the scanner`s inquiry */
+     if (scanner->device->dor != 0) /* dor mode active */
+     {
+-      DBG(DBG_info,"substracting DOR x-origin-offset from upper left x\n");
++      DBG(DBG_info,"subtracting DOR x-origin-offset from upper left x\n");
+       scanner->device->upper_left_x -= scanner->device->inquiry_dor_x_off * scanner->device->x_coordinate_base; /* correct DOR x-origin */
+ 
+       if (scanner->device->upper_left_x < 0) /* rounding errors may create a negative value */
+Index: trunk/backend/umax_pp.c
+===================================================================
+--- trunk.orig/backend/umax_pp.c
++++ trunk/backend/umax_pp.c
+@@ -388,7 +388,7 @@ umax_pp_try_ports (SANEI_Config * config
+                      ports[i]);
+               else
+                 DBG (3,
+-                     "umax_pp_try_ports: attach to port `%s' successfull\n",
++                     "umax_pp_try_ports: attach to port `%s' successful\n",
+                      ports[i]);
+             }
+           free (ports[i]);
+Index: trunk/backend/umax_pp_low.c
+===================================================================
+--- trunk.orig/backend/umax_pp_low.c
++++ trunk/backend/umax_pp_low.c
+@@ -862,7 +862,7 @@ sanei_parport_find_device (void)
+   i = 0;
+   while (devices[i] != NULL)
+     {
+-      DBG (16, "Controling %s: ", devices[i]);
++      DBG (16, "Controlling %s: ", devices[i]);
+       file = open (devices[i], O_RDWR);
+       if (file < 0)
+ 	{
+Index: trunk/backend/apple.c
+===================================================================
+--- trunk.orig/backend/apple.c
++++ trunk/backend/apple.c
+@@ -2634,7 +2634,7 @@ sane_cancel (SANE_Handle handle)
+       if (s->AbortedByUser)
+ 	{
+ 	  DBG (FLOW_CONTROL,
+-	       "sane_cancel: Allready Aborted. Please Wait...\n");
++	       "sane_cancel: Already Aborted. Please Wait...\n");
+ 	}
+       else
+ 	{
+@@ -2648,7 +2648,7 @@ sane_cancel (SANE_Handle handle)
+       if (s->AbortedByUser)
+ 	{
+ 	  DBG (FLOW_CONTROL, "sane_cancel: Scan has not been Initiated yet, "
+-	       "or it is allready aborted.\n");
++	       "or it is already aborted.\n");
+ 	  s->AbortedByUser = SANE_FALSE;
+ 	  sanei_scsi_cmd (s->fd, test_unit_ready,
+ 				sizeof (test_unit_ready), 0, 0);

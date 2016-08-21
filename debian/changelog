@@ -28,6 +28,7 @@ sane-backends (1.0.25-3) unstable; urgency=medium
   * At debian/sane-utils.saned.init correct handling of the stop and
     restart actions (Closes: #829244).
     Thanks to Chris Lamb <lamby@debian.org>.
+  * Remove unused lintian overrides.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 18 Jun 2016 05:47:21 +0200
 
