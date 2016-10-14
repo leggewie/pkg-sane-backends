@@ -27,7 +27,7 @@ Build-Depends:
  xutils-dev
 Testsuite: autopkgtest
 Homepage: http://www.sane-project.org
-Vcs-Git: https://anonscm.debian.org/cgit/collab-maint/sane-backends.git
+Vcs-Git: git://anonscm.debian.org/collab-maint/sane-backends.git
 Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/sane-backends.git
 
 Package: sane-utils

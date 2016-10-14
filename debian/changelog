@@ -20,7 +20,7 @@ sane-backends (1.0.25-3) unstable; urgency=medium
     - Bump version to 4 (no changes required).
   * debian/control:
     - Bump Standards-Version to 3.9.8 (no changes required).
-    - Change Vcs-* to secure uri.
+    - Change Vcs-Browser to secure uri.
   * Add year 2016 to debian/* at debian/copyright.
   * New debian/patches/0135-saned-remotescanners.patch to report
     network-attached devices (Closes: #821255).
@@ -30,7 +30,7 @@ sane-backends (1.0.25-3) unstable; urgency=medium
     Thanks to Chris Lamb <lamby@debian.org>.
   * Remove unused lintian overrides.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 18 Jun 2016 05:47:21 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Mon, 22 Aug 2016 04:51:15 +0200
 
 sane-backends (1.0.25-2) unstable; urgency=medium
 
