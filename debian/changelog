@@ -1,11 +1,11 @@
 sane-backends (1.0.25-3) unstable; urgency=medium
 
   * debian/rules:
-    - For FTBFS on built with dpkg-buildpackage -A (Closes: #806104):
-      + Split rules into *-arch and *-indep.
-      + Move "empty dependency_libs in all .la files" to 
+    - Fix FTBFS when building with 'dpkg-buildpackage -A' (Closes: #806104):
+      + Split file into *-arch and *-indep parts.
+      + Move "empty dependency_libs in all .la files" to
         override_dh_makeshlibs-arch.
-      + Move documentation install for libsane-dev to
+      + Move installing of doc files for libsane-dev to
         override_dh_installdocs-arch.
       + New debian/libsane-dev.dirs.
   * Remove package libsane-bin by reason of some Multi-Arch Issues (lintian
@@ -13,25 +13,26 @@ sane-backends (1.0.25-3) unstable; urgency=medium
     - At debian/control remove the part of libsane-bin and the depends on it.
     - Remove debian/libsane-bin.*.
     - New NEWS.Debian.
-  * Refresh and correct new typos:
-    - debian/patches/0100-source_spelling.patch
-    - debian/patches/0605-man_typo.patch.
+  * debian/patches:
+    - Refresh and correct new typos:
+      + 0100-source_spelling.patch
+      + 0605-man_typo.patch.
+    - New 0135-saned-remotescanners.patch 
+      + Fix report network-attached devices (Closes: #821255).
+        Thanks to Dhionel Díaz <ddiaz@cenditel.gob.ve>.
   * debian/watch:
     - Bump version to 4 (no changes required).
   * debian/control:
     - Bump Standards-Version to 3.9.8 (no changes required).
-    - Change Vcs-Browser to secure uri.
+    - Change Vcs-* to secure URI.
     - Add requested lsb-base on sane-utils Depends to prevent lintian error.
-  * Add year 2016 to debian/* at debian/copyright.
-  * New debian/patches/0135-saned-remotescanners.patch to report
-    network-attached devices (Closes: #821255).
-    Thanks to Dhionel Díaz <ddiaz@cenditel.gob.ve>.
-  * At debian/sane-utils.saned.init correct handling of the stop and
-    restart actions (Closes: #829244).
-    Thanks to Chris Lamb <lamby@debian.org>.
+  * Add year 2016 to debian/* in debian/copyright.
+  * debian/sane-utils.saned.init:
+    - Fix handling of stop and restart actions (Closes: #829244).
+      Thanks to Chris Lamb <lamby@debian.org>.
   * Remove unused lintian overrides.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 14 Oct 2016 09:07:30 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 09 Dec 2016 13:30:31 +0100
 
 sane-backends (1.0.25-2) unstable; urgency=medium
 

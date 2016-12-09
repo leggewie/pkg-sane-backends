@@ -7,6 +7,8 @@ sane-backends (1.0.25-3) unstable; urgency=medium
   the diskussion at https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=820964
   I think it is the best to remove sane-config from Debian.
   .
-  All other options are still not Multi-Aarch conform.
+  All other options are still not Multi-Arch conform.
+  .
+  Please use pkg-config instead of sane-config from the package pkg-config.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 16 Apr 2016 23:02:57 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 09 Dec 2016 13:30:31 +0100
