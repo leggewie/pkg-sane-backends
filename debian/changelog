@@ -24,15 +24,26 @@ sane-backends (1.0.25-3) unstable; urgency=medium
     - Bump version to 4 (no changes required).
   * debian/control:
     - Bump Standards-Version to 3.9.8 (no changes required).
-    - Change Vcs-* to secure URI.
+    - Change Vcs-Browser to secure URI.
     - Add requested lsb-base on sane-utils Depends to prevent lintian error.
   * Add year 2016 to debian/* in debian/copyright.
   * debian/sane-utils.saned.init:
     - Fix handling of stop and restart actions (Closes: #829244).
       Thanks to Chris Lamb <lamby@debian.org>.
   * Remove unused lintian overrides.
+  * Migrate to debhelper 10:
+    - Change debian/compat to 10.
+    - Change debhelper version in debian/control to >= 10.
+    - Refresh debian/patches to add changes at the Makefile.am:
+      + 0005-libsane_deps.patch
+      + 0010-unneeded_doc.patch
+      + 0015-frontend_libs.patch
+      + 0025-multiarch_manpages_libdir.patch
+      + 0125-multiarch_dll_search_path.patch
+    - Refresh debian/libsane.shlibs
+    - Refresh debian/libsane.symbols
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 09 Dec 2016 13:30:31 +0100
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 10 Dec 2016 13:45:15 +0100
 
 sane-backends (1.0.25-2) unstable; urgency=medium
 

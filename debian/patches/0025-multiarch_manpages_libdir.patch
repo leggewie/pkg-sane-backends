@@ -16,3 +16,16 @@ Index: trunk/doc/Makefile.in
  	  -e 's|@BINDIR@|$(bindir)|g' \
  	  -e 's|@SBINDIR@|$(sbindir)|g' \
  	  -e 's|@PACKAGEVERSION@|$(package_version)|g' $^ >$@
+Index: trunk/doc/Makefile.am
+===================================================================
+--- trunk.orig/doc/Makefile.am
++++ trunk/doc/Makefile.am
+@@ -107,7 +107,7 @@ MAN2HTML= nroff -c -man |\
+ 	@sed -e 's|@DATADIR@|$(datadir)|g' \
+ 	  -e 's|@CONFIGDIR@|$(configdir)|g' \
+ 	  -e 's|@DOCDIR@|$(docdir)|g' \
+-	  -e 's|@LIBDIR@|$(libdir)/sane|g' \
++	  -e 's|@LIBDIR@|/usr/lib/arch_triplet/sane|g' \
+ 	  -e 's|@BINDIR@|$(bindir)|g' \
+ 	  -e 's|@SBINDIR@|$(sbindir)|g' \
+ 	  -e 's|@PACKAGEVERSION@|$(package_version)|g' $^ >$@

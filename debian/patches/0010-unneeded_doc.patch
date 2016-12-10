@@ -43,3 +43,34 @@ Index: trunk/doc/Makefile.in
  
  beman5dir = $(mandir)/man5
  BEDOCS = canon/canon.changes canon/canon.install2700F.txt \
+Index: trunk/Makefile.am
+===================================================================
+--- trunk.orig/Makefile.am
++++ trunk/Makefile.am
+@@ -7,11 +7,7 @@
+ SUBDIRS = include lib sanei backend frontend tools doc po testsuite
+ DIST_SUBDIRS = include lib sanei backend frontend tools doc po japi testsuite
+ 
+-dist_doc_DATA = AUTHORS ChangeLog COPYING LICENSE NEWS PROBLEMS PROJECTS \
+- README README.aix README.beos README.darwin README.djpeg README.freebsd \
+- README.hp-ux README.linux README.netbsd README.openbsd README.os2 \
+- README.solaris README.unixware2 README.unixware7 README.windows \
+- README.zeta
++dist_doc_DATA = README AUTHORS NEWS PROBLEMS PROJECTS
+ EXTRA_DIST = ChangeLog-1.0.0 ChangeLog-1.0.1  ChangeLog-1.0.2 \
+  ChangeLog-1.0.3 ChangeLog-1.0.4 ChangeLog-1.0.5 ChangeLog-1.0.6 \
+  ChangeLog-1.0.7 ChangeLog-1.0.8 ChangeLog-1.0.9 ChangeLog-1.0.10 \
+Index: trunk/doc/Makefile.am
+===================================================================
+--- trunk.orig/doc/Makefile.am
++++ trunk/doc/Makefile.am
+@@ -101,8 +101,7 @@ DLH	= TEXINPUTS="$(srcdir):$$TEXINPUTS"
+ MAN2HTML= nroff -c -man |\
+ 	  man2html -compress -topm 6 -botm 6 -nodepage -title $${page} \
+           -cgiurl '$$title.$$section.html'|\
+-	  sed 's,<BODY>,<BODY BGCOLOR=\#FFFFFF TEXT=\#000000><H1 ALIGN=CENTER><IMG SRC="/images/sane.png" HEIGHT=117 WIDTH=346></H1>,'
+-
++	  sed 's,<BODY>,<BODY BGCOLOR=\#FFFFFF TEXT=\#000000></H1>,'
+ %.1 %.5 %.7 %.8: %.man
+ 	@echo "Generating manpage $@...";
+ 	@sed -e 's|@DATADIR@|$(datadir)|g' \

@@ -44,3 +44,16 @@ Index: trunk/backend/Makefile.in
  AM_LDFLAGS = @STRICT_LDFLAGS@
  # The -rpath option is added because we are creating _LTLIBRARIES based
  # on configure substitution.  This causes automake to not know the
+Index: trunk/backend/Makefile.am
+===================================================================
+--- trunk.orig/backend/Makefile.am
++++ trunk/backend/Makefile.am
+@@ -24,7 +24,7 @@ USB_LIBS = @USB_LIBS@
+ SCSI_LIBS = @SCSI_LIBS@
+ PTHREAD_LIBS = @PTHREAD_LIBS@
+ 
+-AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -DLIBDIR="\"$(libdir)/sane\""
++AM_CPPFLAGS = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include -DLIBDIR="\"$(libdir)/sane\"" -DDEB_DLL_LIBDIR="\"$(libdir)/sane:$(prefix)/lib/sane\""
+ 
+ V_MAJOR = @V_MAJOR@
+ V_MINOR = @V_MINOR@

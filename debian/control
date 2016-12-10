@@ -7,7 +7,7 @@ Build-Depends:
  autotools-dev,
  autoconf,
  chrpath,
- debhelper (>= 9),
+ debhelper (>= 10),
  dh-systemd,
  gettext,
  libavahi-client-dev,
