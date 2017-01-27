@@ -1,3 +1,9 @@
+sane-backends (1.0.25-4) UNRELEASED; urgency=medium
+
+  * Remove outdated debian/libsane-dev.NEWS (Closes: #852842).
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 27 Jan 2017 22:09:18 +0100
+
 sane-backends (1.0.25-3) unstable; urgency=medium
 
   * debian/rules:
