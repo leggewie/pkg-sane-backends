@@ -8,33 +8,34 @@ sane-backends (1.0.25-3) unstable; urgency=medium
       + Move installing of doc files for libsane-dev to
         override_dh_installdocs-arch.
       + New debian/libsane-dev.dirs.
-  * Remove package libsane-bin by reason of some Multi-Arch Issues (lintian
-    error: old-style-config-script-multiarch-path) (Closes: #820964):
-    - At debian/control remove the part of libsane-bin and the depends on it.
+  * Drop package libsane-bin binary package (Closes: #820964):
+    - Remove libsane-bin binary package section, remove it from
+      reverse dependencies of other packages in debian/control.
     - Remove debian/libsane-bin.*.
-    - New NEWS.Debian.
+    - New debian/NEWS.Debian.
   * debian/patches:
-    - Refresh and correct new typos:
+    - Refresh and fix new typos:
       + 0100-source_spelling.patch
       + 0605-man_typo.patch.
-    - New 0135-saned-remotescanners.patch 
-      + Fix report network-attached devices (Closes: #821255).
+    - New 0135-saned-remotescanners.patch:
+        + Add patch to allow saned to report network-attached
+        devices (Closes: #821255).
         Thanks to Dhionel Díaz <ddiaz@cenditel.gob.ve>.
   * debian/watch:
     - Bump version to 4 (no changes required).
   * debian/control:
     - Bump Standards-Version to 3.9.8 (no changes required).
     - Change Vcs-Browser to secure URI.
-    - Add requested lsb-base on sane-utils Depends to prevent lintian error.
-  * Add year 2016 to debian/* in debian/copyright.
+    - Add lsb-base to Depends for sane-utils.
+  * Add year 2016 for debian/* in debian/copyright.
   * debian/sane-utils.saned.init:
     - Fix handling of stop and restart actions (Closes: #829244).
       Thanks to Chris Lamb <lamby@debian.org>.
   * Remove unused lintian overrides.
   * Migrate to debhelper 10:
     - Change debian/compat to 10.
-    - Change debhelper version in debian/control to >= 10.
-    - Refresh debian/patches to add changes at the Makefile.am:
+    - Bump minimum debhelper version in debian/control to >= 10.
+    - Refresh debian/patches to add changes in Makefile.am:
       + 0005-libsane_deps.patch
       + 0010-unneeded_doc.patch
       + 0015-frontend_libs.patch
