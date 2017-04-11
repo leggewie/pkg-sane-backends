@@ -3,7 +3,7 @@ sane-backends (1.0.25-4) UNRELEASED; urgency=medium
   * Remove outdated debian/libsane-dev.NEWS (Closes: #852842).
   * debian/rules:
     - Remove DVIPSSource from sane.ps to make build reproducible.
-  * debian/sane-uitls.preinst: 
+  * debian/sane-uitls.postinst: 
     - Add "|| true" after adduser call to continue installation if
       adduser fails (Closes: #860078).
 
