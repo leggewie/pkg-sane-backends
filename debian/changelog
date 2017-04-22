@@ -1,13 +1,22 @@
+sane-backends (1.0.24-8+deb8u2) stable; urgency=medium
+
+  * CVE-2017-6318:
+    - New debian/patches/0500-CVE-2017-6318.patch
+      + cherry-picked from upstream to fix memory corruption and
+        information leakage (Closes: #854804).
+
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 19 Apr 2017 11:51:22 +0200
+
 sane-backends (1.0.24-8+deb8u1) stable; urgency=medium
 
   * Cherry-picked systemd handling from unstable (Closes: #791961):
-    - Rewrite debian/saned@.service to prevent errors by network scaning.
+    - Rewrite debian/saned@.service to prevent errors by network scanning.
     - New debian/sane-utils.links:
       + Add a link from /dev/null to /lib/systemd/system/saned.service
         to prevent start via fallback script /etc/init.d/saned.
-    - Add 2015 to debian/copyright.
+    - Add year 2016 to debian/copyright.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 02 Sep 2015 14:10:00 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 27 Jan 2016 07:48:32 +0100
 
 sane-backends (1.0.24-8) unstable; urgency=medium
 

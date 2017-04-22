@@ -22,3 +22,4 @@ hp5370c.patch
 out_of_bounds.patch
 0500-systemd_configure.patch
 0100-usb3-corrections.patch
+0505-CVE-2017-6318.patch
