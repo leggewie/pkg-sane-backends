@@ -2,6 +2,7 @@ sane-backends (1.0.25-5) UNRELEASED; urgency=medium
 
   * debian/rules:
     - Remove DVIPSSource from sane.ps to make build reproducible.
+  * Remove outdated debian/libsane-dev.NEWS (Closes: #852842).
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 22 Apr 2017 10:20:55 +0200
 
