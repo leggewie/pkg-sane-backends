@@ -1,13 +1,11 @@
-sane-backends (1.0.25-4) UNRELEASED; urgency=medium
+sane-backends (1.0.25-4) unstable; urgency=medium
 
-  * Remove outdated debian/libsane-dev.NEWS (Closes: #852842).
-  * debian/rules:
-    - Remove DVIPSSource from sane.ps to make build reproducible.
-  * debian/sane-uitls.postinst: 
-    - Add "|| true" after adduser call to continue installation if
-      adduser fails (Closes: #860078).
+  * CVE-2017-6318:
+    - New debian/patches/0500-CVE-2017-6318.patch
+      + cherry-picked from upstream to fix memory corruption and
+        information leakage (Closes: #854804).
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 27 Jan 2017 22:09:18 +0100
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 19 Apr 2017 12:07:38 +0200
 
 sane-backends (1.0.25-3) unstable; urgency=medium
 

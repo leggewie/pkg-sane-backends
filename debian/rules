@@ -92,7 +92,6 @@ override_dh_install-arch:
 
 override_dh_installdocs-arch:
 	dh_installdocs
-	sed -i /DVIPSSource/d debian/tmp/usr/share/doc/libsane/sane.ps
 	# move files that belong to libsane-dev
 	mv debian/tmp/usr/share/doc/libsane/sane.ps debian/libsane-dev/usr/share/doc/libsane-dev/
 	mv debian/tmp/usr/share/doc/libsane/backend-writing.txt debian/libsane-dev/usr/share/doc/libsane-dev/
