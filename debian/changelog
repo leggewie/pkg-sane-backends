@@ -1,4 +1,4 @@
-sane-backends (1.0.25-5) UNRELEASED; urgency=medium
+sane-backends (1.0.25-4~test1) UNRELEASED; urgency=medium
 
   * debian/rules:
     - Remove DVIPSSource from sane.ps to make build reproducible.
@@ -6,6 +6,7 @@ sane-backends (1.0.25-5) UNRELEASED; urgency=medium
   * debian/sane-uitls.postinst:
     - Add "|| true" after adduser call to continue installation if
       adduser fails (Closes: #860078).
+  * Remove avahi support 
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 22 Apr 2017 10:20:55 +0200
 

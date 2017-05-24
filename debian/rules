@@ -46,7 +46,6 @@ override_dh_auto_configure:
 		--enable-pthread \
 		--with-gphoto2 \
 		--enable-translations \
-		--enable-avahi \
 		--enable-libusb_1_0 \
 		--enable-pnm-backend \
 		--without-v4l

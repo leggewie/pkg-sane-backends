@@ -10,7 +10,7 @@ Build-Depends:
  debhelper (>= 10),
  dh-systemd,
  gettext,
- libavahi-client-dev,
+# libavahi-client-dev,
  libcam-dev [kfreebsd-any],
  libcups2-dev,
  libgphoto2-dev,
