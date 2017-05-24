@@ -73,7 +73,7 @@ Start: 2.4.2001
 #include "../include/sane/saneopts.h"
 #include "../include/sane/sanei_usb.h"
 
-#undef HAVE_LIBUSB
+#undef HAVE_LIBUSB_LEGACY
 
 /* prevent inclusion of scantool.h */
 #define SCANTOOL_H
@@ -431,12 +431,10 @@ sane_exit (void)
 
 SANE_Status
 sane_get_devices (const SANE_Device *** device_list,
-		  SANE_Bool local_only)
+		  SANE_Bool __sane_unused__ local_only)
 {
   TDevice *dev;
   int i;
-
-  local_only = TRUE; /* Avoid compile warning */
 
   if (devlist) free (devlist);
 
@@ -458,7 +456,6 @@ sane_open (SANE_String_Const devicename, SANE_Handle *handle)
 {
   TDevice    *pdev;
   TInstance  *this;
-  SANE_Status rc;
   DBG(DEBUG_VERBOSE,"opening %s\n",devicename);
   if (devicename[0]) /* selected */
     {
@@ -487,8 +484,6 @@ DBG(DEBUG_VERBOSE,"%s<>%s\n",devicename, pdev->sane.name);
 
   if (sanei_usb_open (devicename, &this->hScanner) != SANE_STATUS_GOOD)
     return SetError (this, SANE_STATUS_IO_ERROR, "cannot open scanner device");
-
-  rc = SANE_STATUS_GOOD;
 
   this->quality=fast;
   return InitOptions(this);

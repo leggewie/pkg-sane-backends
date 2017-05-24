@@ -1385,7 +1385,6 @@ static SANE_Status
 mc_init_parameters(Magicolor_Scanner * s)
 {
 	int dpi, optres;
-	struct mode_param *mparam;
 
 	DBG(5, "%s\n", __func__);
 
@@ -1393,8 +1392,6 @@ mc_init_parameters(Magicolor_Scanner * s)
 
 	dpi = s->val[OPT_RESOLUTION].w;
 	optres = s->hw->cap->optical_res;
-
-	mparam = &mode_params[s->val[OPT_MODE].w];
 
 	if (SANE_UNFIX(s->val[OPT_BR_Y].w) == 0 ||
 		SANE_UNFIX(s->val[OPT_BR_X].w) == 0)
@@ -1521,6 +1518,7 @@ mc_read(struct Magicolor_Scanner *s)
  ****************************************************************************/
 
 
+#if HAVE_LIBSNMP
 static struct MagicolorCap *
 mc_get_device_from_identification (const char*ident)
 {
@@ -1531,6 +1529,7 @@ mc_get_device_from_identification (const char*ident)
 	}
 	return NULL;
 }
+#endif
 
 
 /*
@@ -1970,10 +1969,10 @@ mc_network_discovery(const char*host)
 	init_snmp("sane-magicolor-backend");
 	snmp_sess_init (&session);
 	session.version = SNMP_VERSION_2c;
-	session.community = "public";
-	session.community_len = strlen (session.community);
+	session.community = (u_char *) "public";
+	session.community_len = strlen ((char *)session.community);
 	if (host) {
-		session.peername = host;
+		session.peername = (char *) host;
 	} else {
 		/* Do a network discovery via a broadcast */
 		session.peername = "255.255.255.255";

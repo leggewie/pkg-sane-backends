@@ -443,12 +443,14 @@ sane_get_select_fd (SANE_Handle handle, SANE_Int *fd)
 /*---------- sane_init() -----------------------------------------------------*/
 
 SANE_Status
+#ifdef HAVE_AUTHORIZATION
 sane_init(SANE_Int *version_code, SANE_Auth_Callback authorize)
+#else
+sane_init(SANE_Int *version_code, SANE_Auth_Callback __sane_unused__ authorize)
+#endif
 {
     Microtek2_Device *md;
     FILE *fp;
-    int match;
-    SANE_Auth_Callback trash;
 
 
     DBG_INIT();
@@ -460,13 +462,10 @@ sane_init(SANE_Int *version_code, SANE_Auth_Callback authorize)
 
 #ifdef HAVE_AUTHORIZATION
     auth_callback = authorize;
-#else
-    trash = authorize;     /* prevents compiler warning "unused variable" */
 #endif
 
     sanei_thread_init();
 
-    match = 0;
     fp = sanei_config_open(MICROTEK2_CONFIG_FILE);
     if ( fp == NULL )
         DBG(10, "sane_init: file not opened: '%s'\n", MICROTEK2_CONFIG_FILE);
@@ -909,7 +908,7 @@ cancel_scan(Microtek2_Scanner *ms)
        of material on a feeder, then pid may be already -1 and
        kill(-1, SIGTERM), i.e. killing all our processes, is not
        likely what we really want - --mj, 2001/Nov/19 */
-    if (ms->pid != -1)
+    if (sanei_thread_is_valid (ms->pid))
       {
        sanei_thread_kill(ms->pid);
        sanei_thread_waitpid(ms->pid, NULL);
@@ -1346,14 +1345,10 @@ check_inquiry(Microtek2_Device *md, SANE_String *model_string)
 static void
 cleanup_scanner(Microtek2_Scanner *ms)
 {
-    SANE_Status status;
-    Microtek2_Device *md;
-    md = ms->dev;
-
     DBG(30, "cleanup_scanner: ms=%p, ms->sfd=%d\n", (void *) ms, ms->sfd);
 
     if ( ms->scanning == SANE_TRUE )
-      status=cancel_scan(ms);
+      cancel_scan(ms);
 
     if ( ms->sfd != -1 )
       sanei_scsi_close(ms->sfd);
@@ -1616,10 +1611,9 @@ dump_area2(uint8_t *area, int len, char *info)
 
 #define BPL    16               /* bytes per line to print */
 
-    int i, linelength;
+    int i;
     char outputline[100];
     char *outbuf;
-    linelength = BPL * 3;
 
     if ( ! info[0] )
         info = "No additional info available";    
@@ -1991,7 +1985,7 @@ parse_config_file(FILE *fp, Config_Temp **ct)
 
 /*---------- signal_handler() ------------------------------------------------*/
 
-static RETSIGTYPE
+static void
 signal_handler (int signal)
 {
   if ( signal == SIGTERM )
@@ -4466,14 +4460,11 @@ scsi_read_attributes(Microtek2_Info *pmi, char *device, uint8_t scan_source)
 static SANE_Status
 scsi_read_control_bits(Microtek2_Scanner *ms)
 {
-    Microtek2_Device *md;
     SANE_Status status;
     uint8_t cmd[RCB_CMD_L];
     uint32_t byte;
     int bit;
     int count_1s;
-
-    md = ms->dev;
 
     DBG(30, "scsi_read_control_bits: ms=%p, fd=%d\n", (void *) ms, ms->sfd);
     DBG(30, "ms->control_bytes = %p\n", ms->control_bytes);
@@ -4795,7 +4786,6 @@ scsi_read_image_status(Microtek2_Scanner *ms)
 static SANE_Status
 scsi_read_shading(Microtek2_Scanner *ms, uint8_t *buffer, uint32_t length)
 {
-    Microtek2_Device *md;
     uint8_t cmd[RSI_CMD_L];
     SANE_Bool endiantype;
     SANE_Status status = SANE_STATUS_GOOD;
@@ -4803,8 +4793,6 @@ scsi_read_shading(Microtek2_Scanner *ms, uint8_t *buffer, uint32_t length)
 
     DBG(30, "scsi_read_shading: pos=%p, size=%d, word=%d, color=%d, dark=%d\n",
              buffer, length, ms->word, ms->current_color, ms->dark);
-
-    md = ms->dev;
 
     size = length;
 
@@ -5080,7 +5068,6 @@ scsi_sense_handler (int fd, u_char *sense, void *arg)
 {
     int as_info_length;
     uint8_t sense_key;
-    uint8_t asl;
     uint8_t asc;
     uint8_t ascq;
 
@@ -5090,7 +5077,6 @@ scsi_sense_handler (int fd, u_char *sense, void *arg)
     dump_area(sense, RQS_LENGTH(sense), "SenseBuffer");
 
     sense_key = RQS_SENSEKEY(sense);
-    asl = RQS_ASL(sense);
     asc = RQS_ASC(sense);
     ascq = RQS_ASCQ(sense);
 
@@ -5152,7 +5138,7 @@ scsi_sense_handler (int fd, u_char *sense, void *arg)
           else if ( asc == 0x3d  && ascq == 0x00)
               DBG(5, "scsi_sense_handler: Invalid bit in IDENTIFY\n");
           else if ( asc == 0x2c && ascq == 0x02 )
-/* Ok */      DBG(5, "scsi_sense_handler: Invalid comb. of windows specfied\n");
+/* Ok */      DBG(5, "scsi_sense_handler: Invalid comb. of windows specified\n");
           else if ( asc == 0x20 && ascq == 0x00 )
 /* Ok */      DBG(5, "scsi_sense_handler: Invalid command opcode\n");
           else if ( asc == 0x24 && ascq == 0x00 )
@@ -5503,7 +5489,7 @@ sane_start(SANE_Handle handle)
     /* create reader routine as new thread or process */
     ms->pid = sanei_thread_begin( reader_process,(void*) ms);
 
-    if ( ms->pid == -1 )
+    if ( !sanei_thread_is_valid (ms->pid) )
       {
         DBG(1, "sane_start: fork failed\n");
         status = SANE_STATUS_IO_ERROR;
@@ -7279,7 +7265,6 @@ chunky_proc_data(Microtek2_Scanner *ms)
 {
     SANE_Status status;
     Microtek2_Device *md;
-    Microtek2_Info *mi;
     uint32_t line;
     uint8_t *from;
     int pad;
@@ -7292,7 +7277,6 @@ chunky_proc_data(Microtek2_Scanner *ms)
     DBG(30, "chunky_proc_data: ms=%p\n", (void *) ms);
              
     md = ms->dev;
-    mi = &md->info[md->scan_source];
     bits_pp_in = ms->bits_per_pixel_in;
     bits_pp_out = ms->bits_per_pixel_out;
     pad = (int) ceil( (double) (ms->ppl * bits_pp_in) / 8.0 ) % 2;
@@ -7410,7 +7394,6 @@ segreg_proc_data(Microtek2_Scanner *ms)
     int color;
     int save_current_src;
     int frame;
-    int right_to_left;
 
     DBG(30, "segreg_proc_data: ms=%p\n", (void *) ms);
 
@@ -7420,7 +7403,6 @@ segreg_proc_data(Microtek2_Scanner *ms)
     pad = (int) ceil( (double) (ms->ppl * ms->bits_per_pixel_in) / 8.0 ) % 2;
     bpp = ms->bits_per_pixel_out / 8; /* bits_per_pixel_out is either 8 or 16 */
     bpf = ms->bpl / 3;
-    right_to_left = mi->direction & MI_DATSEQ_RTOL;
 
     DBG(30, "segreg_proc_data: lines=%d, bpl=%d, ppl=%d, bpf=%d, bpp=%d,\n"
             "depth=%d, pad=%d, freelines=%d, calib_backend=%d\n",
@@ -7688,7 +7670,6 @@ lplconcat_proc_data(Microtek2_Scanner *ms)
     uint8_t *save_from[3];
     int color;
     int bpp;
-    int pad;
     int gamma_by_backend;
     int right_to_left;       /* 0=left to right, 1=right to left */
 
@@ -7701,7 +7682,6 @@ lplconcat_proc_data(Microtek2_Scanner *ms)
     mi = &md->info[md->scan_source];
 
     bpp = ms->bits_per_pixel_out / 8; /* ms->bits_per_pixel_out is 8 or 16 */
-    pad = (ms->ppl * bpp) % 2;
     right_to_left = mi->direction & MI_DATSEQ_RTOL;
     gamma_by_backend =  md->model_flags & MD_NO_GAMMA ? 1 : 0;
 

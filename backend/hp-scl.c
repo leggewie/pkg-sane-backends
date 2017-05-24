@@ -339,7 +339,7 @@ hp_nonscsi_write (HpScsi this, hp_byte_t *data, size_t len, HpConnect connect)
 
 static SANE_Status
 hp_nonscsi_read (HpScsi this, hp_byte_t *data, size_t *len, HpConnect connect,
-  int UNUSEDARG isResponse)
+  int __sane_unused__ isResponse)
 
 {int n = -1;
  static int retries = -1;
@@ -905,7 +905,7 @@ hp_scsi_scl(HpScsi this, HpScl scl, int val)
 
   RETURN_IF_FAIL( hp_scsi_need(this, 10) );
 
-  /* Dont try to optimize SCL-commands like using <ESC>*a1b0c5T */
+  /* Don't try to optimize SCL-commands like using <ESC>*a1b0c5T */
   /* Some scanners have problems with it (e.g. HP Photosmart Photoscanner */
   /* with window position/extent, resolution) */
   count = sprintf((char *)this->bufp, "\033*%c%d%c", group, val, param);
@@ -1011,7 +1011,7 @@ hp_scsi_read (HpScsi this, void * dest, size_t *len, int isResponse)
 
 static int signal_caught = 0;
 
-static RETSIGTYPE
+static void
 signal_catcher (int sig)
 {
   DBG(1,"signal_catcher(sig=%d): old signal_caught=%d\n",sig,signal_caught);
@@ -1338,13 +1338,11 @@ static SANE_Status
 process_data (PROCDATA_HANDLE *ph, unsigned char *read_ptr, int nread)
 
 {int bytes_left;
- HpProcessData *procdata;
 
  if (nread <= 0) return SANE_STATUS_GOOD;
 
  if (ph == NULL) return SANE_STATUS_INVAL;
 
- procdata = &(ph->procdata);
  if ( ph->tmp_buf_len > 0 )  /* Something left ? */
  {
    bytes_left = ph->tmp_buf_size - ph->tmp_buf_len;
@@ -2083,7 +2081,7 @@ hp_scl_strerror (int errnum)
       case 1024: return "ADF Paper Jam";
       case 1025: return "Home Position Missing";
       case 1026: return "Paper Not Loaded";
-      default: return "??Unkown Error??";
+      default: return "??Unknown Error??";
       }
 }
 

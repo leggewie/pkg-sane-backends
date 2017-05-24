@@ -4232,7 +4232,7 @@ SANE_Status
 sane_get_parameters (SANE_Handle handle, SANE_Parameters * params)
 {
   Epson_Scanner *s = (Epson_Scanner *) handle;
-  int ndpi, max_x, max_y;
+  int ndpi;
   int bytes_per_pixel;
 
   DBG (5, "sane_get_parameters()\n");
@@ -4269,8 +4269,6 @@ sane_get_parameters (SANE_Handle handle, SANE_Parameters * params)
   memset (&s->params, 0, sizeof (SANE_Parameters));
 
   ndpi = s->val[OPT_RESOLUTION].w;
-
-  max_x = max_y = 0;
 
   s->params.pixels_per_line =
     SANE_UNFIX (s->val[OPT_BR_X].w - s->val[OPT_TL_X].w) / 25.4 * ndpi + 0.5;
@@ -5271,7 +5269,6 @@ sane_read (SANE_Handle handle, SANE_Byte * data, SANE_Int max_length,
   int index = 0;
   SANE_Bool reorder = SANE_FALSE;
   SANE_Bool needStrangeReorder = SANE_FALSE;
-  int bytes_to_process = 0;
 
 START_READ:
   DBG (5, "sane_read: begin\n");
@@ -5447,9 +5444,7 @@ START_READ:
         reorder = SANE_TRUE;
       }
 
-      bytes_to_process = receive (s, s->buf, buf_len, &status);
-
-      /* bytes_to_process = buf_len; */
+      receive (s, s->buf, buf_len, &status);
 
       if (SANE_STATUS_GOOD != status)
       {

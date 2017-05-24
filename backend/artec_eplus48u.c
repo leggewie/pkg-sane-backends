@@ -1785,14 +1785,14 @@ artec48u_device_read_prepare (Artec48U_Device * dev, size_t expected_count)
   return SANE_STATUS_GOOD;
 }
 
-static RETSIGTYPE
+static void
 reader_process_sigterm_handler (int signal)
 {
   XDBG ((1, "reader_process: terminated by signal %d\n", signal));
   _exit (SANE_STATUS_GOOD);
 }
 
-static RETSIGTYPE
+static void
 usb_reader_process_sigterm_handler (int signal)
 {
   XDBG ((1, "reader_process (usb): terminated by signal %d\n", signal));
@@ -3372,12 +3372,10 @@ close_pipe (Artec48U_Scanner * s)
     }
   return SANE_STATUS_EOF;
 }
-static RETSIGTYPE
-sigalarm_handler (int signal)
+static void
+sigalarm_handler (int __sane_unused__ signal)
 {
-  int dummy;			/*Henning doesn't like warnings :-) */
   XDBG ((1, "ALARM!!!\n"));
-  dummy = signal;
   cancelRead = SANE_TRUE;
 }
 
@@ -3483,7 +3481,7 @@ do_cancel (Artec48U_Scanner * s, SANE_Bool closepipe)
 
   s->scanning = SANE_FALSE;
 
-  if (s->reader_pid != -1)
+  if (sanei_thread_is_valid (s->reader_pid))
     {
       /*parent */
       XDBG ((1, "killing reader_process\n"));
@@ -3906,17 +3904,15 @@ sane_open (SANE_String_Const devicename, SANE_Handle * handle)
 void
 sane_close (SANE_Handle handle)
 {
-  Artec48U_Scanner *prev, *s;
+  Artec48U_Scanner *s;
 
   XDBG ((5, "sane_close: start\n"));
 
   /* remove handle from list of open handles: */
-  prev = 0;
   for (s = first_handle; s; s = s->next)
     {
       if (s == handle)
 	break;
-      prev = s;
     }
   if (!s)
     {
@@ -4301,7 +4297,7 @@ sane_start (SANE_Handle handle)
   s->reader_pipe = fds[1];
   s->reader_pid = sanei_thread_begin (reader_process, s);
   cancelRead = SANE_FALSE;
-  if (s->reader_pid == -1)
+  if (!sanei_thread_is_valid (s->reader_pid))
     {
       s->scanning = SANE_FALSE;
       XDBG ((2, "sane_start: sanei_thread_begin failed (%s)\n", strerror (errno)));

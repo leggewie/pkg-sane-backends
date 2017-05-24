@@ -1308,7 +1308,7 @@ convert_pic (char *base_name, int format)
 {
   FILE *ifp;
   unsigned char pic[MAX_IMAGE_SIZE];
-  int res, image_size, image_width, net_width, camera_header, components;
+  int res, image_width, net_width, components;
   struct pixmap *pp2;
 
   DBG (127, "convert_pic() called\n");
@@ -1374,10 +1374,8 @@ convert_pic (char *base_name, int format)
    *      Setup image size with resolution
    */
 
-  image_size = IMAGE_SIZE (res);
   image_width = WIDTH (res);
   net_width = image_width - LEFT_MARGIN - RIGHT_MARGIN (res);
-  camera_header = CAMERA_HEADER (res);
   components = (format & SAVE_24BITS) ? 3 : 1;
 
   /*
@@ -1833,7 +1831,7 @@ change_res (int fd, unsigned char res)
 }
 
 SANE_Status
-sane_init (SANE_Int * version_code, SANE_Auth_Callback UNUSEDARG authorize)
+sane_init (SANE_Int * version_code, SANE_Auth_Callback __sane_unused__ authorize)
 {
   char dev_name[PATH_MAX], *p;
   size_t len;
@@ -1980,7 +1978,7 @@ static const SANE_Device dev[] = {
 
 SANE_Status
 sane_get_devices (const SANE_Device *** device_list,
-		  SANE_Bool UNUSEDARG local_only)
+		  SANE_Bool __sane_unused__ local_only)
 {
   static const SANE_Device *devlist[] = {
     dev + 0, 0
@@ -2555,7 +2553,7 @@ sane_start (SANE_Handle handle)
 
 
 SANE_Status
-sane_read (SANE_Handle UNUSEDARG handle, SANE_Byte * data,
+sane_read (SANE_Handle __sane_unused__ handle, SANE_Byte * data,
 	   SANE_Int max_length, SANE_Int * length)
 {
   DBG (127, "sane_read called, maxlen=%d\n", max_length);
@@ -2724,15 +2722,15 @@ sane_read (SANE_Handle UNUSEDARG handle, SANE_Byte * data,
 }
 
 void
-sane_cancel (SANE_Handle UNUSEDARG handle)
+sane_cancel (SANE_Handle __sane_unused__ handle)
 {
   DBG (127, "sane_cancel() called\n");
   started = SANE_FALSE;
 }
 
 SANE_Status
-sane_set_io_mode (SANE_Handle UNUSEDARG handle,
-		  SANE_Bool UNUSEDARG non_blocking)
+sane_set_io_mode (SANE_Handle __sane_unused__ handle,
+		  SANE_Bool __sane_unused__ non_blocking)
 {
   /* sane_set_io_mode() is only valid during a scan */
   if (started)
@@ -2754,7 +2752,7 @@ sane_set_io_mode (SANE_Handle UNUSEDARG handle,
 }
 
 SANE_Status
-sane_get_select_fd (SANE_Handle UNUSEDARG handle, SANE_Int UNUSEDARG * fd)
+sane_get_select_fd (SANE_Handle __sane_unused__ handle, SANE_Int __sane_unused__ * fd)
 {
   return SANE_STATUS_UNSUPPORTED;
 }

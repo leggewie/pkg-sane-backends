@@ -142,7 +142,7 @@ static int sanei_pa4s2_dbg_init_called = SANE_FALSE;
                           {                                              \
                             DBG_INIT();                                  \
                             DBG(6, "%s: interface called for"            \
-                              " the first time\n", __PRETTY_FUNCTION__); \
+                              " the first time\n", __func__); \
                             sanei_pa4s2_dbg_init_called = SANE_TRUE;     \
                           }
 
@@ -309,7 +309,7 @@ pa4s2_init (SANE_Status *status)
 
   if (first_time == SANE_FALSE)
     {
-      DBG (5, "pa4s2_init: sanei already initalized\n");
+      DBG (5, "pa4s2_init: sanei already initialized\n");
       status = SANE_STATUS_GOOD;
       return 0;
     }

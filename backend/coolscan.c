@@ -238,7 +238,7 @@ request_sense_parse (unsigned char *sensed_data)
 
     case 0x6:
       if ((0x29 == asc) && (0x0 == ascq))
-	DBG (1, "\t%d/%d/%d: Power On, Reset, or Bus Device Reset Occured\n", sense, asc, ascq);
+	DBG (1, "\t%d/%d/%d: Power On, Reset, or Bus Device Reset Occurred\n", sense, asc, ascq);
       else if ((0x2a == asc) && (0x1 == ascq))
 	DBG (1, "\t%d/%d/%d: Mode Parameters Changed\n", sense, asc, ascq);
       else
@@ -1465,21 +1465,20 @@ static int
 get_inquiery_part_LS30 (Coolscan_t * s, unsigned char part)
 { 
   int size;
-  int ret;
 
   /* Get length of reponse */
   inquiry.cmd[1]=0x01;
   inquiry.cmd[2]=part;
   size=4;
   set_inquiry_return_size (inquiry.cmd, size);
-  ret = do_scsi_cmd (s->sfd, inquiry.cmd, inquiry.size,
-		     s->buffer, size);
+  do_scsi_cmd (s->sfd, inquiry.cmd, inquiry.size,
+               s->buffer, size);
   size=get_inquiry_length(s->buffer); 
   size+=4;
   /* then get inquiry with actual size */
   set_inquiry_return_size (inquiry.cmd, size);
-  ret = do_scsi_cmd (s->sfd, inquiry.cmd, inquiry.size,
-		     s->buffer, size);
+  do_scsi_cmd (s->sfd, inquiry.cmd, inquiry.size,
+               s->buffer, size);
   return size;
 }
 
@@ -1511,18 +1510,17 @@ get_inquiery_LS30 (Coolscan_t * s)
 { 
   unsigned char part;
   unsigned char parts[5];
-  int size;
   int i;
 
   /* Get vector of inquiery parts */
-  size=get_inquiery_part_LS30(s, (unsigned char) 0);
+  get_inquiery_part_LS30(s, (unsigned char) 0);
   /* Get the parts of inquiery */  
   for(i=0;i<5;i++)
   { parts[i]=((unsigned char *)s->buffer)[4+11+i];
   }
   for(i=0;i<5;i++)
   { part=parts[i];
-    size=get_inquiery_part_LS30 (s, part);
+    get_inquiery_part_LS30 (s, part);
     switch(part)
     {  case 0x0c1:/* max size and resolution */                   
                     s->adbits = 8;
@@ -2029,7 +2027,7 @@ do_cancel (Coolscan_t * scanner)
 
   do_eof (scanner);		/* close pipe and reposition scanner */
 
-  if (scanner->reader_pid != -1)
+  if (sanei_thread_is_valid (scanner->reader_pid))
     {
       int exit_status;
 
@@ -2156,7 +2154,7 @@ attach_one (const char *devName)
   return attach_scanner(devName, 0);
 }
 
-static RETSIGTYPE
+static void
 sigterm_handler (int signal)
 {
   signal = signal;
@@ -4093,7 +4091,7 @@ sane_start (SANE_Handle handle)
   scanner->pipe       = fds[0];
   scanner->reader_fds = fds[1];
   scanner->reader_pid = sanei_thread_begin( reader_process, (void*)scanner );
-  if (scanner->reader_pid == -1)
+  if (!sanei_thread_is_valid (scanner->reader_pid))
     {
       DBG (1, "sane_start: sanei_thread_begin failed (%s)\n",
              strerror (errno));
@@ -4153,7 +4151,7 @@ sane_cancel (SANE_Handle handle)
 {
   Coolscan_t *s = handle;
 
-  if (s->reader_pid != -1)
+  if (sanei_thread_is_valid (s->reader_pid))
     {
       sanei_thread_kill   ( s->reader_pid );
       sanei_thread_waitpid( s->reader_pid, NULL );

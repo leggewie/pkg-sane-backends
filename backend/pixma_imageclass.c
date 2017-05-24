@@ -1,6 +1,6 @@
 /* SANE - Scanner Access Now Easy.
 
-   Copyright (C) 2011-2015 Rolf Bensch <rolf at bensch hyphen online dot de>
+   Copyright (C) 2011-2016 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2007-2009 Nicolas Martin, <nicols-guest at alioth dot debian dot org>
    Copyright (C) 2008 Dennis Lou, dlou 99 at yahoo dot com
 
@@ -103,6 +103,8 @@
 #define MF820_PID  0x27a6
 #define MF220_PID  0x27a8
 #define MF210_PID  0x27a9
+#define MF230_PID  0x27d1
+#define MF240_PID  0x27d2
 
 
 enum iclass_state_t
@@ -140,8 +142,21 @@ typedef struct iclass_t
   unsigned last_block;
 
   uint8_t generation;           /* New multifunctionals are (generation == 2) */
+
+  uint8_t adf_state;            /* handle adf scanning */
 } iclass_t;
 
+
+static int is_scanning_from_adf (pixma_t * s)
+{
+  return (s->param->source == PIXMA_SOURCE_ADF
+          || s->param->source == PIXMA_SOURCE_ADFDUP);
+}
+
+static int is_scanning_from_adfdup (pixma_t * s)
+{
+  return (s->param->source == PIXMA_SOURCE_ADFDUP);
+}
 
 static void iclass_finish_scan (pixma_t * s);
 
@@ -163,7 +178,8 @@ static int
 has_paper (pixma_t * s)
 {
   iclass_t *mf = (iclass_t *) s->subdriver;
-  return ((mf->current_status[1] & 0x0f) == 0);         /* allow 0x10 as ADF paper OK */
+  return ((mf->current_status[1] & 0x0f) == 0           /* allow 0x10 as ADF paper OK */
+          || mf->current_status[1] == 81);              /* allow 0x51 as ADF paper OK */
 }
 
 static int
@@ -185,9 +201,9 @@ query_status (pixma_t * s)
   if (error >= 0)
     {
       memcpy (mf->current_status, data, 12);
-      DBG (3, "Current status: paper=%u cal=%u lamp=%u\n",
-	   data[1], data[8], data[7]);
-      PDBG (pixma_dbg (3, "Current status: paper=%u cal=%u lamp=%u\n",
+      /*DBG (3, "Current status: paper=0x%02x cal=%u lamp=%u\n",
+	   data[1], data[8], data[7]);*/
+      PDBG (pixma_dbg (3, "Current status: paper=0x%02x cal=%u lamp=%u\n",
 		       data[1], data[8], data[7]));
     }
   return error;
@@ -229,9 +245,9 @@ select_source (pixma_t * s)
 {
   iclass_t *mf = (iclass_t *) s->subdriver;
   uint8_t *data = pixma_newcmd (&mf->cb, cmd_select_source, 10, 0);
-  data[0] = (s->param->source == PIXMA_SOURCE_ADF ||
-             s->param->source == PIXMA_SOURCE_ADFDUP) ? 2 : 1;
-  data[5] = (s->param->source == PIXMA_SOURCE_ADFDUP) ? 3 : 0;
+  data[0] = (is_scanning_from_adf(s)) ? 2 : 1;
+  /* special settings for MF6100 */
+  data[5] = is_scanning_from_adfdup(s) ? 3 : ((s->cfg->pid == MF6100_PID && s->param->source == PIXMA_SOURCE_ADF) ? 1 : 0);
   switch (s->cfg->pid)
     {
     case MF4200_PID:
@@ -263,7 +279,7 @@ send_scan_param (pixma_t * s)
   pixma_set_be32 (mf->raw_width, data + 0x10);
   pixma_set_be32 (s->param->h, data + 0x14);
   data[0x18] = (s->param->channels == 1) ? 0x04 : 0x08;
-  data[0x19] = s->param->channels * s->param->depth;	/* bits per pixel */
+  data[0x19] = s->param->channels * ((s->param->depth == 1) ? 8 : s->param->depth);	/* bits per pixel */
   data[0x1f] = 0x7f;
   data[0x20] = 0xff;
   data[0x23] = 0x81;
@@ -294,7 +310,10 @@ request_image_block (pixma_t * s, unsigned flag, uint8_t * info,
   const int hlen = 2 + 6;
 
   memset (mf->cb.buf, 0, 11);
-  pixma_set_be16 (((mf->generation >= 2) ? cmd_read_image2 : cmd_read_image), mf->cb.buf);
+  /* generation 2 scanners use cmd_read_image2.
+   * MF6100, ... are exceptions */
+  pixma_set_be16 (((mf->generation >= 2
+                    && s->cfg->pid != MF6100_PID) ? cmd_read_image2 : cmd_read_image), mf->cb.buf);
   mf->cb.buf[8] = flag;
   mf->cb.buf[10] = 0x06;
   expected_len = (mf->generation >= 2 ||
@@ -419,13 +438,46 @@ static int
 step1 (pixma_t * s)
 {
   int error;
+  int rec_tmo;
   iclass_t *mf = (iclass_t *) s->subdriver;
 
+  /* don't wait full timeout for 1st command */
+  rec_tmo = s->rec_tmo;         /* save globel timeout */
+  s->rec_tmo = 2;               /* set timeout to 2 seconds */
   error = query_status (s);
+  s->rec_tmo = rec_tmo;         /* restore global timeout */
+  if (error < 0)
+  {
+    PDBG (pixma_dbg (1, "WARNING: Resend first USB command after timeout!\n"));
+    error = query_status (s);
+  }
   if (error < 0)
     return error;
-  if (s->param->source == PIXMA_SOURCE_ADF && !has_paper (s))
+
+  /* wait for inserted paper */
+  if (s->param->adf_wait != 0 && is_scanning_from_adf(s))
+  {
+    int tmo = s->param->adf_wait;
+
+    while (!has_paper (s) && --tmo >= 0 && !s->param->frontend_cancel)
+    {
+      if ((error = query_status (s)) < 0)
+        return error;
+      pixma_sleep (1000000);
+      PDBG (pixma_dbg(2, "No paper in ADF. Timed out in %d sec.\n", tmo));
+    }
+    /* canceled from frontend */
+    if (s->param->frontend_cancel)
+    {
+      return PIXMA_ECANCELED;
+    }
+  }
+  /* no paper inserted
+   * => abort session */
+  if (is_scanning_from_adf(s) && !has_paper (s))
+  {
     return PIXMA_ENO_PAPER;
+  }
   /* activate only seen for generation 1 scanners */
   if (mf->generation == 1)
     {
@@ -484,6 +536,9 @@ iclass_open (pixma_t * s)
   mf->cb.cmd_header_len = 10;
   mf->cb.cmd_len_field_ofs = 7;
 
+  /* adf scanning */
+  mf->adf_state = state_idle;
+
   /* set generation = 2 for new multifunctionals */
   mf->generation = (s->cfg->pid >= MF8030_PID) ? 2 : 1;
   PDBG (pixma_dbg (3, "*iclass_open***** This is a generation %d scanner.  *****\n", mf->generation));
@@ -513,14 +568,43 @@ iclass_check_param (pixma_t * s, pixma_scan_param_t * sp)
 {
   UNUSED (s);
 
+  /* PDBG (pixma_dbg (4, "*iclass_check_param***** Initially: channels=%u, depth=%u, x=%u, y=%u, w=%u, line_size=%" PRIu64 " , h=%u*****\n",
+                   sp->channels, sp->depth, sp->x, sp->y, sp->w, sp->line_size, sp->h)); */
+
   sp->depth = 8;
-  sp->line_size = ALIGN_SUP (sp->w, 32) * sp->channels;
+  sp->software_lineart = 0;
+  if (sp->mode == PIXMA_SCAN_MODE_LINEART)
+  {
+    sp->software_lineart = 1;
+    sp->channels = 1;
+    sp->depth = 1;
+  }
+
+  if (sp->software_lineart == 1)
+  {
+    unsigned w_max;
+
+    /* for software lineart line_size and w must be a multiple of 8 */
+    sp->line_size = ALIGN_SUP (sp->w, 8) * sp->channels;
+    sp->w = ALIGN_SUP (sp->w, 8);
+
+    /* do not exceed the scanner capability */
+    w_max = s->cfg->width * s->cfg->xdpi / 75;
+    w_max -= w_max % 32;
+    if (sp->w > w_max)
+      sp->w = w_max;
+  }
+  else
+    sp->line_size = ALIGN_SUP (sp->w, 32) * sp->channels;
 
   /* Some exceptions here for particular devices */
   /* Those devices can scan up to Legal 14" with ADF, but A4 11.7" in flatbed */
   /* PIXMA_CAP_ADF also works for PIXMA_CAP_ADFDUP */
   if ((s->cfg->cap & PIXMA_CAP_ADF) && sp->source == PIXMA_SOURCE_FLATBED)
     sp->h = MIN (sp->h, 877 * sp->xdpi / 75);
+
+  /* PDBG (pixma_dbg (4, "*iclass_check_param***** Finally: channels=%u, depth=%u, x=%u, y=%u, w=%u, line_size=%" PRIu64 " , h=%u*****\n",
+                   sp->channels, sp->depth, sp->x, sp->y, sp->w, sp->line_size, sp->h)); */
 
   return 0;
 }
@@ -559,7 +643,8 @@ iclass_scan (pixma_t * s)
   mf->blk_len = 0;
 
   error = step1 (s);
-  if (error >= 0 && (s->param->adf_pageid == 0 || mf->generation == 1))
+  if (error >= 0
+      && (s->param->adf_pageid == 0 || mf->generation == 1 || mf->adf_state == state_idle))
     { /* single sheet or first sheet from ADF */
       PDBG (pixma_dbg (3, "*iclass_scan***** start scanning *****\n"));
       error = start_session (s);
@@ -583,6 +668,10 @@ iclass_scan (pixma_t * s)
       return error;
     }
   mf->last_block = 0;
+
+  /* ADF scanning active */
+  if (is_scanning_from_adf (s))
+    mf->adf_state = state_scanning;
   return 0;
 }
 
@@ -592,7 +681,7 @@ iclass_fill_buffer (pixma_t * s, pixma_imagebuf_t * ib)
 {
   int error, n;
   iclass_t *mf = (iclass_t *) s->subdriver;
-  unsigned block_size, lines_size, first_block_size;
+  unsigned block_size, lines_size, lineart_lines_size, first_block_size;
   uint8_t info;
 
 /*
@@ -652,10 +741,33 @@ iclass_fill_buffer (pixma_t * s, pixma_imagebuf_t * ib)
       /* add current block to remainder of previous */
       mf->blk_len += block_size;
       /* n = number of full lines (rows) we have in the buffer. */
-      n = mf->blk_len / s->param->line_size;
+      n = mf->blk_len / ((s->param->mode == PIXMA_SCAN_MODE_LINEART) ? mf->raw_width : s->param->line_size);
       if (n != 0)
         {
-          if (s->param->channels != 1 &&
+          /* PDBG (pixma_dbg (4, "*iclass_fill_buffer***** Processing with n=%d, w=%i, line_size=%" PRIu64 ", raw_width=%u ***** \n",
+                           n, s->param->w, s->param->line_size, mf->raw_width)); */
+          /* PDBG (pixma_dbg (4, "*iclass_fill_buffer*****                 scan_mode=%d, lineptr=%" PRIu64 ", blkptr=%" PRIu64 " \n",
+                           s->param->mode, (uint64_t)mf->lineptr, (uint64_t)mf->blkptr)); */
+
+          /* gray to lineart convert
+           * mf->lineptr         : image line
+           * mf->blkptr          : scanned image block as grayscale
+           * s->param->w         : image width
+           * s->param->line_size : scanned image width */
+          if (s->param->mode == PIXMA_SCAN_MODE_LINEART)
+          {
+            int i;
+            uint8_t *sptr, *dptr;
+
+            /* PDBG (pixma_dbg (4, "*iclass_fill_buffer***** Processing lineart *****\n")); */
+
+            /* process ALL lines */
+            sptr = mf->blkptr;
+            dptr = mf->lineptr;
+            for (i = 0; i < n; i++, sptr += mf->raw_width)
+              dptr = pixma_binarize_line (s->param, dptr, sptr, s->param->line_size, 1);
+          }
+          else if (s->param->channels != 1 &&
                   mf->generation == 1 &&
 	          s->cfg->pid != MF4600_PID &&
 	          s->cfg->pid != MF6500_PID &&
@@ -669,17 +781,22 @@ iclass_fill_buffer (pixma_t * s, pixma_imagebuf_t * ib)
               /* grayscale */
               memcpy (mf->lineptr, mf->blkptr, n * s->param->line_size);
             }
-          lines_size = n * s->param->line_size;
           /* cull remainder and shift left */
+          lineart_lines_size = n * s->param->line_size / 8;
+          lines_size = n * ((s->param->mode == PIXMA_SCAN_MODE_LINEART) ? mf->raw_width : s->param->line_size);
           mf->blk_len -= lines_size;
           memcpy (mf->blkptr, mf->blkptr + lines_size, mf->blk_len);
         }
     }
   while (n == 0);
 
-  /* output full lines, keep partial lines for next block */
+  /* output full lines, keep partial lines for next block
+   * ib->rptr : start of image buffer
+   * ib->rend : end of image buffer */
   ib->rptr = mf->lineptr;
-  ib->rend = mf->lineptr + lines_size;
+  ib->rend = mf->lineptr + (s->param->mode == PIXMA_SCAN_MODE_LINEART ? lineart_lines_size : lines_size);
+  /* PDBG (pixma_dbg (4, "*iclass_fill_buffer*****                 rptr=%" PRIu64 ", rend=%" PRIu64 ", diff=%ld \n",
+                   (uint64_t)ib->rptr, (uint64_t)ib->rend, ib->rend - ib->rptr)); */
   return ib->rend - ib->rptr;
 }
 
@@ -718,8 +835,17 @@ iclass_finish_scan (pixma_t * s)
           || (mf->generation == 1 && mf->last_block == 0x28)    /* generation 1 scanner last block */
           || (mf->generation >= 2 && !has_paper(s)))            /* check status: no paper in ADF */
 	{
+          /* ADFDUP scan: wait for 8sec to throw last page out of ADF feeder */
+          if (is_scanning_from_adfdup(s))
+          {
+            PDBG (pixma_dbg (4, "*iclass_finish_scan***** sleep for 8s  *****\n"));
+            pixma_sleep(8000000);       /* sleep for 8s */
+            query_status (s);
+          }
           PDBG (pixma_dbg (3, "*iclass_finish_scan***** abort session  *****\n"));
 	  abort_session (s);
+	  mf->adf_state = state_idle;
+	  mf->last_block = 0;
 	}
       else
         PDBG (pixma_dbg (3, "*iclass_finish_scan***** wait for next page from ADF  *****\n"));
@@ -777,6 +903,8 @@ static const pixma_scan_ops_t pixma_iclass_ops = {
             adftpu_max_dpi,           /* adftpu_max_dpi */ \
             0, 0,                     /* tpuir_min_dpi & tpuir_max_dpi not used in this subdriver */   \
             w, h,                     /* width, height */	\
+            PIXMA_CAP_LINEART|        /* all scanners have software lineart */ \
+            PIXMA_CAP_ADF_WAIT|       /* adf wait for all ADF and ADFDUP scanners */ \
             PIXMA_CAP_GRAY|PIXMA_CAP_EVENTS|cap             \
 }
 const pixma_config_t pixma_iclass_devices[] = {
@@ -809,9 +937,11 @@ const pixma_config_t pixma_iclass_devices[] = {
   DEV ("Canon imageRUNNER 1133", "iR1133", IR1133_PID, 600, 0, 637, 877, PIXMA_CAP_ADFDUP),
   DEV ("Canon i-SENSYS MF5900 Series", "MF5900", MF5900_PID, 600, 0, 640, 1050, PIXMA_CAP_ADFDUP),
   DEV ("Canon i-SENSYS MF8500C Series", "MF8500C", MF8500_PID, 600, 0, 640, 1050, PIXMA_CAP_ADFDUP),
-  DEV ("Canon i-SENSYS MF6100 Series", "MF6100", MF6100_PID, 600, 0, 640, 1050, PIXMA_CAP_ADFDUP),
+  DEV ("Canon i-SENSYS MF6100 Series", "MF6100", MF6100_PID, 600, 300, 640, 1050, PIXMA_CAP_ADFDUP),
   DEV ("Canon imageClass MF810/820", "MF810/820", MF820_PID, 600, 0, 640, 1050, PIXMA_CAP_ADFDUP),
   DEV ("Canon i-SENSYS MF220 Series", "MF220", MF220_PID, 600, 0, 640, 1050, PIXMA_CAP_ADFDUP),
   DEV ("Canon i-SENSYS MF210 Series", "MF210", MF210_PID, 600, 0, 640, 1050, PIXMA_CAP_ADF),
+  DEV ("Canon i-SENSYS MF230 Series", "MF230", MF230_PID, 600, 0, 640, 1050, PIXMA_CAP_ADF),
+  DEV ("Canon i-SENSYS MF240 Series", "MF240", MF240_PID, 600, 0, 640, 1050, PIXMA_CAP_ADF),
   DEV (NULL, NULL, 0, 0, 0, 0, 0, 0)
 };

@@ -416,21 +416,21 @@ sig_chldhandler( int signo )
 
 /** signal handler to kill the child process
  */
-static RETSIGTYPE
+static void
 reader_process_sigterm_handler( int signo )
 {
 	DBG( _DBG_PROC, "(SIG) reader_process: terminated by signal %d\n", signo );
 	_exit( SANE_STATUS_GOOD );
 }
 
-static RETSIGTYPE
+static void
 usb_reader_process_sigterm_handler( int signo )
 {
 	DBG( _DBG_PROC, "(SIG) reader_process: terminated by signal %d\n", signo );
 	cancelRead = SANE_TRUE;
 }
 
-static RETSIGTYPE
+static void
 sigalarm_handler( int signo )
 {
 	_VAR_NOT_USED( signo );
@@ -572,7 +572,7 @@ do_cancel( Plustek_Scanner *scanner, SANE_Bool closepipe )
 	DBG( _DBG_PROC,"do_cancel\n" );
 	scanner->scanning = SANE_FALSE;
 
-	if( scanner->reader_pid != -1 ) {
+	if( sanei_thread_is_valid (scanner->reader_pid) ) {
 
 		DBG( _DBG_PROC, ">>>>>>>> killing reader_process <<<<<<<<\n" );
 
@@ -2629,7 +2629,7 @@ sane_start( SANE_Handle handle )
 
 	cancelRead = SANE_FALSE;
 	
-	if( s->reader_pid == -1 ) {
+	if( !sanei_thread_is_valid (s->reader_pid) ) {
 		DBG( _DBG_ERROR, "ERROR: could not start reader task\n" );
 		s->scanning = SANE_FALSE;
 		usbDev_close( dev );

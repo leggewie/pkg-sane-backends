@@ -100,15 +100,8 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <endian.h>
 
-/* When creating the release backend, make complains about unresolved external
- * le16toh, although it finds the include <endian.h> */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
- #define le16toh(x) (x)
-#else
- #define le16toh(x) __bswap_16 (x)
-#endif
+#include "byteorder.h"
 
 static void buffer_update_read_index(struct Pieusb_Read_Buffer* buffer, int increment);
 
@@ -163,7 +156,7 @@ sanei_pieusb_buffer_create(struct Pieusb_Read_Buffer* buffer, SANE_Int width, SA
     snprintf(buffer->buffer_name, L_tmpnam, "/tmp/sane.XXXXXX");
     if (buffer->data_file != 0) /* might still be open from previous invocation */
       close(buffer->data_file);
-    buffer->data_file = mkostemp(buffer->buffer_name, O_RDWR | O_CREAT | O_EXCL | O_TRUNC);
+    buffer->data_file = mkstemp(buffer->buffer_name);
     if (buffer->data_file == -1) {
         buffer->data_file = 0;
         buffer->data = NULL;
