@@ -1669,7 +1669,7 @@ attach (SANE_String_Const devname, Mustek_Device ** devp, SANE_Bool may_wait)
       DBG (0,
 	   "WARNING: Your scanner was detected by the SANE Mustek backend, "
 	   "but\n  it is not fully tested. It may or may not work. Be "
-	   "carefull and read\n  the PROBLEMS file in the sane directory. "
+	   "careful and read\n  the PROBLEMS file in the sane directory. "
 	   "Please set the debug level of this\n  backend to maximum "
 	   "(export SANE_DEBUG_MUSTEK=255) and send the output of\n  "
 	   "scanimage -L to the SANE mailing list sane-devel@lists.alioth.debian.org. "
@@ -2335,16 +2335,14 @@ send_calibration_lines_se (Mustek_Scanner * s, SANE_Word color)
   SANE_Byte *cmd;
   size_t buf_size;
   SANE_Word column;
-  SANE_Word lines, bytes_per_color;
+  SANE_Word bytes_per_color;
 
   if (s->mode == MUSTEK_MODE_COLOR)
     {
-      lines = s->hw->cal.lines * 3;
       bytes_per_color = s->hw->cal.bytes / 3;
     }
   else
     {
-      lines = s->hw->cal.lines;
       bytes_per_color = s->hw->cal.bytes;
     }
 
@@ -2952,7 +2950,7 @@ do_stop (Mustek_Scanner * s)
   s->scanning = SANE_FALSE;
   s->pass = 0;
 
-  if (s->reader_pid != -1)
+  if (sanei_thread_is_valid (s->reader_pid))
     {
       SANE_Int exit_status;
       struct timeval now;
@@ -2983,7 +2981,7 @@ do_stop (Mustek_Scanner * s)
       sanei_thread_kill (s->reader_pid);
 
       pid = sanei_thread_waitpid (s->reader_pid, &exit_status);
-      if (pid == -1)
+      if (!sanei_thread_is_valid (pid))
 	{
 	  DBG (1,
 	       "do_stop: sanei_thread_waitpid failed, already terminated? (%s)\n",
@@ -4826,7 +4824,7 @@ output_data (Mustek_Scanner * s, FILE * fp,
   DBG (5, "output_data: end\n");
 }
 
-static RETSIGTYPE
+static void
 sigterm_handler (int signal)
 {
   DBG (4,
@@ -6565,7 +6563,7 @@ sane_start (SANE_Handle handle)
   /* create reader routine as new process or thread */
   s->reader_pid = sanei_thread_begin (reader_process, (void *) s);
 
-  if (s->reader_pid == -1)
+  if (!sanei_thread_is_valid (s->reader_pid))
     {
       DBG (1, "sane_start: sanei_thread_begin failed (%s)\n",
 	   strerror (errno));
@@ -6593,7 +6591,6 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len,
 {
   Mustek_Scanner *s = handle;
   SANE_Status status;
-  ssize_t ntotal;
   ssize_t nread;
 
 
@@ -6617,7 +6614,6 @@ sane_read (SANE_Handle handle, SANE_Byte * buf, SANE_Int max_len,
 
   DBG (5, "sane_read\n");
   *len = 0;
-  ntotal = 0;
 
   if (s->cancelled)
     {

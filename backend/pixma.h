@@ -1,6 +1,6 @@
 /* SANE - Scanner Access Now Easy.
 
-   Copyright (C) 2011-2015 Rolf Bensch <rolf at bensch hyphen online dot de>
+   Copyright (C) 2011-2016 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2007-2008 Nicolas Martin, <nicols-guest at alioth dot debian dot org>
    Copyright (C) 2006-2007 Wittawat Yamwong <wittawat@web.de>
 
@@ -110,11 +110,14 @@ typedef uint32_t uint32_t;
 
 /** \addtogroup API
  *  @{ */
+/** Don't forget to update the backend version in the SANE Backend specification
+ *  file: doc/descriptions/pixma.desc !!!
+ */
 /** \name Version of the driver */
 /**@{*/
 #define PIXMA_VERSION_MAJOR 0
 #define PIXMA_VERSION_MINOR 17
-#define PIXMA_VERSION_BUILD 23
+#define PIXMA_VERSION_BUILD 37
 /**@}*/
 
 /** \name Error codes */
@@ -150,6 +153,7 @@ typedef uint32_t uint32_t;
 #define PIXMA_CAP_LINEART      (1 << 9)
 #define PIXMA_CAP_NEGATIVE     (1 << 10)
 #define PIXMA_CAP_TPUIR        ((1 << 11) | PIXMA_CAP_TPU)
+#define PIXMA_CAP_ADF_WAIT     (1 << 12)
 #define PIXMA_CAP_EXPERIMENT   (1 << 31)
 /**@}*/
 
@@ -337,6 +341,10 @@ struct pixma_scan_param_t
 
     /** The current page # in the same ADF scan session, 0 in non ADF */
   unsigned adf_pageid;
+
+  /** adf-wait */
+  unsigned adf_wait;
+  unsigned frontend_cancel;
 };
 
 /** PIXMA model information */

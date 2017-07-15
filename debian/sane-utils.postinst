@@ -4,10 +4,6 @@ set -e
 
 SANED_DEFAULT=/etc/default/saned
 
-saned_eh () {
-    echo "saned couldn't start; check your inetd configuration and README.Debian"
-}
-
 #
 # POSIX-compliant shell function
 # to check for the existence of a command
@@ -66,7 +62,7 @@ if [ "$1" = "configure" ] || [ "$1" = "reconfigure" ]; then
 	fi
     fi
     if [ "$SANED_IN_SCANNER" = "true" ]; then
-	adduser --quiet saned scanner || true
+	adduser --quiet saned scanner
     else
 	if id saned | grep -q "groups=.*\(scanner\)"; then
 	    deluser --quiet saned scanner

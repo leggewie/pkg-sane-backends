@@ -187,7 +187,7 @@ kvs20xx_set_timeout (struct scanner * s, int timeout)
   };
   c.cmd[0] = SET_TIMEOUT;
   c.cmd[2] = 0x8d;
-  *((u16 *) (c.cmd + 7)) = cpu2be16 (sizeof (t));
+  copy16 (c.cmd + 7, cpu2be16 (sizeof (t)));
 
   c.data = &t;
   c.data_size = sizeof (t);
@@ -210,7 +210,7 @@ kvs20xx_set_window (struct scanner * s, int wnd_id)
     CMD_OUT
   };
   c.cmd[0] = SET_WINDOW;
-  *((u16 *) (c.cmd + 7)) = cpu2be16 (sizeof (wnd));
+  copy16 (c.cmd + 7, cpu2be16 (sizeof (wnd)));
 
   c.data = &wnd;
   c.data_size = sizeof (wnd);
@@ -298,29 +298,6 @@ kvs20xx_read_picture_element (struct scanner * s, unsigned side,
   data = (u32 *) c.data;
   p->pixels_per_line = be2cpu32 (data[0]);
   p->lines = be2cpu32 (data[1]);
-  return SANE_STATUS_GOOD;
-}
-
-static SANE_Status
-get_buffer_status (struct scanner * s, unsigned *data_avalible)
-{
-  SANE_Status status;
-  struct cmd c = {
-    {0},
-    10,
-    0,
-    12,
-    CMD_IN
-  };
-  u32 *data;
-  c.cmd[0] = GET_BUFFER_STATUS;
-  c.cmd[7] = 12;
-
-  status = send_command (s, &c);
-  if (status)
-    return status;
-  data = (u32 *) c.data;
-  *data_avalible = be2cpu32 (data[3]);
   return SANE_STATUS_GOOD;
 }
 

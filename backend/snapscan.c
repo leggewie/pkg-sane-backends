@@ -82,12 +82,6 @@
 #define BUILD               53
 #define BACKEND_NAME snapscan
 
-#ifdef __GNUC__
-#define UNUSEDARG __attribute__ ((unused))
-#else
-#define UNUSEDARG
-#endif
-
 #include "../include/sane/sanei_backend.h"
 #include "../include/sane/saneopts.h"
 
@@ -1217,13 +1211,13 @@ static void reader (SnapScan_Scanner *pss)
 
 /** signal handler to kill the child process
  */
-static RETSIGTYPE usb_reader_process_sigterm_handler( int signo )
+static void usb_reader_process_sigterm_handler( int signo )
 {
     DBG( DL_INFO, "(SIG) reader_process: terminated by signal %d\n", signo );
     cancelRead = SANE_TRUE;
 }
 
-static RETSIGTYPE sigalarm_handler( int signo UNUSEDARG)
+static void sigalarm_handler( int signo __sane_unused__)
 {
     DBG( DL_INFO, "ALARM!!!\n" );
 }
@@ -1301,7 +1295,7 @@ static SANE_Status start_reader (SnapScan_Scanner *pss)
 
         cancelRead = SANE_FALSE;
 
-        if (pss->child == -1)
+        if (!sanei_thread_is_valid (pss->child))
         {
             /* we'll have to read in blocking mode */
             DBG (DL_MAJOR_ERROR,
@@ -1815,7 +1809,7 @@ SANE_Status sane_read (SANE_Handle h,
 
     if (pss->psrc == NULL  ||  pss->psrc->remaining(pss->psrc) == 0)
     {
-        if (pss->child != -1)
+      if (sanei_thread_is_valid (pss->child))
         {
             sanei_thread_waitpid (pss->child, 0);        /* ensure no zombies */
             pss->child = -1;
@@ -1875,7 +1869,7 @@ void sane_cancel (SANE_Handle h)
         /* signal a cancellation has occurred */
         pss->state = ST_CANCEL_INIT;
         /* signal the reader, if any */
-        if (pss->child != -1)
+        if (sanei_thread_is_valid (pss->child))
         {
             DBG( DL_INFO, ">>>>>>>> killing reader_process <<<<<<<<\n" );
 
@@ -1941,7 +1935,7 @@ SANE_Status sane_set_io_mode (SANE_Handle h, SANE_Bool m)
 
     if (m)
     {
-        if (pss->child == -1)
+      if (!sanei_thread_is_valid (pss->child))
         {
             DBG (DL_MINOR_INFO,
                  "%s: no reader child; must use blocking mode.\n",
@@ -1971,7 +1965,7 @@ SANE_Status sane_get_select_fd (SANE_Handle h, SANE_Int * fd)
     if (pss->state != ST_SCAN_INIT)
         return SANE_STATUS_INVAL;
 
-    if (pss->child == -1)
+    if (!sanei_thread_is_valid (pss->child))
     {
         DBG (DL_MINOR_INFO,
              "%s: no reader child; cannot provide select file descriptor.\n",

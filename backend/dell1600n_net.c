@@ -929,6 +929,7 @@ HexDump (int debugLevel, const unsigned char *buf, size_t bufSize)
 {
 
   unsigned int i, j;
+  size_t lineBufFree;
 
   char itemBuf[16] = { 0 }, lineBuf[256] = { 0 };
 
@@ -943,7 +944,8 @@ HexDump (int debugLevel, const unsigned char *buf, size_t bufSize)
 
       sprintf (itemBuf, "%02x ", (const unsigned int) buf[i]);
 
-      strncat (lineBuf, itemBuf, sizeof (lineBuf));
+      lineBufFree = sizeof (lineBuf) - strlen (lineBuf) - 1;
+      strncat (lineBuf, itemBuf, lineBufFree);
 
       if ((i + 1) % 16)
         continue;
@@ -960,7 +962,8 @@ HexDump (int debugLevel, const unsigned char *buf, size_t bufSize)
         {
           sprintf (itemBuf, ".");
         }
-    strncat (lineBuf, itemBuf, sizeof (lineBuf));
+      lineBufFree = sizeof (lineBuf) - strlen (lineBuf) - 1;
+      strncat (lineBuf, itemBuf, lineBufFree);
 
     } /* for j */
 
@@ -974,7 +977,8 @@ HexDump (int debugLevel, const unsigned char *buf, size_t bufSize)
 
       for (j = (i % 16); j < 16; ++j)
         {
-          strncat (lineBuf, "   ", sizeof (lineBuf));
+          lineBufFree = sizeof (lineBuf) - strlen (lineBuf) - 1;
+          strncat (lineBuf, "   ", lineBufFree);
         }
       for (j = 1 + i - ((i + 1) % 16); j < i; ++j)
         {
@@ -986,7 +990,8 @@ HexDump (int debugLevel, const unsigned char *buf, size_t bufSize)
             {
               strcpy (itemBuf, ".");
             }
-          strncat (lineBuf, itemBuf, sizeof (lineBuf));
+          lineBufFree = sizeof (lineBuf) - strlen (lineBuf) - 1;
+          strncat (lineBuf, itemBuf, lineBufFree);
         }
       DBG (debugLevel, "%s\n", lineBuf);
     }
@@ -1335,7 +1340,7 @@ ProcessUdpResponse (unsigned char *pData, size_t size,
 {
 
   unsigned short messageSize, nameSize, valueSize;
-  unsigned char *pItem, *pEnd, *pValue;
+  unsigned char *pItem, *pEnd;
   char sockBuf[SOCK_BUF_SIZE], *pName;
   struct ComBuf tcpBuf;
   int nread;
@@ -1375,8 +1380,6 @@ ProcessUdpResponse (unsigned char *pData, size_t size,
       pItem++;
       valueSize = (((unsigned short) pItem[0]) << 8) | pItem[1];
       pItem += 2;
-
-      pValue = pItem;
 
       pItem += valueSize;
 

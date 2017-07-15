@@ -71,9 +71,6 @@
 #if !defined USE_PTHREAD && !defined HAVE_OS2_H && !defined __BEOS__
 # include <sys/wait.h>
 #endif
-#if defined USE_PTHREAD
-# include <pthread.h>
-#endif
 
 #define BACKEND_NAME sanei_thread      /**< name of this module for debugging */
 
@@ -135,9 +132,9 @@ sanei_thread_set_invalid( SANE_Pid *pid )
 
 /* Return if PID is a valid PID or not. */
 SANE_Bool
-sanei_thread_is_invalid( SANE_Pid pid )
+sanei_thread_is_valid( SANE_Pid pid )
 {
-	SANE_Bool rc = SANE_FALSE;
+	SANE_Bool rc = SANE_TRUE;
 
 #ifdef WIN32
 #ifdef WINPTHREAD_API
@@ -145,10 +142,10 @@ sanei_thread_is_invalid( SANE_Pid pid )
 #else
 	if (pid.p == 0)
 #endif
-	    rc = SANE_TRUE;
+	    rc = SANE_FALSE;
 #else
-	if (pid == -1)
-	    rc = SANE_TRUE;
+	if (pid == (SANE_Pid) -1)
+	    rc = SANE_FALSE;
 #endif
 
 	return rc;
@@ -491,7 +488,7 @@ sanei_thread_waitpid( SANE_Pid pid, int *status )
 #else
 	int ls;
 #endif
-	SANE_Pid result;
+	SANE_Pid result = pid;
 	int stat;
 
 	stat = 0;

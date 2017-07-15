@@ -1,0 +1,32 @@
+Description: scanimage assert failure: *** Error in `scanimage': double free or corruption (top)
+Author: Laurent Vivier Laurent@vivier.eu
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/sane-backends/+bug/1208091
+Last-Update: 2017-06-20
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: trunk/backend/net.c
+===================================================================
+--- trunk.orig/backend/net.c
++++ trunk/backend/net.c
+@@ -964,10 +964,6 @@ sane_init (SANE_Int * version_code, SANE
+   first_device = NULL;
+   first_handle = NULL;
+ 
+-#ifdef WITH_AVAHI
+-  net_avahi_init ();
+-#endif /* WITH_AVAHI */
+-
+   auth_callback = authorize;
+ 
+   /* Return the version number of the sane-backends package to allow
+@@ -1119,6 +1115,10 @@ sane_init (SANE_Int * version_code, SANE
+       DBG (2, "sane_init: connect timeout set to %d seconds from env\n", connect_timeout);
+     }
+ 
++#ifdef WITH_AVAHI
++  net_avahi_init ();
++#endif /* WITH_AVAHI */
++
+   DBG (2, "sane_init: done\n");
+   return SANE_STATUS_GOOD;
+ }

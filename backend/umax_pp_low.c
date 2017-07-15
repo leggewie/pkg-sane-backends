@@ -65,6 +65,7 @@
 #include <fcntl.h>
 #endif
 #include "../include/sane/sanei_debug.h"
+#include "../include/sane/sanei_backend.h"
 #include <errno.h>
 
 #ifdef HAVE_DEV_PPBUS_PPI_H
@@ -406,75 +407,51 @@ sanei_outsl (unsigned int port, const void *addr, unsigned long count)
 #ifndef ENABLE_PARPORT_DIRECTIO
 #define SANE_INB 0
 static int
-sanei_ioperm (int start, int length, int enable)
+sanei_ioperm (__sane_unused__ int start, __sane_unused__ int length,
+              __sane_unused__ int enable)
 {
-  /* make compilers happy */
-  enable = start + length;
-
   /* returns failure */
   return -1;
 }
 
 static unsigned char
-sanei_inb (unsigned int port)
+sanei_inb (__sane_unused__ unsigned int port)
 {
-  /* makes compilers happy */
-  port = 0;
   return 255;
 }
 
 static void
-sanei_outb (unsigned int port, unsigned char value)
+sanei_outb (__sane_unused__ unsigned int port,
+            __sane_unused__ unsigned char value)
 {
-  /* makes compilers happy */
-  port = 0;
-  value = 0;
 }
 
 static void
-sanei_insb (unsigned int port, unsigned char *addr, unsigned long count)
+sanei_insb (__sane_unused__ unsigned int port,
+            __sane_unused__ unsigned char *addr,
+            __sane_unused__ unsigned long count)
 {
-  /* makes compilers happy */
-  if (addr)
-    {
-      port = 0;
-      count = 0;
-    }
 }
 
 static void
-sanei_insl (unsigned int port, unsigned char *addr, unsigned long count)
+sanei_insl (__sane_unused__ unsigned int port,
+            __sane_unused__ unsigned char *addr,
+            __sane_unused__ unsigned long count)
 {
-  /* makes compilers happy */
-  if (addr)
-    {
-      port = 0;
-      count = 0;
-    }
 }
 
 static void
-sanei_outsb (unsigned int port, const unsigned char *addr,
-	     unsigned long count)
+sanei_outsb (__sane_unused__ unsigned int port,
+             __sane_unused__ const unsigned char *addr,
+	     __sane_unused__ unsigned long count)
 {
-  /* makes compilers happy */
-  if (addr)
-    {
-      port = 0;
-      count = 0;
-    }
 }
 
 static void
-sanei_outsl (unsigned int port, const unsigned char *addr,
-	     unsigned long count)
+sanei_outsl (__sane_unused__ unsigned int port,
+             __sane_unused__ const unsigned char *addr,
+	     __sane_unused__ unsigned long count)
 {
-  /* makes compilers happy */
-  if (addr)
-    {
-      port = 0;
-      count = 0;
-    }
 }
 #endif /* ENABLE_PARPORT_DIRECTIO is not defined */
 
@@ -862,7 +839,7 @@ sanei_parport_find_device (void)
   i = 0;
   while (devices[i] != NULL)
     {
-      DBG (16, "Controling %s: ", devices[i]);
+      DBG (16, "Controlling %s: ", devices[i]);
       file = open (devices[i], O_RDWR);
       if (file < 0)
 	{
@@ -950,7 +927,7 @@ int
 sanei_umax_pp_initPort (int port, char *name)
 {
   int fd, ectr;
-  int found = 0, ecp = 1;
+  int found = 0;
 #if ((defined HAVE_IOPERM)||(defined HAVE_MACHINE_CPUFUNC_H)||(defined HAVE_LINUX_PPDEV_H))
   int mode, modes, rc;
 #endif
@@ -1095,7 +1072,7 @@ sanei_umax_pp_initPort (int port, char *name)
 		  if (rc)
 		    {
 		      DBG (16,
-			   "umax_pp: ppdev couldn't negociate mode IEEE1284_MODE_EPP for '%s' (ignored)\n",
+			   "umax_pp: ppdev couldn't negotiate mode IEEE1284_MODE_EPP for '%s' (ignored)\n",
 			   name);
 		    }
 		  if (ioctl (fd, PPSETMODE, &mode))
@@ -1121,7 +1098,7 @@ sanei_umax_pp_initPort (int port, char *name)
 		  if (rc)
 		    {
 		      DBG (16,
-			   "umax_pp: ppdev couldn't negociate mode IEEE1284_MODE_ECP for '%s' (ignored)\n",
+			   "umax_pp: ppdev couldn't negotiate mode IEEE1284_MODE_ECP for '%s' (ignored)\n",
 			   name);
 		    }
 		  if (ioctl (fd, PPSETMODE, &mode))
@@ -1234,7 +1211,6 @@ sanei_umax_pp_initPort (int port, char *name)
     {
       DBG (1, "iopl could not raise IO permission to level 3\n");
       DBG (1, "*NO* ECP support\n");
-      ecp = 0;
 
     }
   else
@@ -1247,8 +1223,6 @@ sanei_umax_pp_initPort (int port, char *name)
 
 	}
     }
-#else
-  ecp = 0;
 #endif
 
 
@@ -2126,8 +2100,6 @@ sendCommand (int cmd)
   int tmp;
   int val;
   int i;
-  int gbufferRead[256];		/* read buffer for command 0x10 */
-
 
   if (g674 != 0)
     {
@@ -2216,7 +2188,7 @@ sendCommand (int cmd)
 	      tmp = (tmp & 0x1E) | 0x1;
 	      Outb (CONTROL, tmp);
 	      Outb (CONTROL, tmp);
-	      gbufferRead[i] = Inb (STATUS);
+	      Inb (STATUS);
 	      tmp = tmp & 0x1E;
 	      Outb (CONTROL, tmp);
 	      Outb (CONTROL, tmp);
@@ -2721,7 +2693,7 @@ init002 (int arg)
 static int
 ECPconnect (void)
 {
-  int ret, control, data;
+  int ret, control;
 
   /* these 3 lines set to 'inital mode' */
   byteMode ();			/*Outb (ECR, 0x20); */
@@ -2735,7 +2707,7 @@ ECPconnect (void)
   gData = Inb (DATA);
   gControl = Inb (CONTROL);
 
-  data = Inb (DATA);
+  Inb (DATA);
   control = Inb (CONTROL);
   Outb (CONTROL, control & 0x1F);
   control = Inb (CONTROL);
@@ -3224,7 +3196,6 @@ static void
 ECPSetBuffer (int size)
 {
   static int last = 0;
-  unsigned char breg;
 
   /* routine XX */
   compatMode ();
@@ -3244,7 +3215,7 @@ ECPSetBuffer (int size)
 	   __FILE__, __LINE__);
       return;
     }
-  breg = Inb (ECR);
+  Inb (ECR);
 
   Outb (DATA, 0x0E);
   if (waitFifoEmpty () == 0)
@@ -3253,7 +3224,7 @@ ECPSetBuffer (int size)
 	   __FILE__, __LINE__);
       return;
     }
-  breg = Inb (ECR);
+  Inb (ECR);
 
   Outb (ECPDATA, 0x0B);		/* R0E=0x0B */
   if (waitFifoEmpty () == 0)
@@ -3262,7 +3233,7 @@ ECPSetBuffer (int size)
 	   __FILE__, __LINE__);
       return;
     }
-  breg = Inb (ECR);
+  Inb (ECR);
 
   Outb (DATA, 0x0F);		/* R0F=size MSB */
   if (waitFifoEmpty () == 0)
@@ -3271,7 +3242,7 @@ ECPSetBuffer (int size)
 	   __FILE__, __LINE__);
       return;
     }
-  breg = Inb (ECR);
+  Inb (ECR);
 
   Outb (ECPDATA, size / 256);
   if (waitFifoEmpty () == 0)
@@ -3280,7 +3251,7 @@ ECPSetBuffer (int size)
 	   __FILE__, __LINE__);
       return;
     }
-  breg = Inb (ECR);
+  Inb (ECR);
 
   Outb (DATA, 0x0B);		/* R0B=size LSB */
   if (waitFifoEmpty () == 0)
@@ -3289,7 +3260,7 @@ ECPSetBuffer (int size)
 	   __FILE__, __LINE__);
       return;
     }
-  breg = Inb (ECR);
+  Inb (ECR);
 
   Outb (ECPDATA, size % 256);
   if (waitFifoEmpty () == 0)
@@ -3298,7 +3269,7 @@ ECPSetBuffer (int size)
 	   __FILE__, __LINE__);
       return;
     }
-  breg = Inb (ECR);
+  Inb (ECR);
   DBG (16, "ECPSetBuffer(%d) passed ...\n", size);
 }
 
@@ -3307,14 +3278,14 @@ ECPSetBuffer (int size)
 static int
 ECPbufferRead (int size, unsigned char *dest)
 {
-  int breg, n, idx, remain;
+  int n, idx, remain;
 
   idx = 0;
   n = size / 16;
   remain = size - 16 * n;
 
   /* block transfer */
-  breg = Inb (ECR);		/* 0x15,0x75 expected: fifo empty */
+  Inb (ECR);			/* 0x15,0x75 expected: fifo empty */
 
   byteMode ();			/*Outb (ECR, 0x20);            byte mode */
   Outb (CONTROL, 0x04);
@@ -3326,7 +3297,7 @@ ECPbufferRead (int size, unsigned char *dest)
 	   __FILE__, __LINE__);
       return idx;
     }
-  breg = Inb (ECR);
+  Inb (ECR);
 
   Outb (DATA, 0x80);
   if (waitFifoEmpty () == 0)
@@ -3335,7 +3306,7 @@ ECPbufferRead (int size, unsigned char *dest)
 	   __FILE__, __LINE__);
       return idx;
     }
-  breg = Inb (ECR);		/* 0x75 expected */
+  Inb (ECR);			/* 0x75 expected */
 
   byteMode ();			/*Outb (ECR, 0x20);            byte mode */
   Outb (CONTROL, 0x20);		/* data reverse */
@@ -4066,13 +4037,12 @@ static int
 EPPconnect (void)
 {
   int control;
-  int data;
 
   /* initial values, don't hardcode */
   Outb (DATA, 0x04);
   Outb (CONTROL, 0x0C);
 
-  data = Inb (DATA);
+  Inb (DATA);
   control = Inb (CONTROL);
   Outb (CONTROL, control & 0x1F);
   control = Inb (CONTROL);
@@ -8968,7 +8938,7 @@ cmdGetBuffer610p (int cmd, int len, unsigned char *buffer)
 static int
 cmdGetBuffer (int cmd, int len, unsigned char *buffer)
 {
-  int reg, tmp, i;
+  int reg, tmp;
   int word[5], read;
   int needed;
 
@@ -8995,7 +8965,6 @@ cmdGetBuffer (int cmd, int len, unsigned char *buffer)
   REGISTERWRITE (0x0E, 0x0D);
   REGISTERWRITE (0x0F, 0x00);
 
-  i = 0;
   reg = registerRead (0x19) & 0xF8;
 
   /* wait if busy */
@@ -9108,7 +9077,7 @@ cmdGetBuffer (int cmd, int len, unsigned char *buffer)
 static int
 cmdGetBuffer32 (int cmd, int len, unsigned char *buffer)
 {
-  int reg, tmp, i;
+  int reg, tmp;
   int word[5], read;
 
   /* compute word */
@@ -9138,7 +9107,6 @@ cmdGetBuffer32 (int cmd, int len, unsigned char *buffer)
   REGISTERWRITE (0x0E, 0x0D);
   REGISTERWRITE (0x0F, 0x00);
 
-  i = 0;
   reg = registerRead (0x19) & 0xF8;
 
   /* wait if busy */
@@ -9255,7 +9223,7 @@ cmdGetBlockBuffer (int cmd, int len, int window, unsigned char *buffer)
   struct timeval td, tf;
   float elapsed;
 #endif
-  int reg, i;
+  int reg;
   int word[5], read;
 
   /* compute word */
@@ -9291,8 +9259,6 @@ cmdGetBlockBuffer (int cmd, int len, int window, unsigned char *buffer)
 
   REGISTERWRITE (0x0E, 0x0D);
   REGISTERWRITE (0x0F, 0x00);
-
-  i = 0;
 
   /* init counter */
   read = 0;
@@ -10975,7 +10941,6 @@ sanei_umax_pp_startScan (int x, int y, int width, int height, int dpi,
 			 int *rtw, int *rth)
 {
   unsigned char *buffer;
-  int *dest = NULL;
   int rc = 0;
   int calibration[3 * 5100 + 768 + 2 + 1];
   int xdpi, ydpi, h;
@@ -11106,8 +11071,6 @@ sanei_umax_pp_startScan (int x, int y, int width, int height, int dpi,
       return 0;
     }
   DBG (16, "inquire() passed ... (%s:%d)\n", __FILE__, __LINE__);
-
-  dest = (int *) malloc (65536 * sizeof (int));
 
   rc = loadDefaultTables ();
   if (rc == 0)
@@ -11936,7 +11899,6 @@ offsetCalibration1220p (int color, int *offRed, int *offGreen, int *offBlue)
   int i, val;
   int commit[9] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, -1 };
   int opsc04[9] = { 0x06, 0xF4, 0xFF, 0x81, 0x1B, 0x00, 0x00, 0x00, -1 };
-  int opsc10[9] = { 0x06, 0xF4, 0xFF, 0x81, 0x1B, 0x00, 0x08, 0x00, -1 };
   int opsc38[37] =
     { 0x00, 0x00, 0x04, 0x00, 0x02, 0x00, 0x00, 0x0C, 0x00, 0x04, 0x40, 0x01,
     0x00, 0x00, 0x04, 0x00, 0x6E, 0x18, 0x10, 0x03, 0x06, 0x00, 0x00, 0x00,
@@ -11962,11 +11924,6 @@ offsetCalibration1220p (int color, int *offRed, int *offGreen, int *offBlue)
       opsc04[1] = 0xD5;
       opsc04[4] = 0x1B;
       opsc04[7] = 0x20;
-
-      opsc10[0] = 0x19;
-      opsc10[1] = 0xD5;
-      opsc10[4] = 0x1B;
-      opsc10[7] = 0x20;
 
       opsc48[8] = 0x2B;
       opsc48[11] = 0x20;

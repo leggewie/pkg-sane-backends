@@ -16,11 +16,19 @@
 #include "sane/config.h"
 #include <ctype.h>
 #include <unistd.h>     /* sleep */
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
 
 #include "epsonds.h"
 #include "epsonds-io.h"
+#include "epsonds-net.h"
 
-size_t eds_send(epsonds_scanner *s, void *buf, size_t length, SANE_Status *status)
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+
+size_t eds_send(epsonds_scanner *s, void *buf, size_t length, SANE_Status *status, size_t reply_len)
 {
 	DBG(32, "%s: size = %lu\n", __func__, (u_long) length);
 
@@ -36,7 +44,9 @@ size_t eds_send(epsonds_scanner *s, void *buf, size_t length, SANE_Status *statu
 	}
 
 	if (s->hw->connection == SANE_EPSONDS_NET) {
-		/* XXX */
+
+		return epsonds_net_write(s, 0x2000, buf, length, reply_len, status);
+
 	} else if (s->hw->connection == SANE_EPSONDS_USB) {
 
 		size_t n = length;
@@ -55,21 +65,23 @@ size_t eds_send(epsonds_scanner *s, void *buf, size_t length, SANE_Status *statu
 
 size_t eds_recv(epsonds_scanner *s, void *buf, size_t length, SANE_Status *status)
 {
-	size_t n = 0;
+	size_t n = length; /* network interface needs to read header back even data is 0.*/
 
 	DBG(30, "%s: size = %ld, buf = %p\n", __func__, (long) length, buf);
 
+	*status = SANE_STATUS_GOOD;
+
 	if (s->hw->connection == SANE_EPSONDS_NET) {
-		/* XXX */
+		n = epsonds_net_read(s, buf, length, status);
 	} else if (s->hw->connection == SANE_EPSONDS_USB) {
 
 		/* !!! only report an error if we don't read anything */
-
-		n = length;
-		*status = sanei_usb_read_bulk(s->fd, (SANE_Byte *)buf,
-					    (size_t *) &n);
-		if (n > 0)
-			*status = SANE_STATUS_GOOD;
+		if (n) {
+			*status = sanei_usb_read_bulk(s->fd, (SANE_Byte *)buf,
+						    (size_t *) &n);
+			if (n > 0)
+				*status = SANE_STATUS_GOOD;
+		}
 	}
 
 	if (n < length) {
@@ -90,7 +102,7 @@ SANE_Status eds_txrx(epsonds_scanner* s, char *txbuf, size_t txlen,
 	SANE_Status status;
 	size_t done;
 
-	done = eds_send(s, txbuf, txlen, &status);
+	done = eds_send(s, txbuf, txlen, &status, rxlen);
 	if (status != SANE_STATUS_GOOD) {
 		DBG(1, "%s: tx err, %s\n", __func__, sane_strstatus(status));
 		return status;
@@ -147,6 +159,7 @@ SANE_Status eds_fsy(epsonds_scanner *s)
 
 SANE_Status eds_fsx(epsonds_scanner *s)
 {
+//	SANE_Status status = eds_control(s, "\x1CZ", 2);
 	SANE_Status status = eds_control(s, "\x1CX", 2);
 	if (status == SANE_STATUS_GOOD) {
 		s->locked = 1;

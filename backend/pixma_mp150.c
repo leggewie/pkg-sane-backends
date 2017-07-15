@@ -1,6 +1,6 @@
 /* SANE - Scanner Access Now Easy.
 
-   Copyright (C) 2011-2015 Rolf Bensch <rolf at bensch hyphen online dot de>
+   Copyright (C) 2011-2016 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2007-2009 Nicolas Martin, <nicols-guest at alioth dot debian dot org>
    Copyright (C) 2006-2007 Wittawat Yamwong <wittawat@web.de>
 
@@ -228,7 +228,19 @@
 #define MX490_PID 0x1787
 #define E480_PID 0x1789
 #define MG3600_PID 0x178a
+#define MG7700_PID 0x178b
+#define MG6900_PID 0x178c
+#define MG6800_PID 0x178d
+#define MG5700_PID 0x178e
 
+/* 2016 new devices (untested) */
+#define TS9000_PID 0x179f
+#define TS8000_PID 0x1800
+#define TS6000_PID 0x1801
+#define TS5000_PID 0x1802
+#define MG3000_PID 0x180b
+#define E470_PID 0x180c
+#define G3000_PID 0x181d
 
 /* Generation 4 XML messages that encapsulates the Pixma protocol messages */
 #define XML_START_1   \
@@ -824,6 +836,7 @@ query_status (pixma_t * s)
   return error;
 }
 
+#if 0
 static int
 send_time (pixma_t * s)
 {
@@ -843,6 +856,7 @@ send_time (pixma_t * s)
   PDBG (pixma_dbg (3, "Sending time: '%s'\n", (char *) data));
   return pixma_exec (s, &mp->cb);
 }
+#endif
 
 /* TODO: Simplify this function. Read the whole data packet in one shot. */
 static int
@@ -945,11 +959,13 @@ handle_interrupt (pixma_t * s, int timeout)
    * tt: target
    * rr: scan resolution
    * poll event with 'scanimage -A' */
-  if (s->cfg->pid == MG6200_PID
+  if (s->cfg->pid == MG5400_PID
+      || s->cfg->pid == MG6200_PID
       || s->cfg->pid == MG6300_PID
       || s->cfg->pid == MX520_PID
       || s->cfg->pid == MX720_PID
-      || s->cfg->pid == MX920_PID)
+      || s->cfg->pid == MX920_PID
+      || s->cfg->pid == MB5000_PID)
   /* button no. in buf[7]
    * size in buf[10] 01=A4; 02=Letter; 08=10x15; 09=13x18; 0b=auto
    * format in buf[11] 01=JPEG; 02=TIFF; 03=PDF; 04=Kompakt-PDF
@@ -968,7 +984,10 @@ handle_interrupt (pixma_t * s, int timeout)
   {
     /* More than one event can be reported at the same time. */
     if (buf[3] & 1)
+      /* FIXME: This function makes trouble with a lot of scanners
       send_time (s);
+       */
+      PDBG (pixma_dbg (1, "WARNING:send_time() disabled!\n"));
     if (buf[9] & 2)
       query_status (s);
     if (buf[0] & 2)
@@ -1150,13 +1169,17 @@ post_process_image_data (pixma_t * s, pixma_imagebuf_t * ib)
               && s->cfg->pid != MX920_PID
               && s->cfg->pid != MG3100_PID
               && s->cfg->pid != MG3500_PID
+              && s->cfg->pid != MG3600_PID
               && s->cfg->pid != MG2100_PID
               && s->cfg->pid != MG5300_PID
+              && s->cfg->pid != MG5400_PID
               && s->cfg->pid != MG5500_PID
               && s->cfg->pid != MG6300_PID
               && s->cfg->pid != MG6400_PID
               && s->cfg->pid != MG7100_PID
-              && s->cfg->pid != MG7500_PID)
+              && s->cfg->pid != MG7500_PID
+              && s->cfg->pid != MG7700_PID
+              && s->cfg->pid != MB5000_PID)
               reorder_pixels (mp->linebuf, sptr, c, n, m, s->param->wx, line_size);
           
           /* Crop line to selected borders */
@@ -1828,6 +1851,19 @@ const pixma_config_t pixma_mp150_devices[] = {
   DEVICE ("Canon PIXMA MX490 Series", "MX490", MX490_PID, 600, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
   DEVICE ("Canon PIXMA E480 Series",  "E480",  E480_PID,  600, 0, 0, 638, 1050, PIXMA_CAP_CIS | PIXMA_CAP_ADF),
   DEVICE ("Canon PIXMA MG3600 Series", "MG3600", MG3600_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA MG7700 Series", "MG7700", MG7700_PID, 2400, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA MG6900 Series", "MG6900", MG6900_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA MG6800 Series", "MG6800", MG6800_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA MG5700 Series", "MG5700", MG5700_PID, 1200, 0, 0, 638, 877, PIXMA_CAP_CIS),
+
+  /* Latest devices (2016) Generation 4 CIS */
+  DEVICE ("Canon PIXMA TS9000 Series", "TS9000", TS9000_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA TS8000 Series", "TS8000", TS8000_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA TS6000 Series", "TS6000", TS6000_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA TS5000 Series", "TS5000", TS5000_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA MG3000 Series", "MG3000", MG3000_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA E470 Series", "E470", E470_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
+  DEVICE ("Canon PIXMA G4000 Series", "G3000", G3000_PID, 600, 0, 0, 638, 877, PIXMA_CAP_CIS),
 
   END_OF_DEVICE_LIST
 };

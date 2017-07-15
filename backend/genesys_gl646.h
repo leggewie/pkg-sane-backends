@@ -2,7 +2,7 @@
 
    Copyright (C) 2003-2004 Henning Meier-Geinitz <henning@meier-geinitz.de>
    Copyright (C) 2004-2005 Gerhard Jaeger <gerhard@gjaeger.de>
-   Copyright (C) 2004-2013 Stéphane Voltz <stef.dev@free.fr>
+   Copyright (C) 2004-2013 StÃ©phane Voltz <stef.dev@free.fr>
    Copyright (C) 2005-2009 Pierre Willenbrock <pierre@pirsoft.dnsalias.org>
 
    This file is part of the SANE package.
@@ -276,10 +276,10 @@ gl646_move_to_ta (Genesys_Device * dev);
 /**
  * sets up the scanner for a scan, registers, gamma tables, shading tables
  * and slope tables, based on the parameter struct.
- * @param device   device to set up
- * @param regs     registers to set up
- * @param settings settings of the scan
- * @param split    true if move before scan has to be done
+ * @param dev         device to set up
+ * @param regs        registers to set up
+ * @param settings    settings of the scan
+ * @param split       true if move before scan has to be done
  * @param xcorrection true if scanner's X geometry must be taken into account to
  * 		     compute X, ie add left margins
  * @param ycorrection true if scanner's Y geometry must be taken into account to

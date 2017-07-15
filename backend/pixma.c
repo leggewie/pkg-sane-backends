@@ -1,6 +1,6 @@
 /* SANE - Scanner Access Now Easy.
 
-   Copyright (C) 2011-2015 Rolf Bensch <rolf at bensch hyphen online dot de>
+   Copyright (C) 2011-2016 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2007-2008 Nicolas Martin, <nicols-guest at alioth dot debian dot org>
    Copyright (C) 2006-2007 Wittawat Yamwong <wittawat@web.de>
 
@@ -782,6 +782,14 @@ control_option (pixma_sane_t * ss, SANE_Int n,
               enable_option (ss, opt_threshold, SANE_FALSE);
               enable_option (ss, opt_threshold_curve, SANE_FALSE);
             }
+          if (cfg->cap & (PIXMA_CAP_ADF_WAIT))
+            { /* adf-wait */
+              enable_option (ss, opt_adf_wait, SANE_TRUE);
+            }
+          else
+            { /* disable adf-wait */
+              enable_option (ss, opt_adf_wait, SANE_FALSE);
+            }
           *info |= SANE_INFO_RELOAD_OPTIONS;
         }
       break;
@@ -801,6 +809,7 @@ print_scan_param (int level, const pixma_scan_param_t * sp)
 	     sp->xdpi, sp->ydpi, sp->x, sp->y, sp->w, sp->h);
   pixma_dbg (level, "  gamma_table=%p source=%d\n", sp->gamma_table,
 	     sp->source);
+  pixma_dbg (level, "  adf-wait=%d\n", sp->adf_wait);
 }
 #endif
 
@@ -850,6 +859,7 @@ calc_scan_param (pixma_sane_t * ss, pixma_scan_param_t * sp)
   sp->adf_pageid = ss->page_count;
   sp->threshold = 2.55 * OVAL (opt_threshold).w;
   sp->threshold_curve = OVAL (opt_threshold_curve).w;
+  sp->adf_wait = OVAL (opt_adf_wait).w;
 
   error = pixma_check_scan_param (ss->s, sp);
   if (error < 0)
@@ -928,7 +938,7 @@ init_option_descriptors (pixma_sane_t * ss)
 /* Writing to reader_ss outside reader_process() is a BUG! */
 static pixma_sane_t *reader_ss = NULL;
 
-static RETSIGTYPE
+static void
 reader_signal_handler (int sig)
 {
   if (reader_ss)
@@ -1083,7 +1093,7 @@ terminate_reader_task (pixma_sane_t * ss, int *exit_code)
   int status = 0;
 
   pid = ss->reader_taskid;
-  if (pid == -1)
+  if (!sanei_thread_is_valid (pid))
     return -1;
   if (sanei_thread_is_forked ())
     {
@@ -1129,7 +1139,7 @@ start_reader_task (pixma_sane_t * ss)
       ss->rpipe = -1;
       ss->wpipe = -1;
     }
-  if (ss->reader_taskid != -1)
+  if (sanei_thread_is_valid (ss->reader_taskid))
     {
       PDBG (pixma_dbg
 	    (1, "BUG:reader_taskid(%ld) != -1\n", (long) ss->reader_taskid));
@@ -1159,7 +1169,7 @@ start_reader_task (pixma_sane_t * ss)
     {
       pid = sanei_thread_begin (reader_thread, ss);
     }
-  if (pid == -1)
+  if (!sanei_thread_is_valid (pid))
     {
       close (ss->wpipe);
       close (ss->rpipe);
@@ -1227,7 +1237,7 @@ read_image (pixma_sane_t * ss, void *buf, unsigned size, int *readlen)
 		       ss->image_bytes_read, ss->sp.image_size));
       close (ss->rpipe);
       ss->rpipe = -1;
-      if (terminate_reader_task (ss, &status) != -1
+      if (sanei_thread_is_valid (terminate_reader_task (ss, &status))
       	  && status != SANE_STATUS_GOOD)
         {
           return status;
@@ -1371,6 +1381,7 @@ sane_open (SANE_String_Const name, SANE_Handle * h)
   ss->rpipe = -1;
   ss->idle = SANE_TRUE;
   ss->scanning = SANE_FALSE;
+  ss->sp.frontend_cancel = SANE_FALSE;
   for (j=0; j < BUTTON_GROUP_SIZE; j++)
     ss->button_option_is_cached[j] = 0;
   error = pixma_open (i, &ss->s);
@@ -1620,6 +1631,7 @@ sane_cancel (SANE_Handle h)
   if (!ss)
     return;
   ss->cancel = SANE_TRUE;
+  ss->sp.frontend_cancel = SANE_TRUE;
   if (ss->idle)
     return;
   close (ss->rpipe);
@@ -1810,6 +1822,13 @@ type int threshold-curve
   constraint (0,127,1)
   title Threshold curve
   desc  Dynamic threshold curve, from light to dark, normally 50-65
+  cap soft_select soft_detect automatic inactive
+
+type int adf-wait
+  default 0
+  constraint (0,3600,1)
+  title ADF Waiting Time
+  desc  When set, the scanner searches the waiting time in seconds for a new document inserted into the automatic document feeder.
   cap soft_select soft_detect automatic inactive
 
 rem -------------------------------------------

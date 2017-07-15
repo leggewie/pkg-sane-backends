@@ -1,6 +1,6 @@
 /* SANE - Scanner Access Now Easy.
 
-   Copyright (C) 2011-2015 Rolf Bensch <rolf at bensch hyphen online dot de>
+   Copyright (C) 2011-2016 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2007-2008 Nicolas Martin, <nicols-guest at alioth dot debian dot org>
    Copyright (C) 2006-2007 Wittawat Yamwong <wittawat@web.de>
 
@@ -63,13 +63,17 @@
 #define IMAGE_BLOCK_SIZE (0xc000)
 #define CMDBUF_SIZE 512
 
+#define MP10_PID 0x261f
+
 #define MP730_PID 0x262f
 #define MP700_PID 0x2630
+
+#define MP5_PID 0x2635          /* untested */
 
 #define MP360_PID 0x263c
 #define MP370_PID 0x263d
 #define MP390_PID 0x263e
-#define MP375R_PID 0x263f   /* untested */
+#define MP375R_PID 0x263f       /* untested */
 
 #define MP740_PID 0x264c	/* Untested */
 #define MP710_PID 0x264d
@@ -341,6 +345,8 @@ handle_interrupt (pixma_t * s, int timeout)
 	s->events = PIXMA_EV_BUTTON1;	/* color scan */
       break;
 
+    case MP5_PID:
+    case MP10_PID:
     case MP700_PID:
     case MP730_PID:
     case MP710_PID:
@@ -453,6 +459,10 @@ step1 (pixma_t * s)
           default:
             break;
         }
+
+      // ignore result from calibrate()
+      // don't interrupt @ PIXMA_STATUS_BUSY
+      error = 0;
     }
   if (error >= 0)
     error = activate (s, 0);
@@ -537,7 +547,9 @@ calc_raw_width (pixma_t * s, const pixma_scan_param_t * sp)
     {
       if (sp->depth == 8)   /* grayscale  */
         {
-          if (s->cfg->pid == MP700_PID ||
+          if (s->cfg->pid == MP5_PID   ||
+              s->cfg->pid == MP10_PID  ||
+              s->cfg->pid == MP700_PID ||
               s->cfg->pid == MP730_PID ||
               s->cfg->pid == MP360_PID ||
               s->cfg->pid == MP370_PID ||
@@ -566,8 +578,10 @@ mp730_check_param (pixma_t * s, pixma_scan_param_t * sp)
     {
       sp->depth=8;
     }
-  /* for MP360/370, MP700/730 in grayscale & lineart modes, max scan res is 600 dpi */
-  if (s->cfg->pid == MP700_PID ||
+  /* for MP5, MP10, MP360/370, MP700/730 in grayscale & lineart modes, max scan res is 600 dpi */
+  if (s->cfg->pid == MP5_PID   ||
+      s->cfg->pid == MP10_PID  ||
+      s->cfg->pid == MP700_PID ||
       s->cfg->pid == MP730_PID ||
       s->cfg->pid == MP360_PID ||
       s->cfg->pid == MP370_PID ||
@@ -737,19 +751,23 @@ mp730_finish_scan (pixma_t * s)
       query_status (s);
       activate (s, 0);
 
-      if (! aborted && s->cfg->pid == IR1020_PID)
-	{
-	  error = abort_session (s);
-	  if (error < 0)
-	    {
-	      PDBG (pixma_dbg
-		    (1, "WARNING:abort_session() failed %s\n",
-		     pixma_strerror (error)));
-	      query_status (s);
-	      query_status (s);
-	      activate (s, 0);
-	    }
-	}
+      // MF57x0 devices don't require abort_session() after the last page
+      if (!aborted &&
+          (s->param->source == PIXMA_SOURCE_ADF ||
+           s->param->source == PIXMA_SOURCE_ADFDUP) &&
+           has_paper (s) &&
+           (s->cfg->pid == MF5730_PID ||
+            s->cfg->pid == MF5750_PID ||
+            s->cfg->pid == MF5770_PID ||
+            s->cfg->pid == IR1020_PID))
+      {
+        error = abort_session (s);
+        if (error < 0)
+          PDBG (pixma_dbg
+                (1, "WARNING:abort_session() failed %s\n",
+                 pixma_strerror (error)));
+      }
+
       mp->buf = mp->lbuf = mp->imgbuf = NULL;
       mp->state = state_idle;
       /* fall through */
@@ -808,6 +826,8 @@ static const pixma_scan_ops_t pixma_mp730_ops = {
 }
 const pixma_config_t pixma_mp730_devices[] = {
 /* TODO: check area limits */
+  DEVICE ("PIXUS MP5/SmartBase MPC190/imageCLASS MPC190","MP5", MP5_PID, 600, 636, 868, PIXMA_CAP_LINEART),/* color scan can do 600x1200 */
+  DEVICE ("PIXUS MP10/SmartBase MPC200/imageCLASS MPC200","MP10", MP10_PID, 600, 636, 868, PIXMA_CAP_LINEART),/* color scan can do 600x1200 */
   DEVICE ("PIXMA MP360", "MP360", MP360_PID, 1200, 636, 868, PIXMA_CAP_LINEART),
   DEVICE ("PIXMA MP370", "MP370", MP370_PID, 1200, 636, 868, PIXMA_CAP_LINEART),
   DEVICE ("PIXMA MP375R", "MP375R", MP375R_PID, 1200, 636, 868, PIXMA_CAP_LINEART),

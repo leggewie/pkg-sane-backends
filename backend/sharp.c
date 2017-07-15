@@ -370,7 +370,7 @@ sense_handler(int __sane_unused__ fd, u_char *sense_buffer, void *s)
                 DBG(10, "error: invalid field in parameter list\n");
                 return SANE_STATUS_IO_ERROR;
               case 0x29:
-                DBG(10, "note: reset occured\n");
+                DBG(10, "note: reset occurred\n");
                 return SANE_STATUS_GOOD;
               case 0x2a:
                 DBG(10, "note: mode parameter change\n");
@@ -495,7 +495,7 @@ sense_handler(int __sane_unused__ fd, u_char *sense_buffer, void *s)
                 switch (add_sense_code)
                   {
                     case 0x29:
-                      DBG(5, "unit attention: reset occured\n");
+                      DBG(5, "unit attention: reset occurred\n");
                       return SANE_STATUS_GOOD;
                     case 0x2a:
                       DBG(5, "unit attention: parameter changed by "
@@ -3299,7 +3299,7 @@ send_threshold_data(SHARP_Scanner *s)
 SANE_Status
 sane_start (SANE_Handle handle)
 {
-  char *mode, *halftone, *paper, *gamma, *edge, *lightcolor, *adf_fsu;
+  char *mode, *halftone, *gamma, *edge, *lightcolor, *adf_fsu;
   SHARP_Scanner *s = handle;
   SANE_Status status;
   size_t buf_size;
@@ -3436,7 +3436,6 @@ sane_start (SANE_Handle handle)
 
   mode = s->val[OPT_MODE].s;
   halftone = s->val[OPT_HALFTONE].s;
-  paper = s->val[OPT_PAPER].s;
   gamma = s->val[OPT_GAMMA].s;
   edge = s->val[OPT_EDGE_EMPHASIS].s;
   lightcolor = s->val[OPT_LIGHTCOLOR].s;

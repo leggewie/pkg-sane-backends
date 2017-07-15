@@ -56,6 +56,7 @@
 #include "../include/sane/sanei.h"
 #include "../include/sane/saneopts.h"
 
+#include "sicc.h"
 #include "stiff.h"
 
 #include "../include/md5.h"
@@ -322,7 +323,7 @@ auth_callback (SANE_String_Const resource,
     }
 }
 
-static RETSIGTYPE
+static void
 sighandler (int signum)
 {
   static SANE_Bool first_time = SANE_TRUE;
@@ -1165,9 +1166,14 @@ write_pnm_header (SANE_Frame format, int width, int height, int depth, FILE *ofp
 
 #ifdef HAVE_LIBPNG
 static void
-write_png_header (SANE_Frame format, int width, int height, int depth, FILE *ofp, png_structp* png_ptr, png_infop* info_ptr)
+write_png_header (SANE_Frame format, int width, int height, int depth, int dpi, const char * icc_profile, FILE *ofp, png_structp* png_ptr, png_infop* info_ptr)
 {
   int color_type;
+  /* PNG does not have imperial reference units, so we must convert to metric. */
+  /* There are nominally 39.3700787401575 inches in a meter. */
+  const double pixels_per_meter = dpi * 39.3700787401575;
+  size_t icc_size = 0;
+  void *icc_buffer;
 
   *png_ptr = png_create_write_struct
        (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -1200,13 +1206,47 @@ write_png_header (SANE_Frame format, int width, int height, int depth, FILE *ofp
     depth, color_type, PNG_INTERLACE_NONE,
     PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
+  png_set_pHYs(*png_ptr, *info_ptr,
+    pixels_per_meter, pixels_per_meter,
+    PNG_RESOLUTION_METER);
+
+  if (icc_profile)
+    {
+      icc_buffer = sanei_load_icc_profile(icc_profile, &icc_size);
+      if (icc_size > 0)
+        {
+	  /* libpng will abort if the profile and image colour spaces do not match*/
+	  /* The data colour space field is at bytes 16 to 20 in an ICC profile */
+	  /* see: ICC.1:2010 § 7.2.6 */
+	  int is_gray_profile = strncmp((char *) icc_buffer + 16, "GRAY", 4) == 0;
+	  int is_rgb_profile = strncmp((char *) icc_buffer + 16, "RGB ", 4) == 0;
+	  if ((is_gray_profile && color_type == PNG_COLOR_TYPE_GRAY) ||
+	      (is_rgb_profile && color_type == PNG_COLOR_TYPE_RGB))
+	    {
+	      png_set_iCCP(*png_ptr, *info_ptr, basename(icc_profile), PNG_COMPRESSION_TYPE_BASE, icc_buffer, icc_size);
+	    }
+	  else
+	    {
+	      if (is_gray_profile)
+	        {
+		  fprintf(stderr, "Ignoring 'GRAY' space ICC profile because the image is RGB.\n");
+	        }
+	      if (is_rgb_profile)
+	        {
+		  fprintf(stderr, "Ignoring 'RGB ' space ICC profile because the image is Grayscale.\n");
+		}
+	    }
+	  free(icc_buffer);
+	}
+    }
+
   png_write_info(*png_ptr, *info_ptr);
 }
 #endif
 
 #ifdef HAVE_LIBJPEG
 static void
-write_jpeg_header (SANE_Frame format, int width, int height, FILE *ofp, struct jpeg_compress_struct *cinfo, struct jpeg_error_mgr *jerr)
+write_jpeg_header (SANE_Frame format, int width, int height, int dpi, FILE *ofp, struct jpeg_compress_struct *cinfo, struct jpeg_error_mgr *jerr)
 {
   cinfo->err = jpeg_std_error(jerr);
   jpeg_create_compress(cinfo);
@@ -1231,6 +1271,11 @@ write_jpeg_header (SANE_Frame format, int width, int height, FILE *ofp, struct j
     }
 
   jpeg_set_defaults(cinfo);
+  /* jpeg_set_defaults overrides density, be careful. */
+  cinfo->density_unit = 1;   /* Inches */
+  cinfo->X_density = cinfo->Y_density = dpi;
+  cinfo->write_JFIF_header = TRUE;
+
   jpeg_set_quality(cinfo, 75, TRUE);
   jpeg_start_compress(cinfo, TRUE);
 }
@@ -1379,13 +1424,15 @@ scan_it (FILE *ofp)
 #ifdef HAVE_LIBPNG
 		  case OUTPUT_PNG:
 		    write_png_header (parm.format, parm.pixels_per_line,
-				      parm.lines, parm.depth, ofp, &png_ptr, &info_ptr);
+				      parm.lines, parm.depth, resolution_value,
+				      icc_profile, ofp, &png_ptr, &info_ptr);
 		    break;
 #endif
 #ifdef HAVE_LIBJPEG
 		  case OUTPUT_JPEG:
 		    write_jpeg_header (parm.format, parm.pixels_per_line,
-				      parm.lines, ofp, &cinfo, &jerr);
+				       parm.lines, resolution_value,
+				       ofp, &cinfo, &jerr);
 		    break;
 #endif
 		  }
@@ -1529,6 +1576,21 @@ scan_it (FILE *ofp)
 			  for(j = 0; j < parm.bytes_per_line; j++)
 			    pngbuf[j] = ~pngbuf[j];
 			}
+#ifndef WORDS_BIGENDIAN
+                      /* SANE is endian-native, PNG is big-endian, */
+                      /* see: https://www.w3.org/TR/2003/REC-PNG-20031110/#7Integers-and-byte-order */
+                      if (parm.depth == 16)
+                        {
+                          int j;
+                          for (j = 0; j < parm.bytes_per_line; j += 2)
+                            {
+                              SANE_Byte LSB;
+                              LSB = pngbuf[j];
+                              pngbuf[j] = pngbuf[j + 1];
+                              pngbuf[j + 1] = LSB;
+                            }
+                        }
+#endif
 		      png_write_row(png_ptr, pngbuf);
 		      i += parm.bytes_per_line - pngrow;
 		      left -= parm.bytes_per_line - pngrow;
@@ -1635,13 +1697,15 @@ scan_it (FILE *ofp)
 #ifdef HAVE_LIBPNG
       case OUTPUT_PNG:
 	write_png_header (parm.format, parm.pixels_per_line,
-                          image.height, parm.depth, ofp, &png_ptr, &info_ptr);
+			  image.height, parm.depth, resolution_value,
+			  icc_profile, ofp, &png_ptr, &info_ptr);
       break;
 #endif
 #ifdef HAVE_LIBJPEG
       case OUTPUT_JPEG:
 	write_jpeg_header (parm.format, parm.pixels_per_line,
-	parm.lines, ofp, &cinfo, &jerr);
+			   parm.lines, resolution_value,
+			   ofp, &cinfo, &jerr);
       break;
 #endif
       }
@@ -2474,9 +2538,16 @@ List of available devices:", prog_name);
         ofp = stdout;
 
       if (batch)
-	fprintf (stderr,
-		 "Scanning %d pages, incrementing by %d, numbering from %d\n",
-		 batch_count, batch_increment, batch_start_at);
+	{
+	  fputs("Scanning ", stderr);
+	  if (batch_count == BATCH_COUNT_UNLIMITED)
+	    fputs("infinity", stderr);
+	  else
+	    fprintf(stderr, "%d", batch_count);
+	  fprintf (stderr,
+		   " page%s, incrementing by %d, numbering from %d\n",
+		   batch_count == 1 ? "" : "s", batch_increment, batch_start_at);
+	}
 
       else if(isatty(fileno(ofp))){
 	fprintf (stderr,"%s: output is not a file, exiting\n", prog_name);
@@ -2509,8 +2580,6 @@ List of available devices:", prog_name);
 
 		  if (readbuf2 == NULL)
 		    {
-		      fprintf (stderr, "Batch terminated, %d pages scanned\n",
-			       (n - batch_increment));
 		      if (ofp)
 			{
 			  fclose (ofp);
@@ -2611,6 +2680,13 @@ List of available devices:", prog_name);
       while ((batch
 	      && (batch_count == BATCH_COUNT_UNLIMITED || --batch_count))
 	     && SANE_STATUS_GOOD == status);
+
+      if (batch)
+	{
+	  int num_pgs = (n - batch_start_at) / batch_increment;
+	  fprintf (stderr, "Batch terminated, %d page%s scanned\n",
+		   num_pgs, num_pgs == 1 ? "" : "s");
+	}
 
       if (batch
 	  && SANE_STATUS_NO_DOCS == status

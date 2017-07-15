@@ -9,24 +9,20 @@
  */
 
 
-/*
- * Compiler related options
- */
-
-/** Mark unused variables/parameters
- *
- * Tells the compiler a variable is unused, so the compiler doesn't spit a warning. 
- */
-#ifdef __GNUC__
-#define __sane_unused__ __attribute__((unused))
-#else
-#define __sane_unused__
-#endif
-
 /** @name Compatibility macros
  * @{
  */
 #include <sane/sanei_debug.h>
+
+#if __STDC_VERSION__ >= 199901L
+/* __func__ is provided */
+#elif __GNUC__ >= 5
+/* __func__ is provided */
+#elif __GNUC__ >= 2
+# define __func__ __FUNCTION__
+#else
+# define __func__ "(unknown)"
+#endif
 
 #ifdef HAVE_SYS_HW_H
   /* OS/2 i/o-port access compatibility macros: */

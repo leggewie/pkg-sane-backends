@@ -1,5 +1,12 @@
 /* sane - Scanner Access Now Easy.
 
+   This file is part of the SANE package, and implements a SANE backend
+   for various large Kodak scanners.
+
+   Copyright (C) 2008-2010 m. allan noah
+
+   --------------------------------------------------------------------------
+
    This file is part of the SANE package.
 
    This program is free software; you can redistribute it and/or
@@ -39,8 +46,6 @@
    If you do not wish that, delete this exception notice.
 
    --------------------------------------------------------------------------
-
-   This file implements a SANE backend for various large Kodak scanners.
 
    The source code is divided in sections which you can easily find by
    searching for the tag "@@".
@@ -2749,7 +2754,6 @@ do_cmd(struct scanner *s, int runRS, int shortTime,
 )
 {
   SANE_Status ret = SANE_STATUS_GOOD;
-  size_t actLen = 0;
 
   /*shut up compiler*/
   runRS=runRS;
@@ -2766,7 +2770,6 @@ do_cmd(struct scanner *s, int runRS, int shortTime,
   }
   if (inBuff && inLen){
     DBG(25, "in: reading %d bytes\n", (int)*inLen);
-    actLen = *inLen;
   }
 
   ret = sanei_scsi_cmd2(s->fd, cmdBuff, cmdLen, outBuff, outLen, inBuff, inLen);

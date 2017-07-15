@@ -52,7 +52,7 @@ Copyright: 2000      Eugene S. Weiss
 License: GPL-2+ with sane exception
 
 Files: backend/avision.*
-Copyright: 1999-2007 Rene Rebe <rene@exactcode.de>
+Copyright: 1999-2015 Rene Rebe <rene@exactcode.de>
            1999-2001 Meino Christian Cramer <mccramer@s.netic.de>
            2002      Jose Paulo Moitinho de Almeida <moitinho@civil.ist.utl.pt>
            2010-2011 Mike Kelly <mike@piratehaven.org>
@@ -79,7 +79,7 @@ Files: backend/canon_dr.*
        backend/cardscan.*
        include/sane/sanei_magic.h
        sanei/sanei_magic.c
-Copyright: 2007-2010 m. allan noah
+Copyright: 2007-2016 m. allan noah
 License: GPL-2+ with sane exception
 
 Files: backend/canon_pp-*.*
@@ -118,7 +118,7 @@ Copyright: 1998      David F. Skoll
 License: GPL-2+ with sane exception
 
 Files: backend/epjitsu*.*
-Copyright: 2007-2010 m. allan noah <kitno455@gmail.com>
+Copyright: 2007-2015 m. allan noah <kitno455@gmail.com>
            2009      Richard Goedeken <richard@fascinationsoftware.com>
 License: GPL-2+ with sane exception
 
@@ -143,14 +143,15 @@ Files: backend/epson2-commands.*
        backend/epson2-ops.*
        backend/epson2_net.*
        backend/epson2.*
-Copyright: 2006-2010 Tower Technologies
+       backend/epsonds*.*
+Copyright: 2006-2015 Tower Technologies
 License: GPL-2+
 
 Files: backend/fujitsu.*
 Copyright: 2000      Randolph Bentson
            2001      Frederik Ramm
            2001-2004 Oliver Schirrmeister
-           2003-2011 m. allan noah
+           2003-2016 m. allan noah
 License: GPL-2+ with sane exception
 
 Files: backend/genesys.c
@@ -201,7 +202,7 @@ Files: backend/genesys_gl124.*
        backend/genesys_low.c
        backend/rts88*.*
        backend/umax_pp*.*
-Copyright: 2010-2013 Stéphane Voltz <stef.dev@free.fr>
+Copyright: 2010-2016 Stéphane Voltz <stef.dev@free.fr>
 License: GPL-2+ with sane exception
 
 Files: backend/genesys_gl646.c
@@ -321,7 +322,7 @@ Copyright: 2007      Jeremy Johnson
 License: GPL-2+ with sane exception
 
 Files: backend/kodakaio.*
-Copyright: 2011-2013 Paul Newall
+Copyright: 2011-2017 Paul Newall
 License: GPL-2+
 
 Files: backend/kvs1025.c
@@ -451,6 +452,7 @@ License: GPL-2+
 
 Files: backend/pie*.*
 Copyright: 2000      Simon Munton
+           2012-2015 Jan Vleeshouwers, Michael Rickmann, Klaus Kaempf
 License: GPL-2+ with sane exception
 
 Files: backend/pint.c
@@ -470,7 +472,7 @@ Files: backend/pixma.*
        backend/pixma_mp810.c
 Copyright: 2007-2008 Nicolas Martin, <nicols-guest@alioth.debian.org>
            2006-2007 Wittawat Yamwong <wittawat@web.de>
-           2011-2013 Rolf Bensch <rolf@bensch-online.de>
+           2011-2016 Rolf Bensch <rolf@bensch-online.de>
 License: GPL-2+ with sane exception
 
 Files: backend/pixma_bjnp*.*
@@ -481,7 +483,7 @@ Files: backend/pixma_common.h
        backend/pixma_io_sanei.c
        backend/pixma_mp750.c
 Copyright: 2006-2007 Wittawat Yamwong <wittawat@web.de>
-           2011-2013 Rolf Bensch <rolf@bensch-online.de>
+           2011-2016 Rolf Bensch <rolf@bensch-online.de>
 License: GPL-2+ with sane exception
 
 Files: backend/pixma_io.h
@@ -740,11 +742,12 @@ License: GPL-2+ with sane exception
 
 Files: backend/xerox_mfp-usb.c
        backend/xerox_mfp.*
-Copyright: 2008      ABC <abc@telekom.ru>
+Copyright: 2008-2016 ABC <abc@telekom.ru>
 License: GPL-2+ with sane exception
 
 Files: doc/descriptions/epson2.desc
-Copyright: 2009-2010 Alessandro Zummo
+       doc/descriptions/epsonds.desc
+Copyright: 2009-2015 Alessandro Zummo
 License: GPL-2
 
 Files: doc/descriptions/magicolor.desc
@@ -753,6 +756,11 @@ License: GPL-2
 
 Files: doc/descriptions-external/epkowa.desc
 Copyright: 2010-2011 Reinhold Kainhofer
+           2004-2015 Olaf Meeuwissen
+License: GPL-2+
+
+Files: doc/descriptions-external/utsushi.desc
+Copyright: 2004-2015 Olaf Meeuwissen
 License: GPL-2+
 
 Files: po/fr.po
@@ -769,15 +777,21 @@ License: GPL-2+
 Files: frontend/scanimage.c
 Copyright: 1996-1998 Andreas Beck
            1996-1998 David Mosberger
+           2015      Rolf Bensch
 License: GPL-2+
 
 Files: frontend/stiff.c
 Copyright: 2000      Peter Kirchgessner
            2002      Oliver Rauch
+           2017      Aaron Muir Hamilton <aaron@correspondwith.me>
 License: GPL-2+
 
 Files: frontend/stiff.h
 Copyright: 2000      Peter Kirchgessner
+License: GPL-2+
+
+Files: frontend/sicc.*
+Copyright: 2017      Aaron Muir Hamilton <aaron@correspondwith.me>
 License: GPL-2+
 
 Files: frontend/test.c

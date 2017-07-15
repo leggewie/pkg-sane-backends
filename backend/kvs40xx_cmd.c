@@ -360,7 +360,7 @@ kvs40xx_set_timeout (struct scanner * s, int timeout)
   c.data_size = sizeof (t);
   c.cmd[0] = SET_TIMEOUT;
   c.cmd[2] = 0x8d;
-  *((u16 *) (c.cmd + 7)) = cpu2be16 (sizeof (t));
+  copy16 (c.cmd + 7, cpu2be16 (sizeof (t)));
   if (s->bus == USB)
     sanei_usb_set_timeout (timeout * 1000);
 
@@ -379,7 +379,7 @@ kvs40xx_set_window (struct scanner * s, int wnd_id)
   c.data = &wnd;
   c.data_size = sizeof (wnd);
   c.cmd[0] = SET_WINDOW;
-  *((u16 *) (c.cmd + 7)) = cpu2be16 (sizeof (wnd));
+  copy16 (c.cmd + 7, cpu2be16 (sizeof (wnd)));
   kvs40xx_init_window (s, &wnd, wnd_id);
 
   return send_command (s, &c);
@@ -532,28 +532,6 @@ kvs40xx_read_image_data (struct scanner * s, unsigned page, unsigned side,
   *size = c.data_size;
   memcpy (buf, c.data, *size);
   return status;
-}
-
-static SANE_Status
-get_adjust_data (struct scanner * s, unsigned *dummy_length)
-{
-  SANE_Status status;
-  struct cmd c = {
-    {0}, 10,
-    NULL, 40,
-    CMD_IN
-  };
-  u16 *data;
-
-  c.cmd[0] = GET_ADJUST_DATA;
-  c.cmd[2] = 0x9b;
-  c.cmd[8] = 40;
-  status = send_command (s, &c);
-  if (status)
-    return status;
-  data = (u16 *) c.data;
-  *dummy_length = be2cpu16 (data[0]);
-  return SANE_STATUS_GOOD;
 }
 
 SANE_Status

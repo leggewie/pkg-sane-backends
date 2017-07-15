@@ -1277,6 +1277,9 @@ static SANE_Bool force_calibration = SANE_FALSE;
 static SANE_Bool force_a4 = SANE_FALSE;
 static SANE_Bool force_a3 = SANE_FALSE;
 
+/* trust ADF-presence flag, even if ADF model is nonzero */
+static SANE_Bool skip_adf = SANE_FALSE;
+
 /* hardware resolutions to interpolate from */
 static const int  hw_res_list_c5[] =
   {
@@ -2736,7 +2739,7 @@ wait_4_light (Avision_Scanner* s)
   struct command_read rcmd;
   char* light_status[] =
     { "off", "on", "warming up", "needs warm up test", 
-      "light check error", "RESERVED" };
+      "light check error", "backlight on", "RESERVED" };
   
   SANE_Status status;
   uint8_t result;
@@ -2753,6 +2756,11 @@ wait_4_light (Avision_Scanner* s)
   set_triple (rcmd.transferlen, size);
   
   for (try = 0; try < 90; ++ try) {
+
+    if (s->cancelled) {
+      DBG (3, "wait_4_light: cancelled\n");
+      return SANE_STATUS_CANCELLED;
+    }
     
     DBG (5, "wait_4_light: read bytes %lu\n", (u_long) size);
     status = avision_cmd (&s->av_con, &rcmd, sizeof (rcmd), 0, 0, &result, &size);
@@ -2762,10 +2770,10 @@ wait_4_light (Avision_Scanner* s)
       return status;
     }
     
-    DBG (3, "wait_4_light: command is %d. Result is %s\n",
-	 status, light_status[(result>4)?5:result]);
+    DBG (3, "wait_4_light: command is %d. Result is %d (%s)\n",
+	 status, result, light_status[(result>5)?6:result]);
     
-    if (result == 1) {
+    if (result == 1 || result == 5) {
       return SANE_STATUS_GOOD;
     }
     else if (dev->hw->feature_type & AV_LIGHT_CHECK_BOGUS) {
@@ -3218,11 +3226,13 @@ get_accessories_info (Avision_Scanner* s)
     {
       dev->inquiry_duplex = 1;
       dev->inquiry_duplex_interlaced = 0;
-    } else if (result[0] == 0 && result[2] != 0) {
+    } else if (result[0] == 0 && result[2] != 0 && !skip_adf) {
       /* Sometimes the scanner will report that there is no ADF attached, yet
        * an ADF model number will still be reported.  This happens on the
        * HP8200 series and possibly others.  In this case we need to reset the
-       * the adf and try reading it again.
+       * the adf and try reading it again.  Skip this if the configuration says
+       * to do so, so that we don't fail out the scanner as being broken and
+       * unsupported if there isn't actually an ADF present.
        */
       DBG (3, "get_accessories_info: Found ADF model number but the ADF-present flag is not set. Trying to recover...\n");
       status = adf_reset (s);
@@ -4641,7 +4651,6 @@ set_calib_data (Avision_Scanner* s, struct calibration_format* format,
   struct command_send scmd;
   
   int i;
-  size_t out_size;
   
   DBG (3, "set_calib_data:\n");
   
@@ -4678,8 +4687,6 @@ set_calib_data (Avision_Scanner* s, struct calibration_format* format,
       set_double_le ((white_data + i*2), value_new);
     }
   }
-  
-  out_size = format->pixel_per_line * 2;
   
   /* send data in one command? */
   /* FR: HP5370 reports one-pass, but needs multi (or other format in single) */
@@ -6215,8 +6222,9 @@ do_cancel (Avision_Scanner* s)
   s->prepared = s->scanning = SANE_FALSE;
   s->duplex_rear_valid = SANE_FALSE;
   s->page = 0;
+  s->cancelled = 1;
   
-  if (s->reader_pid != -1) {
+  if (sanei_thread_is_valid (s->reader_pid)) {
     int exit_status;
     
     /* ensure child knows it's time to stop: */
@@ -7630,6 +7638,11 @@ sane_reload_devices (void)
 		     linenumber);
 		force_a3 = SANE_TRUE;
 	      }
+	      else if (strcmp (word, "skip-adf") == 0) {
+		DBG (3, "sane_reload_devices: config file line %d: enabling skip-adf\n",
+		     linenumber);
+		skip_adf = SANE_TRUE;
+	      }
 	      else if (strcmp (word, "static-red-calib") == 0) {
 		DBG (3, "sane_reload_devices: config file line %d: static red calibration\n",
 		     linenumber);
@@ -8313,6 +8326,9 @@ sane_start (SANE_Handle handle)
   /* Make sure there is no scan running!!! */
   if (s->scanning)
     return SANE_STATUS_DEVICE_BUSY;
+
+  /* Clear cancellation status */
+  s->cancelled = 0;
  
   /* Make sure we have a current parameter set. Some of the
      parameters will be overwritten below, but that's OK. */
@@ -8364,6 +8380,14 @@ sane_start (SANE_Handle handle)
       DBG (1, "sane_start: set scan window command failed: %s\n",
 	   sane_strstatus (status));
       goto stop_scanner_and_return;
+    }
+    /* Re-check the light, as setting the window may have changed
+     * which light is to be turned on. */
+    if (s->prepared == SANE_FALSE && dev->inquiry_light_control) {
+      status = wait_4_light (s);
+      if (status != SANE_STATUS_GOOD) {
+	return status;
+      }
     }
   }
 

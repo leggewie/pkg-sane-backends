@@ -1,7 +1,7 @@
 /*
  * kodakaio.c - SANE library for Kodak ESP Aio scanners.
  *
- * Copyright (C)   2011-2015 Paul Newall
+ * Copyright (C)   2011-2017 Paul Newall
  *
  * Based on the Magicolor sane backend: 
  * Based on the epson2 sane backend:
@@ -19,6 +19,7 @@
  * 01/01/13 Now with adf, the scan can be padded to make up the full page length, 
  * or the page can terminate at the end of the paper. This is a selectable option.
  * 25/11/12 Using avahi now for net autodiscovery. Use configure option --enable-avahi
+ * 1/5/17 patched to use local pointer for avahi callback
  */
 
 /* 
@@ -31,13 +32,13 @@ convenient lines to paste
 export SANE_DEBUG_KODAKAIO=20
 
 for ubuntu prior to 12.10
-./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-avahi --disable-latex BACKENDS="kodakaio test"
+./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-avahi --without-api-spec BACKENDS="kodakaio test"
 
 for ubuntu 12.10
-./configure --prefix=/usr --libdir=/usr/lib/i386-linux-gnu --sysconfdir=/etc --localstatedir=/var --enable-avahi --disable-latex BACKENDS="kodakaio test"
+./configure --prefix=/usr --libdir=/usr/lib/i386-linux-gnu --sysconfdir=/etc --localstatedir=/var --enable-avahi --without-api-spec BACKENDS="kodakaio test"
 
-for ubuntu 14.10
-./configure --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu --sysconfdir=/etc --localstatedir=/var --enable-avahi --disable-latex BACKENDS="kodakaio test"
+for ubuntu 14.10 up to at least 17.04
+./configure --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu --sysconfdir=/etc --localstatedir=/var --enable-avahi --without-api-spec BACKENDS="kodakaio test"
 
 If you want to use the test backend, for example with sane-troubleshoot, you should enable it in /etc/sane.d/dll.conf
 
@@ -153,7 +154,7 @@ If you want to use the test backend, for example with sane-troubleshoot, you sho
 
 #define KODAKAIO_VERSION	02
 #define KODAKAIO_REVISION	7
-#define KODAKAIO_BUILD		2
+#define KODAKAIO_BUILD		3
 
 /* for usb (but also used for net though it's not required). */
 #define MAX_BLOCK_SIZE		32768
@@ -207,6 +208,7 @@ normal levels. This system is a plan rather than a reality
 #include <math.h>
 #include <poll.h>
 #include <time.h>
+#include <sys/socket.h>
 
 #if WITH_AVAHI
 /* used for auto detecting network printers  */
@@ -216,9 +218,6 @@ normal levels. This system is a plan rather than a reality
 #include <avahi-common/simple-watch.h>
 #include <avahi-common/malloc.h>
 #include <avahi-common/error.h>
-
-static AvahiSimplePoll *simple_poll = NULL; /* global because called by several functions */
-
 #endif
 
 #include "../include/sane/saneopts.h"
@@ -639,8 +638,10 @@ static SANE_Status attach_one_usb(SANE_String_Const devname);
 static SANE_Status attach_one_net(SANE_String_Const devname, unsigned int device);
 void kodakaio_com_str(unsigned char *buf, char *fmt_buf);
 int cmparray (unsigned char *array1, unsigned char *array2, size_t len);
+#if WITH_AVAHI
 static struct KodakaioCap *get_device_from_identification (const char *ident, const char *vid, const char *pid);
 void ProcessAvahiDevice(const char *device_id, const char *vid, const char *pid, const char *ip_addr);
+#endif
 
 
 /* Some utility functions */
@@ -731,7 +732,7 @@ That is probably if the scanner disconnected the network connection
 		if (read == 0)
 			*status = SANE_STATUS_IO_ERROR;
 
-		DBG(32, "net read %d bytes:%x,%x,%x,%x,%x,%x,%x,%x\n",read,buf[0],buf[1],buf[2],buf[3],buf[4],buf[5],buf[6],buf[7]);
+		DBG(32, "net read %lu bytes:%x,%x,%x,%x,%x,%x,%x,%x\n",(unsigned long)read,buf[0],buf[1],buf[2],buf[3],buf[4],buf[5],buf[6],buf[7]);
 
 		return read;
 	}
@@ -881,7 +882,7 @@ In NET mode the timeout is in kodakaio_net_read
 		time(&time_start);
 		DBG(min(16,DBG_READ), "[%ld]  %s: net req size = %ld  ", (long) time_start, __func__, (long) buf_size);
  		n = kodakaio_net_read(s, buf, buf_size, status);
-		DBG(min(16,DBG_READ), "returned %d\n", n);
+		DBG(min(16,DBG_READ), "returned %lu\n", (unsigned long)n);
 		if (*status != SANE_STATUS_GOOD) {
 			DBG(1, "%s: err returned from kodakaio_net_read, %s\n", __func__, sane_strstatus(*status));
 		}
@@ -1109,7 +1110,7 @@ cmd_start_scan (SANE_Handle handle, size_t expect_total)
 		return SANE_STATUS_IO_ERROR;
 	}
 
-	DBG(20, "starting the scan, expected total bytes %d\n",expect_total);
+	DBG(20, "starting the scan, expected total bytes %lu\n",(unsigned long)expect_total);
 	k_send(s, KodakEsp_Go, 8, &status);
 
 	if (status != SANE_STATUS_GOOD)
@@ -1365,25 +1366,25 @@ But it seems that the scanner takes care of that, and gives you the ack as a sep
 		/* only compare 4 bytes because we sometimes get escSS02.. or escSS00.. 
 		is 4 the right number ? */
 		if (cmparray(Last8,KodakEsp_Ack,4) == 0) {
-			DBG(min(10,DBG_READ), "%s: found KodakEsp_Ack at %d bytes of %d\n", __func__, bytecount, *len);
+			DBG(min(10,DBG_READ), "%s: found KodakEsp_Ack at %lu bytes of %lu\n", __func__, (unsigned long) bytecount, (unsigned long) *len);
 			s->ack = SANE_TRUE;
 			*len = bytecount - 8; /* discard the Ack response */
 			s->bytes_unread -= *len; /* return a short block */
 		}
 		else {
 		/* a not full buffer is returned usb does this */
-		DBG(min(10,DBG_READ), "%s: buffer not full, got %d bytes of %d\n", __func__, bytecount, *len);
+		DBG(min(10,DBG_READ), "%s: buffer not full, got %lu bytes of %lu\n", __func__, (unsigned long) bytecount, (unsigned long) *len);
 		*len = bytecount;
 		s->bytes_unread -= bytecount;
 		}
 	}
 	else {
-		DBG(min(1,DBG_READ), "%s: tiny read, got %d bytes of %d\n", __func__, (int) bytecount, *len);
+		DBG(min(1,DBG_READ), "%s: tiny read, got %lu bytes of %lu\n", __func__, (unsigned long) bytecount, (unsigned long) *len);
 		return SANE_STATUS_IO_ERROR;
 	}
-	if (*len > s->params.bytes_per_line) {
+	lines = *len / s->params.bytes_per_line;
+	if (lines > 1) {
 		/* store average colour as background. That's not the ideal method but it's easy to implement. What's it used for? */
-		lines = *len / s->params.bytes_per_line;
 		s->background[0] = 0;
 		s->background[1] = 0;
 		s->background[2] = 0;
@@ -1934,17 +1935,18 @@ you don't know how many blocks there will be in advance because their size may b
  *   SANE API implementation (high-level functions) 
 */
 
+#if WITH_AVAHI
 static struct KodakaioCap *
 get_device_from_identification (const char *ident, const char *vid, const char *pid)
 {
 	int n;
 	SANE_Word pidnum, vidnum;
 
-	if(sscanf(vid, "%x", &vidnum) == EOF) {
+	if(sscanf(vid, "%x", (unsigned int *)&vidnum) == EOF) {
     		DBG(5, "could not convert hex vid <%s>\n", vid);
     		return NULL;
 	}
-	if(sscanf(pid, "%x", &pidnum) == EOF) {
+	if(sscanf(pid, "%x", (unsigned int *)&pidnum) == EOF) {
     		DBG(5, "could not convert hex pid <%s>\n", pid);
     		return NULL;
 	}
@@ -1965,6 +1967,7 @@ get_device_from_identification (const char *ident, const char *vid, const char *
 	}
 	return NULL;
 }
+#endif /* WITH_AVAHI */
 
 /*
  * close_scanner()
@@ -2359,9 +2362,9 @@ static void browse_callback(
     const char *domain,
     AVAHI_GCC_UNUSED AvahiLookupResultFlags flags,
     void* userdata) {
+    AvahiSimplePoll *simple_poll = userdata;
 
-    AvahiClient *c = userdata;
-    assert(b);
+    AvahiClient *c = avahi_service_browser_get_client (b);
 
     /* Called whenever a new services becomes available on the LAN or is removed from the LAN */
     switch (event) {
@@ -2395,7 +2398,8 @@ static void browse_callback(
     }
 }
 
-static void client_callback(AvahiClient *c, AvahiClientState state, AVAHI_GCC_UNUSED void * userdata) {
+static void client_callback(AvahiClient *c, AvahiClientState state, void * userdata) {
+    AvahiSimplePoll *simple_poll = userdata;
     assert(c);
 
     /* Called whenever the client or server state changes */
@@ -2412,6 +2416,7 @@ kodak_network_discovery(const char*host)
 /* If host = NULL do autodiscovery. If host != NULL try to verify the model 
 First version only does autodiscovery */
 {
+    AvahiSimplePoll *simple_poll;
     AvahiClient *client = NULL;
     AvahiServiceBrowser *sb = NULL;
     int error;
@@ -2427,7 +2432,7 @@ First version only does autodiscovery */
     }
 
     /* Allocate a new client */
-    client = avahi_client_new(avahi_simple_poll_get(simple_poll), 0, client_callback, NULL, &error);
+    client = avahi_client_new(avahi_simple_poll_get(simple_poll), 0, client_callback, simple_poll, &error);
 
     /* Check wether creating the client object succeeded */
     if (!client) {
@@ -2436,14 +2441,15 @@ First version only does autodiscovery */
     }
 
     /* Create the service browser */
-    if (!(sb = avahi_service_browser_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, "_scanner._tcp", NULL, 0, browse_callback, client))) {
+    if (!(sb = avahi_service_browser_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, "_scanner._tcp", NULL, 0, browse_callback, simple_poll))) {
         DBG(min(1,DBG_AUTO), "Failed to create service browser: %s\n", avahi_strerror(avahi_client_errno(client)));
         goto fail;
     }
 
     /* Run the main loop */
 	for(i=1;i<K_SNMP_Timeout/POLL_ITN_MS;++i) {
-    		avahi_simple_poll_iterate(simple_poll,POLL_ITN_MS);
+    		if (avahi_simple_poll_iterate(simple_poll,POLL_ITN_MS) != 0)
+    			break;
 	}
     ret = 0;
 

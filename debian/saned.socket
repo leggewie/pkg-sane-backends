@@ -4,7 +4,7 @@ Description=saned incoming socket
 [Socket]
 ListenStream=6566
 Accept=yes
-MaxConnections=1
+MaxConnections=64
 
 [Install]
 WantedBy=sockets.target

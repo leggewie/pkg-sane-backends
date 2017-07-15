@@ -1,6 +1,6 @@
 /* SANE - Scanner Access Now Easy.
 
-   Copyright (C) 2011-2015 Rolf Bensch <rolf at bensch hyphen online dot de>
+   Copyright (C) 2011-2016 Rolf Bensch <rolf at bensch hyphen online dot de>
    Copyright (C) 2007-2008 Nicolas Martin, <nicols-guest at alioth dot debian dot org>
    Copyright (C) 2006-2007 Wittawat Yamwong <wittawat@web.de>
 
@@ -56,6 +56,8 @@
 #include "pixma_rename.h"
 #include "pixma_common.h"
 #include "pixma_io.h"
+
+#include "../include/sane/sanei_usb.h"
 
 
 #ifdef __GNUC__
@@ -649,15 +651,21 @@ pixma_cmd_transaction (pixma_t * s, const void *cmd, unsigned cmdlen,
      immediatly answer with PIXMA_STATUS_BUSY.
 
      Is 8 seconds timeout enough? This affects ALL commands that use
-     pixma_cmd_transaction(). */
-  tmo = 8;
+     pixma_cmd_transaction(). Default value set in pixma_open(). */
+  tmo = s->rec_tmo;
   do
     {
       error = pixma_read (s->io, data, expected_len);
       if (error == PIXMA_ETIMEDOUT)
       {
         PDBG (pixma_dbg (2, "No response yet. Timed out in %d sec.\n", tmo));
-        pixma_sleep (1000000);          /* 1s timeout */
+
+#ifndef HAVE_SANEI_USB_SET_TIMEOUT
+        /* 1s timeout
+           Only needed, if sanei_usb_set_timeout() isn't available.
+           pixma_read() has an internal timeout of 1 sec. */
+        pixma_sleep (1000000);
+#endif
       }
     }
   while (error == PIXMA_ETIMEDOUT && --tmo != 0);
@@ -761,6 +769,7 @@ pixma_open (unsigned devnr, pixma_t ** handle)
   first_pixma = s;
 
   s->cfg = cfg;
+  s->rec_tmo = 8;               /* set receive timeout to 8 seconds */
   error = pixma_connect (devnr, &s->io);
   if (error < 0)
     {
@@ -839,6 +848,7 @@ pixma_scan (pixma_t * s, pixma_scan_param_t * sp)
 	     sp->xdpi, sp->ydpi, sp->x, sp->y, sp->w, sp->h);
   pixma_dbg (3, "  gamma_table=%p source=%d\n", sp->gamma_table, sp->source);
   pixma_dbg (3, "  threshold=%d threshold_curve=%d\n", sp->threshold, sp->threshold_curve);
+  pixma_dbg (3, "  adf-wait=%d\n", sp->adf_wait);
   pixma_dbg (3, "  ADF page count: %d\n", sp->adf_pageid);
 #endif
 
