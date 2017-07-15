@@ -113,7 +113,7 @@ override_dh_installudev-arch:
 ifeq (linux,$(DEB_HOST_ARCH_OS))
 	# udev support
 	# Generate the udev rules file
-	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m udev+acl > $(CURDIR)/debian/libsane.udev
+	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m udev+acl > $(CURDIR)/debian/libsane1.udev
 	dh_installudev
 endif
 
@@ -127,7 +127,6 @@ override_dh_installinit-arch:
 
 override_dh_systemd_enable-arch:
 	dh_systemd_enable --no-enable saned.socket
-	cp 111.111 222.222
 
 override_dh_makeshlibs-arch:
 	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane1 -plibsane1
