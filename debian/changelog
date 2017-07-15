@@ -5,6 +5,8 @@ sane-backends (1.0.27-1~experimental2) UNRELEASED; urgency=medium
       60-libsane1.rules (Closes: #868312).
   * Replace libsane.udev with libsane1.udev at TROUBLESHOOTING.Debian
     and libsane1.README.Debian.
+  * debian/control:
+    + Add Breaks and Replaces to the package libsane1 (Closes: #868308).
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 15 Jul 2017 11:31:34 +0200
 
