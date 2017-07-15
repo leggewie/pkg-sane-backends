@@ -88,7 +88,7 @@ Depends:
  udev [linux-any] | makedev [linux-any],
  ${misc:Depends},
  ${shlibs:Depends}
-Recommends: libsane-extras, sane-utils (>= ${binary:Version})
+Recommends: sane-utils (>= ${binary:Version})
 Suggests: avahi-daemon, hplip
 Description: API library for scanners
  SANE stands for "Scanner Access Now Easy" and is an application
