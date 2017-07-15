@@ -1,400 +1,49 @@
 Description: Correct source typos
 Author: Jörg Frings-Fürst <debian@jff-webhosting.net>
-Last-Update: 2016-10-14
+Last-Update: 2017-06-20
 ----
 This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
-Index: trunk/backend/hp-scl.c
-===================================================================
---- trunk.orig/backend/hp-scl.c
-+++ trunk/backend/hp-scl.c
-@@ -2083,7 +2083,7 @@ hp_scl_strerror (int errnum)
-       case 1024: return "ADF Paper Jam";
-       case 1025: return "Home Position Missing";
-       case 1026: return "Paper Not Loaded";
--      default: return "??Unkown Error??";
-+      default: return "??Unknown Error??";
-       }
- }
- 
-Index: trunk/backend/coolscan.c
-===================================================================
---- trunk.orig/backend/coolscan.c
-+++ trunk/backend/coolscan.c
-@@ -238,7 +238,7 @@ request_sense_parse (unsigned char *sens
- 
-     case 0x6:
-       if ((0x29 == asc) && (0x0 == ascq))
--	DBG (1, "\t%d/%d/%d: Power On, Reset, or Bus Device Reset Occured\n", sense, asc, ascq);
-+	DBG (1, "\t%d/%d/%d: Power On, Reset, or Bus Device Reset Occurred\n", sense, asc, ascq);
-       else if ((0x2a == asc) && (0x1 == ascq))
- 	DBG (1, "\t%d/%d/%d: Mode Parameters Changed\n", sense, asc, ascq);
-       else
-Index: trunk/backend/as6e.c
-===================================================================
---- trunk.orig/backend/as6e.c
-+++ trunk/backend/as6e.c
-@@ -577,7 +577,7 @@ as6e_open (AS6E_Scan * s)
- 		    outpipe_desc, datapipe_desc, (char *) 0);
- 	  DBG (1, "The SANE backend was unable to start \"as6edriver\".\n");
- 	  DBG (1, "This must be installed in a driectory in your PATH.\n");
--	  DBG (1, "To aquire the as6edriver program,\n");
-+	  DBG (1, "To acquire the as6edriver program,\n");
- 	  DBG (1, "go to http://as6edriver.sourceforge.net.\n");
- 	  write (ctlinpipe[WRITEPIPE], &exec_result, sizeof (exec_result));
- 	  exit (-1);
-Index: trunk/backend/fujitsu.c
-===================================================================
---- trunk.orig/backend/fujitsu.c
-+++ trunk/backend/fujitsu.c
-@@ -1720,7 +1720,7 @@ init_vpd (struct fujitsu *s)
-               DBG (15, "  sync next feed: %d\n", get_IN_sync_next_feed(in));
- 
-               s->has_op_halt = get_IN_op_halt(in);
--              DBG (15, "  object postion halt: %d\n", s->has_op_halt);
-+              DBG (15, "  object position halt: %d\n", s->has_op_halt);
-           }
- 
-           ret = SANE_STATUS_GOOD;
-Index: trunk/backend/genesys_gl646.c
-===================================================================
---- trunk.orig/backend/genesys_gl646.c
-+++ trunk/backend/genesys_gl646.c
-@@ -1999,7 +1999,7 @@ gl646_set_fe (Genesys_Device * dev, uint
-   /* Wolfson type frontend */
-   if ((dev->reg[reg_0x04].value & REG04_FESET) != 0x03)
-     {
--      DBG (DBG_proc, "gl646_set_fe(): unspported frontend type %d\n",
-+      DBG (DBG_proc, "gl646_set_fe(): unsupported frontend type %d\n",
- 	   dev->reg[reg_0x04].value & REG04_FESET);
-       return SANE_STATUS_UNSUPPORTED;
-     }
-Index: trunk/backend/hs2p-scsi.c
-===================================================================
---- trunk.orig/backend/hs2p-scsi.c
-+++ trunk/backend/hs2p-scsi.c
-@@ -373,7 +373,7 @@ print_sense_data (int dbg_level, SENSE_D
-        (data->sense_key & 0x0F));
-   DBG (dbg_level, "Information Byte = %lu\n", _4btol (data->information));
-   DBG (dbg_level, "Additional Sense Length = %d\n", data->sense_length);
--  DBG (dbg_level, "Command Specific Infomation = %lu\n",
-+  DBG (dbg_level, "Command Specific Information = %lu\n",
-        _4btol (data->command_specific_information));
-   DBG (dbg_level, "Additional Sense Code = %#x\n", data->sense_code);
-   DBG (dbg_level, "Additional Sense Code Qualifier = %#x\n",
-Index: trunk/backend/microtek2.c
-===================================================================
---- trunk.orig/backend/microtek2.c
-+++ trunk/backend/microtek2.c
-@@ -5152,7 +5152,7 @@ scsi_sense_handler (int fd, u_char *sens
-           else if ( asc == 0x3d  && ascq == 0x00)
-               DBG(5, "scsi_sense_handler: Invalid bit in IDENTIFY\n");
-           else if ( asc == 0x2c && ascq == 0x02 )
--/* Ok */      DBG(5, "scsi_sense_handler: Invalid comb. of windows specfied\n");
-+/* Ok */      DBG(5, "scsi_sense_handler: Invalid comb. of windows specified\n");
-           else if ( asc == 0x20 && ascq == 0x00 )
- /* Ok */      DBG(5, "scsi_sense_handler: Invalid command opcode\n");
-           else if ( asc == 0x24 && ascq == 0x00 )
-Index: trunk/sanei/sanei_pa4s2.c
-===================================================================
---- trunk.orig/sanei/sanei_pa4s2.c
-+++ trunk/sanei/sanei_pa4s2.c
-@@ -309,7 +309,7 @@ pa4s2_init (SANE_Status *status)
- 
-   if (first_time == SANE_FALSE)
-     {
--      DBG (5, "pa4s2_init: sanei already initalized\n");
-+      DBG (5, "pa4s2_init: sanei already initialized\n");
-       status = SANE_STATUS_GOOD;
-       return 0;
-     }
-Index: trunk/sanei/sanei_pp.c
-===================================================================
---- trunk.orig/sanei/sanei_pp.c
-+++ trunk/sanei/sanei_pp.c
-@@ -697,7 +697,7 @@ pp_init( void )
- #endif
- 
- 	if( first_time == SANE_FALSE ) {
--		DBG( 5, "pp_init: already initalized\n" );
-+		DBG( 5, "pp_init: already initialized\n" );
- 		return SANE_STATUS_GOOD;
-     }
- 
-Index: trunk/backend/mustek_usb2_asic.c
-===================================================================
---- trunk.orig/backend/mustek_usb2_asic.c
-+++ trunk/backend/mustek_usb2_asic.c
-@@ -4318,7 +4318,7 @@ Asic_SetSource (PAsic chip, LIGHTSOURCE
-       DBG (DBG_ASIC, "Asic_SetSource: Source is Reflect\n");
-       break;
-     case 2:
--      DBG (DBG_ASIC, "Asic_SetSource: Source is Postion\n");
-+      DBG (DBG_ASIC, "Asic_SetSource: Source is Position\n");
-       break;
-     case 4:
-       DBG (DBG_ASIC, "Asic_SetSource: Source is Negtive\n");
-Index: trunk/backend/rts8891.c
-===================================================================
---- trunk.orig/backend/rts8891.c
-+++ trunk/backend/rts8891.c
-@@ -7702,7 +7702,7 @@ park_head (struct Rts8891_Device *dev, S
-   sanei_rts88xx_read_reg (dev->devnum, CONTROLER_REG, &reg);
-   if (reg != 0x20)
-     {
--      DBG (DBG_warn, "park_head: unexpected controler value 0x%02x\n", reg);
-+      DBG (DBG_warn, "park_head: unexpected controller value 0x%02x\n", reg);
-     }
- 
-   /* head parking */
-Index: trunk/backend/rts88xx_lib.c
-===================================================================
---- trunk.orig/backend/rts88xx_lib.c
-+++ trunk/backend/rts88xx_lib.c
-@@ -686,7 +686,7 @@ sanei_rts88xx_setup_nvram (SANE_Int devn
-   if (status != SANE_STATUS_GOOD)
-     {
-       DBG (DBG_error,
--           "sanei_rts88xx_setup_nvram : controler register write failed\n");
-+           "sanei_rts88xx_setup_nvram : controller register write failed\n");
-       return status;
-     }
-   reg = 1;
-@@ -694,7 +694,7 @@ sanei_rts88xx_setup_nvram (SANE_Int devn
-   if (status != SANE_STATUS_GOOD)
-     {
-       DBG (DBG_error,
--           "sanei_rts88xx_setup_nvram : controler register write failed\n");
-+           "sanei_rts88xx_setup_nvram : controller register write failed\n");
-       return status;
-     }
-   return status;
-Index: trunk/backend/sharp.c
-===================================================================
---- trunk.orig/backend/sharp.c
-+++ trunk/backend/sharp.c
-@@ -370,7 +370,7 @@ sense_handler(int __sane_unused__ fd, u_
-                 DBG(10, "error: invalid field in parameter list\n");
-                 return SANE_STATUS_IO_ERROR;
-               case 0x29:
--                DBG(10, "note: reset occured\n");
-+                DBG(10, "note: reset occurred\n");
-                 return SANE_STATUS_GOOD;
-               case 0x2a:
-                 DBG(10, "note: mode parameter change\n");
-@@ -495,7 +495,7 @@ sense_handler(int __sane_unused__ fd, u_
-                 switch (add_sense_code)
-                   {
-                     case 0x29:
--                      DBG(5, "unit attention: reset occured\n");
-+                      DBG(5, "unit attention: reset occurred\n");
-                       return SANE_STATUS_GOOD;
-                     case 0x2a:
-                       DBG(5, "unit attention: parameter changed by "
-Index: trunk/backend/gphoto2.c
-===================================================================
---- trunk.orig/backend/gphoto2.c
-+++ trunk/backend/gphoto2.c
-@@ -1738,13 +1738,13 @@ read_dir (SANE_String dir, SANE_Bool rea
-     {
-       if (gp_list_free (dir_list) < 0)
- 	{
--	  DBG (0, "%s: errror: gp_list_free failed\n", f);
-+	  DBG (0, "%s: error: gp_list_free failed\n", f);
- 	}
-       dir_list = NULL;
-     }
-   if (gp_list_new (&dir_list) < 0)
-     {
--      DBG (0, "%s: errror: gp_list_new failed\n", f);
-+      DBG (0, "%s: error: gp_list_new failed\n", f);
-     }
- 
-   if (read_files)
-Index: trunk/backend/gt68xx.c
-===================================================================
---- trunk.orig/backend/gt68xx.c
-+++ trunk/backend/gt68xx.c
-@@ -2346,7 +2346,7 @@ sane_cancel (SANE_Handle handle)
-   else
-     {
-       DBG (4, "sane_cancel: scan has not been initiated yet, "
--           "or it is allready aborted\n");
-+           "or it is already aborted\n");
-     }
- 
-   DBG (5, "sane_cancel: exit\n");
-Index: trunk/backend/mustek.c
-===================================================================
---- trunk.orig/backend/mustek.c
-+++ trunk/backend/mustek.c
-@@ -1669,7 +1669,7 @@ attach (SANE_String_Const devname, Muste
-       DBG (0,
- 	   "WARNING: Your scanner was detected by the SANE Mustek backend, "
- 	   "but\n  it is not fully tested. It may or may not work. Be "
--	   "carefull and read\n  the PROBLEMS file in the sane directory. "
-+	   "careful and read\n  the PROBLEMS file in the sane directory. "
- 	   "Please set the debug level of this\n  backend to maximum "
- 	   "(export SANE_DEBUG_MUSTEK=255) and send the output of\n  "
- 	   "scanimage -L to the SANE mailing list sane-devel@lists.alioth.debian.org. "
-Index: trunk/backend/mustek_usb.c
-===================================================================
---- trunk.orig/backend/mustek_usb.c
-+++ trunk/backend/mustek_usb.c
-@@ -1572,7 +1572,7 @@ sane_cancel (SANE_Handle handle)
-   else
-     {
-       DBG (4, "sane_cancel: scan has not been initiated yet, "
--	   "or it is allready aborted\n");
-+	   "or it is already aborted\n");
-     }
-   DBG (5, "sane_cancel: exit\n");
-   return;
-Index: trunk/backend/umax.c
-===================================================================
---- trunk.orig/backend/umax.c
-+++ trunk/backend/umax.c
-@@ -399,7 +399,7 @@ static void umax_print_inquiry(Umax_Devi
-   DBG_inq_nz(" - relative address\n", get_inquiry_scsi_reladr(inquiry_block));
-   DBG_inq_nz(" - wide bus 32 bit\n",  get_inquiry_scsi_wbus32(inquiry_block));
-   DBG_inq_nz(" - wide bus 16 bit\n",  get_inquiry_scsi_wbus16(inquiry_block));
--  DBG_inq_nz(" - syncronous neg.\n",  get_inquiry_scsi_sync(inquiry_block));
-+  DBG_inq_nz(" - synchronous neg.\n", get_inquiry_scsi_sync(inquiry_block));
-   DBG_inq_nz(" - linked commands\n",  get_inquiry_scsi_linked(inquiry_block));
-   DBG_inq_nz(" - (reserved)\n",       get_inquiry_scsi_R(inquiry_block));
-   DBG_inq_nz(" - command queueing\n", get_inquiry_scsi_cmdqueue(inquiry_block));
-@@ -526,7 +526,7 @@ static void umax_print_inquiry(Umax_Devi
-   DBG_inq_nz(" + ADF: no paper\n",			get_inquiry_ADF_no_paper(inquiry_block));
-   DBG_inq_nz(" + ADF: cover open\n",			get_inquiry_ADF_cover_open(inquiry_block));
-   DBG_inq_nz(" + ADF: paper jam\n",			get_inquiry_ADF_paper_jam(inquiry_block));
--  DBG_inq_nz(" - unknwon flag; 0x63 bit 3\n",		get_inquiry_0x63_bit3(inquiry_block));
-+  DBG_inq_nz(" - unknown flag; 0x63 bit 3\n",		get_inquiry_0x63_bit3(inquiry_block));
-   DBG_inq_nz(" - unknown lfag: 0x63 bit 4\n",		get_inquiry_0x63_bit4(inquiry_block));
-   DBG_inq_nz(" - lens calib in doc pos\n",		get_inquiry_lens_cal_in_doc_pos(inquiry_block));
-   DBG_inq_nz(" - manual focus\n",			get_inquiry_manual_focus(inquiry_block));
-@@ -7624,7 +7624,7 @@ SANE_Status sane_start(SANE_Handle handl
-     /* of the x-origin defined by the scanner`s inquiry */
-     if (scanner->device->dor != 0) /* dor mode active */
-     {
--      DBG(DBG_info,"substracting DOR x-origin-offset from upper left x\n");
-+      DBG(DBG_info,"subtracting DOR x-origin-offset from upper left x\n");
-       scanner->device->upper_left_x -= scanner->device->inquiry_dor_x_off * scanner->device->x_coordinate_base; /* correct DOR x-origin */
- 
-       if (scanner->device->upper_left_x < 0) /* rounding errors may create a negative value */
-Index: trunk/backend/umax_pp.c
-===================================================================
---- trunk.orig/backend/umax_pp.c
-+++ trunk/backend/umax_pp.c
-@@ -388,7 +388,7 @@ umax_pp_try_ports (SANEI_Config * config
-                      ports[i]);
-               else
-                 DBG (3,
--                     "umax_pp_try_ports: attach to port `%s' successfull\n",
-+                     "umax_pp_try_ports: attach to port `%s' successful\n",
-                      ports[i]);
-             }
-           free (ports[i]);
-Index: trunk/backend/umax_pp_low.c
-===================================================================
---- trunk.orig/backend/umax_pp_low.c
-+++ trunk/backend/umax_pp_low.c
-@@ -862,7 +862,7 @@ sanei_parport_find_device (void)
-   i = 0;
-   while (devices[i] != NULL)
-     {
--      DBG (16, "Controling %s: ", devices[i]);
-+      DBG (16, "Controlling %s: ", devices[i]);
-       file = open (devices[i], O_RDWR);
-       if (file < 0)
- 	{
-@@ -1095,7 +1095,7 @@ sanei_umax_pp_initPort (int port, char *
- 		  if (rc)
- 		    {
- 		      DBG (16,
--			   "umax_pp: ppdev couldn't negociate mode IEEE1284_MODE_EPP for '%s' (ignored)\n",
-+			   "umax_pp: ppdev couldn't negotiate mode IEEE1284_MODE_EPP for '%s' (ignored)\n",
- 			   name);
- 		    }
- 		  if (ioctl (fd, PPSETMODE, &mode))
-@@ -1121,7 +1121,7 @@ sanei_umax_pp_initPort (int port, char *
- 		  if (rc)
- 		    {
- 		      DBG (16,
--			   "umax_pp: ppdev couldn't negociate mode IEEE1284_MODE_ECP for '%s' (ignored)\n",
-+			   "umax_pp: ppdev couldn't negotiate mode IEEE1284_MODE_ECP for '%s' (ignored)\n",
- 			   name);
- 		    }
- 		  if (ioctl (fd, PPSETMODE, &mode))
-Index: trunk/backend/apple.c
-===================================================================
---- trunk.orig/backend/apple.c
-+++ trunk/backend/apple.c
-@@ -2634,7 +2634,7 @@ sane_cancel (SANE_Handle handle)
-       if (s->AbortedByUser)
- 	{
- 	  DBG (FLOW_CONTROL,
--	       "sane_cancel: Allready Aborted. Please Wait...\n");
-+	       "sane_cancel: Already Aborted. Please Wait...\n");
- 	}
-       else
- 	{
-@@ -2648,7 +2648,7 @@ sane_cancel (SANE_Handle handle)
-       if (s->AbortedByUser)
- 	{
- 	  DBG (FLOW_CONTROL, "sane_cancel: Scan has not been Initiated yet, "
--	       "or it is allready aborted.\n");
-+	       "or it is already aborted.\n");
- 	  s->AbortedByUser = SANE_FALSE;
- 	  sanei_scsi_cmd (s->fd, test_unit_ready,
- 				sizeof (test_unit_ready), 0, 0);
 Index: trunk/backend/pixma_bjnp.c
 ===================================================================
 --- trunk.orig/backend/pixma_bjnp.c
 +++ trunk/backend/pixma_bjnp.c
-@@ -1666,7 +1666,7 @@ bjnp_allocate_device (SANE_String_Const
-     {
-       PDBG (bjnp_dbg
- 	    (LOG_CRIT,
--	     "bjnp_allocate_device: ERROR - URI may not contain userid, password or aguments: %s\n",
-+	     "bjnp_allocate_device: ERROR - URI may not contain userid, password or arguments: %s\n",
- 	     devname));
+@@ -1829,7 +1829,7 @@ static void add_scanner(SANE_Int *dev_no
  
-       return BJNP_STATUS_INVAL;
-Index: trunk/backend/bh.h
+            attach_bjnp (uri, makemodel,
+                         serial, pixma_devices);
+-           PDBG (bjnp_dbg (LOG_NOTICE, "add_scanner: New scanner added: %s, serial %s, mac addres: %s.\n",
++           PDBG (bjnp_dbg (LOG_NOTICE, "add_scanner: New scanner added: %s, serial %s, mac address: %s.\n",
+ 	                 uri, serial, device[*dev_no].mac_address));
+           }
+         break;
+Index: trunk/doc/sane-pixma.man
 ===================================================================
---- trunk.orig/backend/bh.h
-+++ trunk/backend/bh.h
-@@ -652,7 +652,7 @@ _4btol(SANE_Byte *bytes)
- 
- #define SANE_NAME_BARCODE_HMIN "barcode-hmin"
- #define SANE_TITLE_BARCODE_HMIN "Barcode Minimum Height"
--#define SANE_DESC_BARCODE_HMIN "Sets the Barcode Minimun Height (larger values increase recognition speed)"
-+#define SANE_DESC_BARCODE_HMIN "Sets the Barcode Minimum Height (larger values increase recognition speed)"
- 
- #define SANE_NAME_BARCODE_SEARCH_MODE "barcode-search-mode"
- #define SANE_TITLE_BARCODE_SEARCH_MODE "Barcode Search Mode"
-Index: trunk/backend/hs2p-saneopts.h
-===================================================================
---- trunk.orig/backend/hs2p-saneopts.h
-+++ trunk/backend/hs2p-saneopts.h
-@@ -110,7 +110,7 @@
- 
- #define SANE_NAME_BARCODE_HMIN "barcode-hmin"
- #define SANE_TITLE_BARCODE_HMIN "Barcode Minimum Height"
--#define SANE_DESC_BARCODE_HMIN "Sets the Barcode Minimun Height (larger values increase recognition speed)"
-+#define SANE_DESC_BARCODE_HMIN "Sets the Barcode Minimum Height (larger values increase recognition speed)"
- 
- #define SANE_NAME_BARCODE_SEARCH_MODE "barcode-search-mode"
- #define SANE_TITLE_BARCODE_SEARCH_MODE "Barcode Search Mode"
-Index: trunk/tools/sane-find-scanner.c
-===================================================================
---- trunk.orig/tools/sane-find-scanner.c
-+++ trunk/tools/sane-find-scanner.c
-@@ -2074,7 +2074,7 @@ main (int argc, char **argv)
-       if (!check_mustek_pp_device() && verbose > 0)
-         printf ("\n  # No Mustek parallel port scanners found. If you expected"
-                 " something\n  # different, make sure the scanner is correctly"
--	        " connected to your computer\n  # and you have apropriate"
-+	        " connected to your computer\n  # and you have appropriate"
- 	        " access rights.\n");
-     }
-   else if (verbose > 0)
+--- trunk.orig/doc/sane-pixma.man
++++ trunk/doc/sane-pixma.man
+@@ -232,7 +232,7 @@ interfaces (i.e. it does not support the
+ to add your scanner here as well.
+ .RS
+ .PP
+-.I Scanners shall be listed in the configuraton file as follows:
++.I Scanners shall be listed in the configuration file as follows:
+ .PP
+ .RS
+ .I <method>://<host>[:port][/timeout=<value>]
+@@ -253,7 +253,7 @@ bjnp-timeout parameter. The value is in
+ .PP
+ Define scanners each on a new line.
+ .PP
+-More globally applicable tinmeouts can be set using the bjnp-timeout parameter as folllows:
++More globally applicable tinmeouts can be set using the bjnp-timeout parameter as follows:
+ .PP
+ .RS
+ .I bjnp-timeout=<value>
+@@ -263,7 +263,7 @@ A timeout defined using bjnp-timeout wil
+ in the file. If required the bjnp-timeout setting 
+ can be defined multiple times, where each settng will apply only to the scanners that
+ follow the setting. The last setting is used for the auto discovered scanners.
+-If not explicitely set,  the default 1000ms setting will apply. 
++If not explicitly set,  the default 1000ms setting will apply.
+ .PP
+ Setting timeouts should only be required in exceptional cases.
+ .PP

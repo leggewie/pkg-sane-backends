@@ -33,7 +33,8 @@ endif
 
 override_dh_auto_configure:
 	autoconf
-	./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) \
+	dh_auto_configure -- --host=$(DEB_HOST_GNU_TYPE) \
+		--build=$(DEB_BUILD_GNU_TYPE) \
 		--prefix=/usr \
 		--libdir=\$${prefix}/lib/$(DEB_HOST_MULTIARCH) \
 		--sysconfdir=/etc \
@@ -46,8 +47,9 @@ override_dh_auto_configure:
 		--enable-pthread \
 		--with-gphoto2 \
 		--enable-translations \
-		--enable-libusb_1_0 \
+		--enable-avahi \
 		--enable-pnm-backend \
+		--with-usb \
 		--without-v4l
 
 override_dh_auto_build-indep:
@@ -91,28 +93,21 @@ override_dh_install-arch:
 
 override_dh_installdocs-arch:
 	dh_installdocs
-	sed -i /DVIPSSource/d debian/tmp/usr/share/doc/libsane/sane.ps
 	# move files that belong to libsane-dev
-	mv debian/tmp/usr/share/doc/libsane/sane.ps debian/libsane-dev/usr/share/doc/libsane-dev/
-	mv debian/tmp/usr/share/doc/libsane/backend-writing.txt debian/libsane-dev/usr/share/doc/libsane-dev/
+	mv debian/tmp/usr/share/doc/sane-backends/backend-writing.txt debian/libsane-dev/usr/share/doc/libsane-dev/
 
 override_dh_installdocs-indep:
 	dh_installdocs
-	# Platform-specific documentation
-	# move the html files into html/
-	install -d debian/libsane-common/usr/share/doc/libsane/html
-	mv debian/tmp/usr/share/doc/libsane/*.html debian/libsane-common/usr/share/doc/libsane/html/
 	# create the /etc/sane.d/dll.d directory in libsane-common
 	install -d debian/libsane-common/etc/sane.d/dll.d
+	# Platform-specific documentation
 	$(RM) debian/libsane-common/etc/sane.d/saned.conf
 ifeq (kfreebsd,$(DEB_HOST_ARCH_OS))
-	cp README.freebsd debian/libsane-common/usr/share/doc/libsane/
+	cp README.freebsd debian/libsane-common/usr/share/doc/libsane-common/
 endif
 ifeq (linux,$(DEB_HOST_ARCH_OS))
-	cp README.linux debian/libsane-common/usr/share/doc/libsane/
+	cp README.linux debian/libsane-common/usr/share/doc/libsane-common/
 endif
-	$(RM) $(CURDIR)/debian/libsane-common/usr/share/doc/libsane/*.html
-	$(RM) $(CURDIR)/debian/tmp/usr/share/doc/libsane/*.html
 
 override_dh_installudev-arch:
 ifeq (linux,$(DEB_HOST_ARCH_OS))
@@ -128,15 +123,13 @@ endif
 	chrpath -d debian/sane-utils/usr/bin/sane-find-scanner
 
 override_dh_installinit-arch:
-	dh_installinit -psane-utils --name=saned --error-handler=saned_eh
+	dh_installinit -psane-utils --name=saned
 
 override_dh_systemd_enable-arch:
 	dh_systemd_enable --no-enable saned.socket
-
-override_dh_strip-arch:
-	dh_strip --dbg-package=libsane-dbg
+	cp 111.111 222.222
 
 override_dh_makeshlibs-arch:
-	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane -plibsane
+	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane1 -plibsane1
 	# Empty dependency_libs in all .la files
 	find debian -name "*.la" -type f -exec sed -i "/dependency_libs/ s/'.*'/''/" -i {} \;

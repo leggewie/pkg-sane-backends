@@ -810,7 +810,7 @@ change_res (SANE_Int fd, SANE_Byte res)
 }
 
 SANE_Status
-sane_init (SANE_Int * version_code, SANE_Auth_Callback UNUSEDARG authorize)
+sane_init (SANE_Int * version_code, SANE_Auth_Callback __sane_unused__ authorize)
 {
 
   SANE_Char f[] = "sane_init";
@@ -962,7 +962,7 @@ static const SANE_Device *devlist[] = {
 
 SANE_Status
 sane_get_devices (const SANE_Device *** device_list, SANE_Bool
-		  UNUSEDARG local_only)
+		  __sane_unused__ local_only)
 {
 
   DBG (127, "sane_get_devices called\n");
@@ -1290,7 +1290,7 @@ my_source_mgr;
 typedef my_source_mgr *my_src_ptr;
 
 METHODDEF (void)
-jpeg_init_source (j_decompress_ptr UNUSEDARG cinfo)
+jpeg_init_source (j_decompress_ptr __sane_unused__ cinfo)
 {
   /* nothing to do */
 }
@@ -1336,7 +1336,7 @@ static SANE_Int linebuffer_index = 0;
 
 
 METHODDEF (void)
-jpeg_term_source (j_decompress_ptr UNUSEDARG cinfo)
+jpeg_term_source (j_decompress_ptr __sane_unused__ cinfo)
 {
   /* no work necessary here */
 }
@@ -1417,7 +1417,7 @@ sane_start (SANE_Handle handle)
     my_src_ptr src;
 
     struct jpeg_error_mgr jerr;
-    SANE_Int row_stride, n;
+    SANE_Int n;
     SANE_Char f[] = "sane_start";
     SANE_Char path[256];
     struct cam_dirlist *e;
@@ -1476,7 +1476,6 @@ sane_start (SANE_Handle handle)
     (void) jpeg_read_header (&cinfo, TRUE);
     dest_mgr = sanei_jpeg_jinit_write_ppm (&cinfo);
     (void) jpeg_start_decompress (&cinfo);
-    row_stride = cinfo.output_width * cinfo.output_components;
 
     linebuffer_size = 0;
     linebuffer_index = 0;
@@ -1488,7 +1487,7 @@ sane_start (SANE_Handle handle)
 }
 
 SANE_Status
-sane_read (SANE_Handle UNUSEDARG handle, SANE_Byte * data,
+sane_read (SANE_Handle __sane_unused__ handle, SANE_Byte * data,
 	   SANE_Int max_length, SANE_Int * length)
 {
   SANE_Int lines = 0;
@@ -1582,7 +1581,7 @@ sane_read (SANE_Handle UNUSEDARG handle, SANE_Byte * data,
 }
 
 void
-sane_cancel (SANE_Handle UNUSEDARG handle)
+sane_cancel (SANE_Handle __sane_unused__ handle)
 {
   unsigned char cancel_byte[] = { 0xe4 };
 
@@ -1621,8 +1620,8 @@ sane_cancel (SANE_Handle UNUSEDARG handle)
 }
 
 SANE_Status
-sane_set_io_mode (SANE_Handle UNUSEDARG handle, SANE_Bool
-		  UNUSEDARG non_blocking)
+sane_set_io_mode (SANE_Handle __sane_unused__ handle, SANE_Bool
+		  __sane_unused__ non_blocking)
 {
   /* sane_set_io_mode() is only valid during a scan */
   if (Camera.scanning)
@@ -1644,7 +1643,7 @@ sane_set_io_mode (SANE_Handle UNUSEDARG handle, SANE_Bool
 }
 
 SANE_Status
-sane_get_select_fd (SANE_Handle UNUSEDARG handle, SANE_Int * UNUSEDARG fd)
+sane_get_select_fd (SANE_Handle __sane_unused__ handle, SANE_Int __sane_unused__ * fd)
 {
   return SANE_STATUS_UNSUPPORTED;
 }

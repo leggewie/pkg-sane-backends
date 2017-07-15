@@ -12,8 +12,8 @@
  */
 
 #define EPSONDS_VERSION		1
-#define EPSONDS_REVISION	0
-#define EPSONDS_BUILD		35
+#define EPSONDS_REVISION	1
+#define EPSONDS_BUILD		0
 
 /* debugging levels:
  *
@@ -41,9 +41,12 @@
 #include "sane/config.h"
 
 #include <ctype.h>
+#include <unistd.h>
 
 #include "sane/saneopts.h"
 #include "sane/sanei_config.h"
+#include "sane/sanei_tcp.h"
+#include "sane/sanei_udp.h"
 
 #include "epsonds.h"
 #include "epsonds-usb.h"
@@ -51,6 +54,8 @@
 #include "epsonds-cmd.h"
 #include "epsonds-ops.h"
 #include "epsonds-jpeg.h"
+#include "epsonds-net.h"
+
 
 /*
  * Definition of the mode_param struct, that is used to
@@ -115,6 +120,7 @@ max_string_size(const SANE_String_Const strings[])
 }
 
 static SANE_Status attach_one_usb(SANE_String_Const devname);
+static SANE_Status attach_one_net(SANE_String_Const devname);
 
 static void
 print_params(const SANE_Parameters params)
@@ -140,7 +146,10 @@ close_scanner(epsonds_scanner *s)
 		esci2_fin(s);
 	}
 
-	if (s->hw->connection == SANE_EPSONDS_USB) {
+	if (s->hw->connection == SANE_EPSONDS_NET) {
+		epsonds_net_unlock(s);
+		sanei_tcp_close(s->fd);
+	} else if (s->hw->connection == SANE_EPSONDS_USB) {
 		sanei_usb_close(s->fd);
 	}
 
@@ -154,6 +163,49 @@ free:
 	DBG(7, "%s: ZZZ\n", __func__);
 }
 
+static void
+e2_network_discovery(void)
+{
+	fd_set rfds;
+	int fd, len;
+	SANE_Status status;
+
+	char *ip, *query = "EPSONP\x00\xff\x00\x00\x00\x00\x00\x00\x00";
+	unsigned char buf[76];
+
+	struct timeval to;
+
+	status = sanei_udp_open_broadcast(&fd);
+	if (status != SANE_STATUS_GOOD)
+		return;
+
+	sanei_udp_write_broadcast(fd, 3289, (unsigned char *) query, 15);
+
+	DBG(5, "%s, sent discovery packet\n", __func__);
+
+	to.tv_sec = 1;
+	to.tv_usec = 0;
+
+	FD_ZERO(&rfds);
+	FD_SET(fd, &rfds);
+
+	sanei_udp_set_nonblock(fd, SANE_TRUE);
+	while (select(fd + 1, &rfds, NULL, NULL, &to) > 0) {
+		if ((len = sanei_udp_recvfrom(fd, buf, 76, &ip)) == 76) {
+			DBG(5, " response from %s\n", ip);
+
+			/* minimal check, protocol unknown */
+			if (strncmp((char *) buf, "EPSON", 5) == 0)
+				attach_one_net(ip);
+		}
+	}
+
+	DBG(5, "%s, end\n", __func__);
+
+	sanei_udp_close(fd);
+}
+
+
 static SANE_Status
 open_scanner(epsonds_scanner *s)
 {
@@ -166,10 +218,59 @@ open_scanner(epsonds_scanner *s)
 		return SANE_STATUS_GOOD;	/* no need to open the scanner */
 	}
 
-	if (s->hw->connection == SANE_EPSONDS_USB) {
+	if (s->hw->connection == SANE_EPSONDS_NET) {
+		unsigned char buf[5];
+
+		/* device name has the form net:ipaddr */
+		status = sanei_tcp_open(&s->hw->sane.name[4], 1865, &s->fd);
+		if (status == SANE_STATUS_GOOD) {
+
+			ssize_t read;
+			struct timeval tv;
+
+			tv.tv_sec = 5;
+			tv.tv_usec = 0;
+
+			setsockopt(s->fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,  sizeof(tv));
+
+			s->netlen = 0;
+
+			DBG(32, "awaiting welcome message\n");
+
+			/* the scanner sends a kind of welcome msg */
+			// XXX check command type, answer to connect is 0x80
+			read = eds_recv(s, buf, 3, &status);
+			if (read != 3) {
+				sanei_tcp_close(s->fd);
+				s->fd = -1;
+				return SANE_STATUS_IO_ERROR;
+			}
+
+			DBG(32, "welcome message received, locking the scanner...\n");
+
+			/* lock the scanner for use by sane */
+			status = epsonds_net_lock(s);
+			if (status != SANE_STATUS_GOOD) {
+				DBG(1, "%s cannot lock scanner: %s\n", s->hw->sane.name,
+					sane_strstatus(status));
+
+				sanei_tcp_close(s->fd);
+				s->fd = -1;
+
+				return status;
+			}
+
+			DBG(32, "scanner locked\n");
+		}
+
+	} else if (s->hw->connection == SANE_EPSONDS_USB) {
 
 		status = sanei_usb_open(s->hw->sane.name, &s->fd);
-		sanei_usb_set_timeout(USB_TIMEOUT);
+
+		if (status == SANE_STATUS_GOOD) {
+			sanei_usb_set_timeout(USB_TIMEOUT);
+			sanei_usb_clear_halt(s->fd);
+		}
 
 	} else {
 		DBG(1, "unknown connection type: %d\n", s->hw->connection);
@@ -220,12 +321,20 @@ device_detect(const char *name, int type, SANE_Status *status)
 	struct epsonds_scanner *s;
 	struct epsonds_device *dev;
 
-	DBG(1, "%s\n", __func__);
+	DBG(1, "%s, %s, type: %d\n", __func__, name, type);
 
 	/* try to find the device in our list */
 	for (dev = first_dev; dev; dev = dev->next) {
+
 		if (strcmp(dev->sane.name, name) == 0) {
+
 			DBG(1, " found cached device\n");
+
+			// the device might have been just probed, sleep a bit.
+			if (dev->connection == SANE_EPSONDS_NET) {
+				sleep(1);
+			}
+
 			return scanner_create(dev, status);
 		}
 	}
@@ -250,8 +359,9 @@ device_detect(const char *name, int type, SANE_Status *status)
 
 	dev->connection = type;
 	dev->model = strdup("(undetermined)");
+	dev->name = strdup(name);
 
-	dev->sane.name = name;
+	dev->sane.name = dev->name;
 	dev->sane.vendor = "Epson";
 	dev->sane.model = dev->model;
 	dev->sane.type = "ESC/I-2";
@@ -283,11 +393,11 @@ device_detect(const char *name, int type, SANE_Status *status)
 	if (*status != SANE_STATUS_GOOD)
 		goto close;
 
-	/* assume 1 and 8 bit are always supported */
+	// assume 1 and 8 bit are always supported
 	eds_add_depth(s->hw, 1);
 	eds_add_depth(s->hw, 8);
 
-	/* setup area according to available options */
+	// setup area according to available options
 	if (s->hw->has_fb) {
 
 		dev->x_range = &dev->fbf_x_range;
@@ -350,6 +460,19 @@ attach_one_usb(const char *dev)
 }
 
 static SANE_Status
+attach_one_net(const char *dev)
+{
+	char name[39 + 4];
+
+	DBG(7, "%s: dev = %s\n", __func__, dev);
+
+	strcpy(name, "net:");
+	strcat(name, dev);
+	return attach(name, SANE_EPSONDS_NET);
+}
+
+
+static SANE_Status
 attach_one_config(SANEI_Config __sane_unused__ *config, const char *line)
 {
 	int vendor, product;
@@ -379,6 +502,16 @@ attach_one_config(SANEI_Config __sane_unused__ *config, const char *line)
 			sanei_usb_find_devices(SANE_EPSONDS_VENDOR_ID,
 					epsonds_usb_product_ids[i], attach_one_usb);
 		}
+
+	} else if (strncmp(line, "net", 3) == 0) {
+
+		/* remove the "net" sub string */
+		const char *name = sanei_config_skip_whitespace(line + 3);
+
+		if (strncmp(name, "autodiscovery", 13) == 0)
+			e2_network_discovery();
+		else
+			attach_one_net(name);
 
 	} else {
 		DBG(0, "unable to parse config line: %s\n", line);
@@ -669,7 +802,11 @@ sane_open(SANE_String_Const name, SANE_Handle *handle)
 
 	} else {
 
-		if (strncmp(name, "libusb:", 7) == 0) {
+		if (strncmp(name, "net:", 4) == 0) {
+			s = device_detect(name, SANE_EPSONDS_NET, &status);
+			if (s == NULL)
+				return status;
+		} else if (strncmp(name, "libusb:", 7) == 0) {
 			s = device_detect(name, SANE_EPSONDS_USB, &status);
 			if (s == NULL)
 				return status;
@@ -1041,7 +1178,7 @@ SANE_Status
 sane_start(SANE_Handle handle)
 {
 	epsonds_scanner *s = (epsonds_scanner *)handle;
-	char buf[64];
+	char buf[65]; /* add one more byte to correct buffer overflow issue */
 	char cmd[100]; /* take care not to overflow */
 	SANE_Status status = 0;
 
@@ -1112,10 +1249,17 @@ sane_start(SANE_Handle handle)
 			s->val[OPT_ADF_MODE].w ? "DPLX" : "",
 			s->val[OPT_ADF_SKEW].w ? "SKEW" : "");
 
-		if (s->hw->adf_has_dfd == 2) {
-			strcat(buf, "DFL2");
-		} else if (s->hw->adf_has_dfd == 1) {
-			strcat(buf, "DFL1");
+		/* it seems that DFL only works in duplex mode, but it's
+		 * also required to be enabled or duplex will be rejected.
+		 */
+
+		if (s->val[OPT_ADF_MODE].w) {
+
+			if (s->hw->adf_has_dfd == 2) {
+				strcat(buf, "DFL2");
+			} else if (s->hw->adf_has_dfd == 1) {
+				strcat(buf, "DFL1");
+			}
 		}
 
 	} else if (strcmp(source_list[s->val[OPT_SOURCE].w], FBF_STR) == 0) {
@@ -1148,9 +1292,9 @@ sane_start(SANE_Handle handle)
 	/* resolution (RSMi not always supported) */
 
 	if (s->val[OPT_RESOLUTION].w > 999) {
-		sprintf(buf, "#RSMi%07d", s->val[OPT_RESOLUTION].w);
+		sprintf(buf, "#RSMi%07d#RSSi%07d", s->val[OPT_RESOLUTION].w, s->val[OPT_RESOLUTION].w);
 	} else {
-		sprintf(buf, "#RSMd%03d", s->val[OPT_RESOLUTION].w);
+		sprintf(buf, "#RSMd%03d#RSSd%03d", s->val[OPT_RESOLUTION].w, s->val[OPT_RESOLUTION].w);
 	}
 
 	strcat(cmd, buf);

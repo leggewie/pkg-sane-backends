@@ -12,20 +12,20 @@ dist_doc_DATA = AUTHORS ChangeLog COPYING LICENSE NEWS PROBLEMS PROJECTS \
  README.hp-ux README.linux README.netbsd README.openbsd README.os2 \
  README.solaris README.unixware2 README.unixware7 README.windows \
  README.zeta
-EXTRA_DIST = ChangeLog-1.0.0 ChangeLog-1.0.1  ChangeLog-1.0.2 \
- ChangeLog-1.0.3 ChangeLog-1.0.4 ChangeLog-1.0.5 ChangeLog-1.0.6 \
- ChangeLog-1.0.7 ChangeLog-1.0.8 ChangeLog-1.0.9 ChangeLog-1.0.10 \
- ChangeLog-1.0.12 ChangeLog-1.0.13 ChangeLog-1.0.14 ChangeLog-1.0.15 \
- ChangeLog-1.0.16 ChangeLog-1.0.17 ChangeLog-1.0.18 ChangeLog-1.0.19 \
- ChangeLog-1.0.20 ChangeLog-1.0.21 ChangeLog-1.0.22 ChangeLog-1.0.23 \
- $(PACKAGE).lsm
+EXTRA_DIST = $(PACKAGE).lsm
 
 #
-# Keep the .cvsignore files sorted, and use this target to do it.
+# Keep the .gitignore files sorted, and use this target to do it.
+# Note that git's negated ignore patterns introduce order dependency
+# and should therefor be sorted with much more care than we do here.
+# Until that has been taken care of, such files are best left alone.
 #
 PERL=perl
-sort-cvsignore:
-	for f in `find . -name .cvsignore`; do \
+sort-gitignore:
+	for f in `find . -name .gitignore`; do \
+	  if test -n "`sed -n '/^\!/p' $$f`"; then \
+	    echo "$$f: skipping file with negated pattern" >&2; \
+	  fi; \
 	  $(PERL) -e 'print sort <>;' < $$f > $$f.tmptmp; \
 	  mv $$f.tmptmp $$f; \
 	done
@@ -92,3 +92,5 @@ clean-local:
 distclean-local:
 	rm -f include/_stdint.h
 	rm -f include/byteorder.h
+
+ACLOCAL_AMFLAGS = -I m4

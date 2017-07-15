@@ -3,7 +3,7 @@
    Copyright (C) 2003 Oliver Rauch
    Copyright (C) 2003, 2004 Henning Meier-Geinitz <henning@meier-geinitz.de>
    Copyright (C) 2004 Gerhard Jaeger <gerhard@gjaeger.de>
-   Copyright (C) 2004-2013 Stéphane Voltz <stef.dev@free.fr>
+   Copyright (C) 2004-2013 StÃ©phane Voltz <stef.dev@free.fr>
    Copyright (C) 2005-2009 Pierre Willenbrock <pierre@pirsoft.dnsalias.org>
    Copyright (C) 2007 Luke <iceyfor@gmail.com>
    Copyright (C) 2011 Alexey Osipov <simba@lerlan.ru> for HP2400 description
@@ -1999,7 +1999,7 @@ gl646_set_fe (Genesys_Device * dev, uint8_t set, int dpi)
   /* Wolfson type frontend */
   if ((dev->reg[reg_0x04].value & REG04_FESET) != 0x03)
     {
-      DBG (DBG_proc, "gl646_set_fe(): unspported frontend type %d\n",
+      DBG (DBG_proc, "gl646_set_fe(): unsupported frontend type %d\n",
 	   dev->reg[reg_0x04].value & REG04_FESET);
       return SANE_STATUS_UNSUPPORTED;
     }
@@ -3066,7 +3066,7 @@ gl646_slow_back_home (Genesys_Device * dev, SANE_Bool wait_until_home)
   if (status != SANE_STATUS_GOOD)
     {
       DBG (DBG_error,
-	   "%s: failed to setup for scan: %s\n", __FUNCTION__,
+	   "%s: failed to setup for scan: %s\n", __func__,
 	   sane_strstatus (status));
       DBGCOMPLETED;
       return status;
@@ -3082,7 +3082,7 @@ gl646_slow_back_home (Genesys_Device * dev, SANE_Bool wait_until_home)
   if (status != SANE_STATUS_GOOD)
     {
       DBG (DBG_error,
-	   "%s: failed to set frontend: %s\n", __FUNCTION__,
+	   "%s: failed to set frontend: %s\n", __func__,
 	   sane_strstatus (status));
       DBGCOMPLETED;
       return status;
@@ -3429,7 +3429,7 @@ setup_for_scan (Genesys_Device * dev,
   DBG (DBG_info,
        "%s settings:\nResolution: %ux%uDPI\n"
        "Lines     : %u\nPixels    : %u\nStartpos  : %.3f/%.3f\nScan mode : %d\nScan method: %s\n\n",
-       __FUNCTION__,
+       __func__,
        settings.xres, settings.yres, settings.lines, settings.pixels,
        settings.tl_x, settings.tl_y, settings.scan_mode,
        settings.scan_method == SCAN_METHOD_FLATBED ? "flatbed" : "XPA");
@@ -3482,16 +3482,16 @@ setup_for_scan (Genesys_Device * dev,
 	  move += (settings.tl_y * dev->motor.optical_ydpi) / MM_PER_INCH;
 	}
 
-      DBG (DBG_info, "%s: move=%d steps\n", __FUNCTION__, move);
+      DBG (DBG_info, "%s: move=%d steps\n", __func__, move);
 
       /* security check */
       if (move < 0)
 	{
-	  DBG (DBG_error, "%s: overriding negative move value %d\n", __FUNCTION__, move);
+	  DBG (DBG_error, "%s: overriding negative move value %d\n", __func__, move);
 	  move = 0;
 	}
     }
-  DBG (DBG_info, "%s: move=%d steps\n", __FUNCTION__, move);
+  DBG (DBG_info, "%s: move=%d steps\n", __func__, move);
 
   /* pixels are allways given at full CCD optical resolution */
   /* use detected left margin and fixed value */
@@ -3550,7 +3550,7 @@ setup_for_scan (Genesys_Device * dev,
                                   depth);
   if (status != SANE_STATUS_GOOD)
     {
-      DBG (DBG_error, "%s: failed setup registers: %s\n", __FUNCTION__, sane_strstatus (status));
+      DBG (DBG_error, "%s: failed setup registers: %s\n", __func__, sane_strstatus (status));
       return status;
     }
 
@@ -3585,7 +3585,7 @@ setup_for_scan (Genesys_Device * dev,
 			    sanei_genesys_read_reg_from_set (regs, 0x21));
   if (status != SANE_STATUS_GOOD)
     {
-      DBG (DBG_error, "%s: failed to send slope table 0: %s\n", __FUNCTION__, sane_strstatus (status));
+      DBG (DBG_error, "%s: failed to send slope table 0: %s\n", __func__, sane_strstatus (status));
       return status;
     }
 
@@ -3594,7 +3594,7 @@ setup_for_scan (Genesys_Device * dev,
 			    sanei_genesys_read_reg_from_set (regs, 0x6b));
   if (status != SANE_STATUS_GOOD)
     {
-      DBG (DBG_error, "%s: failed to send slope table 1: %s\n", __FUNCTION__, sane_strstatus (status));
+      DBG (DBG_error, "%s: failed to send slope table 1: %s\n", __func__, sane_strstatus (status));
       return status;
     }
 
@@ -4414,7 +4414,7 @@ gl646_coarse_gain_calibration (Genesys_Device * dev, int dpi)
       if (status != SANE_STATUS_GOOD)
 	{
           free(line);
-	  DBG (DBG_error, "%s: failed to scan first line\n", __FUNCTION__);
+	  DBG (DBG_error, "%s: failed to scan first line\n", __func__);
 	  return status;
 	}
 
@@ -4472,7 +4472,7 @@ gl646_coarse_gain_calibration (Genesys_Device * dev, int dpi)
 	    dev->frontend.gain[k]++;
 
 	  DBG (DBG_proc,
-	       "%s: channel %d, average = %.2f, gain = %d\n", __FUNCTION__,
+	       "%s: channel %d, average = %.2f, gain = %d\n", __func__,
 	       k, average[k], dev->frontend.gain[k]);
 	}
       free (line);
@@ -4484,7 +4484,7 @@ gl646_coarse_gain_calibration (Genesys_Device * dev, int dpi)
       dev->frontend.gain[2] = dev->frontend.gain[0];
     }
 
-  DBG (DBG_info, "%s: gains=(%d,%d,%d)\n", __FUNCTION__,
+  DBG (DBG_info, "%s: gains=(%d,%d,%d)\n", __func__,
        dev->frontend.gain[0], dev->frontend.gain[1], dev->frontend.gain[2]);
   DBGCOMPLETED;
   return status;
@@ -5767,6 +5767,7 @@ static Genesys_Command_Set gl646_cmd_set = {
   gl646_led_calibration,
 
   gl646_slow_back_home,
+  NULL,
 
   gl646_bulk_write_register,
   gl646_bulk_write_data,

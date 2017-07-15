@@ -1,14 +1,65 @@
-sane-backends (1.0.25-4~test1) UNRELEASED; urgency=medium
+sane-backends (1.0.27-1~experimental1) experimental; urgency=medium
 
+  * New upstream release
+    - sane.ps is not longer included (Closes: #818544).
+    - Fix a timing issue on USB3 hardware  (Closes: #792465).
+    - Support CanoScan LiDE 120 (Closes: #853873).
+    - Refresh patches:
+      + 0020-nousbtest.patch
+      + 0025-multiarch_manpages_libdir.patch
+      + 0705-kfreebsd.patch
+      + 0710-sane-desc.c_debian_mods.patch
+    - Remove patches applied upstream:
+      + 0005-libsane_deps.patch
+      + 0010-unneeded_doc.patch
+      + 0015-frontend_libs.patch
+      + 0030-ppc64el.patch
+      + 0100-source_spelling.patch
+      + 0105-hp3900.patch
+      + 0110-dll_backend_conf.patch
+      + 0115-license_typo.patch
+      + 0120-typo.patch
+      + 0125-multiarch_dll_search_path.patch
+      + 0135-saned-remotescanners.patch
+      + 0500-CVE-2017-6318.patch
+      + 0605-man_typo.patch
+      + 0700-mk_reproducible_results.patch
+  * New debian/patches/0140-avahi.patch
+    - Avoid assertion failure when net_avahi_init failed (Closes: #861112).
+  * New debian/patches/0145-avahi.patch:
+    - Fix race condition (Closes: #743420).
   * debian/rules:
-    - Remove DVIPSSource from sane.ps to make build reproducible.
+    - Remove outdated configure flag --enable-libusb_1_0.
+    - Add new configure flag --withusb.
+    - Use dh_auto_configure instead of ./configure.
   * Remove outdated debian/libsane-dev.NEWS (Closes: #852842).
   * debian/sane-uitls.postinst:
     - Add "|| true" after adduser call to continue installation if
       adduser fails (Closes: #860078).
-  * Remove avahi support 
+  * Refresh debian/libsane.symbols.
+  * New README.source to explain the branching model used.
+  * Use the automatic debug symbol packages:
+    - Remove libsane-dbg section from debian/control.
+    - Remove override_dh_strip from debian/rules.
+  * Declare compliance with Debian Policy 4.0.0. (No changes needed).
+  * debian/saned.socket:
+    - Change MaxConnections to the default value of 64 (Closes: 850649).
+  * Refresh debian/copyright.
+  * Rename libsane to libsane1 to match with the soname.
+  * Remove useless *.lintan-overrides.
+  * Remove autopkgtest:
+    - The test needs networking which isn't available on the buildds.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 22 Apr 2017 10:20:55 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Tue, 20 Jun 2017 23:17:47 +0200
+
+sane-backends (1.0.25-4.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Correct missing error handler in (generated) prerm script by dropping the
+    "error" handler entirely; it was only printing a generic message anyway.
+    (Closes: #862334)
+
+ -- Chris Lamb <lamby@debian.org>  Sun, 21 May 2017 10:04:48 +0200
 
 sane-backends (1.0.25-4) unstable; urgency=medium
 

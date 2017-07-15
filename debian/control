@@ -2,7 +2,7 @@ Source: sane-backends
 Section: graphics
 Priority: optional
 Maintainer: Jörg Frings-Fürst <debian@jff-webhosting.net>
-Standards-Version: 3.9.8
+Standards-Version: 4.0.0
 Build-Depends:
  autotools-dev,
  autoconf,
@@ -10,7 +10,7 @@ Build-Depends:
  debhelper (>= 10),
  dh-systemd,
  gettext,
-# libavahi-client-dev,
+ libavahi-client-dev,
  libcam-dev [kfreebsd-any],
  libcups2-dev,
  libgphoto2-dev,
@@ -25,7 +25,6 @@ Build-Depends:
  texlive,
  texlive-latex-extra,
  xutils-dev
-Testsuite: autopkgtest
 Homepage: http://www.sane-project.org
 Vcs-Git: git://anonscm.debian.org/collab-maint/sane-backends.git
 Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/sane-backends.git
@@ -75,7 +74,7 @@ Description: API library for scanners -- documentation and support files
  This package includes documentation for libsane, such as the man pages
  and list of supported scanners, and support files (i18n data).
 
-Package: libsane
+Package: libsane1
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -112,7 +111,7 @@ Section: libdevel
 Architecture: any
 Multi-Arch: same
 Depends:
- libsane (= ${binary:Version}),
+ libsane1 (= ${binary:Version}),
  ${misc:Depends}
 Recommends: libsane-extras-dev
 Description: API development library for scanners [development files]
@@ -128,23 +127,3 @@ Description: API development library for scanners [development files]
  .
  This package contains the files needed to build your applications
  using SANE.
-
-Package: libsane-dbg
-Section: debug
-Priority: extra
-Architecture: any
-Multi-Arch: same
-Depends: libsane (= ${binary:Version}), ${misc:Depends}
-Recommends: libsane-extras-dbg
-Description: API development library for scanners [debug symbols]
- SANE stands for "Scanner Access Now Easy" and is an application
- programming interface (API) that provides standardized access to any
- raster image scanner hardware (flatbed scanner, hand-held scanner,
- video- and still-cameras, frame-grabbers, etc.). The SANE standard is
- free and its discussion and development are open to everybody. The
- current source code is written to support several operating systems,
- including GNU/Linux, OS/2, Win32 and various Unices and is available
- under the GNU General Public License (commercial applications and
- backends are welcome, too, however).
- .
- This package contains the debugging symbols for the SANE backends.

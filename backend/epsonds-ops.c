@@ -72,6 +72,18 @@ eds_dev_post_init(struct epsonds_device *dev)
 	return SANE_STATUS_GOOD;
 }
 
+SANE_Bool
+eds_is_model(epsonds_device *dev, const char *model)
+{
+        if (dev->model == NULL)
+                return SANE_FALSE;
+
+        if (strncmp(dev->model, model, strlen(model)) == 0)
+                return SANE_TRUE;
+
+        return SANE_FALSE;
+}
+
 SANE_Status
 eds_add_resolution(epsonds_device *dev, int r)
 {
@@ -199,6 +211,12 @@ eds_init_parameters(epsonds_scanner *s)
 
 	s->dummy = 0;
 
+	/* setup depth according to our mode table */
+	if (mode_params[s->val[OPT_MODE].w].depth == 1)
+		s->params.depth = 1;
+	else
+		s->params.depth = s->val[OPT_DEPTH].w;
+
 	dpi = s->val[OPT_RESOLUTION].w;
 
 	if (SANE_UNFIX(s->val[OPT_BR_Y].w) == 0 ||
@@ -245,11 +263,6 @@ eds_init_parameters(epsonds_scanner *s)
 	 *
 	 * The default color depth is stored in mode_params.depth:
 	 */
-
-	if (mode_params[s->val[OPT_MODE].w].depth == 1)
-		s->params.depth = 1;
-	else
-		s->params.depth = s->val[OPT_DEPTH].w;
 
 	/* this works because it can only be set to 1, 8 or 16 */
 	bytes_per_pixel = s->params.depth / 8;

@@ -6,7 +6,7 @@
    Copyright (C) 2000 Randolph Bentson
    Copyright (C) 2001 Frederik Ramm
    Copyright (C) 2001-2004 Oliver Schirrmeister
-   Copyright (C) 2003-2014 m. allan noah
+   Copyright (C) 2003-2016 m. allan noah
 
    JPEG output and low memory usage support funded by:
      Archivista GmbH, www.archivista.ch
@@ -574,9 +574,32 @@
       v126 2015-08-23, MAN
          - initial support for iX100
          - add late_lut support for iX500/iX100
-      v127 2015-08-25, MAN
+      v127 2015-08-25, MAN (SANE 1.0.25)
          - separate iX100 from iX500 settings
          - iX100 has gray and lineart
+      v128 2015-11-08, MAN
+         - do not ask fi-4340 for serial number
+      v129 2015-11-21, MAN
+         - br_x and br_y locked to page_width/height until changed
+      v130 2016-02-23, MAN
+         - run init_model before init_ms so some scanners can override
+         - set all M309x and M409x scanners s->broken_diag_serial = 1
+      v131 2016-06-06, MAN
+         - hide compression-arg option when jpeg disabled
+         - add Send/SC/GHS macros for recent scanners
+         - add initial support for fi-74x0
+         - add initial support for fi-7030
+         - set has_MS_lamp=0 for fi-71x0
+         - add I18N macros to all option titles and descriptions
+      v132 2016-10-07, MAN
+         - remove ipc_mode option and variables
+         - set ipc mode based on other options
+         - cleanup inverted logic DTC options
+         - fixes threshold option reported in #315069
+      v133 2017-04-08, MAN
+         - initial support for fi-7600/7700
+         - autodetect various double feed capabilities using VPD
+         - call send_lut if we are using a downloaded gamma table
 
    SANE FLOW DIAGRAM
 
@@ -626,7 +649,7 @@
 #include "fujitsu.h"
 
 #define DEBUG 1
-#define BUILD 127
+#define BUILD 133
 
 /* values for SANE_DEBUG_FUJITSU env var:
  - errors           5
@@ -990,15 +1013,6 @@ attach_one (const char *device_name, int connType)
     return ret;
   }
 
-  /* see what mode pages device supports */
-  ret = init_ms (s);
-  if (ret != SANE_STATUS_GOOD) {
-    disconnect_fd(s);
-    free (s);
-    DBG (5, "attach_one: ms failed\n");
-    return ret;
-  }
-
   /* clean up the scanner struct based on model */
   /* this is the only piece of model specific code */
   ret = init_model (s);
@@ -1006,6 +1020,15 @@ attach_one (const char *device_name, int connType)
     disconnect_fd(s);
     free (s);
     DBG (5, "attach_one: model failed\n");
+    return ret;
+  }
+
+  /* see what mode pages device supports */
+  ret = init_ms (s);
+  if (ret != SANE_STATUS_GOOD) {
+    disconnect_fd(s);
+    free (s);
+    DBG (5, "attach_one: ms failed\n");
     return ret;
   }
 
@@ -1682,6 +1705,9 @@ init_vpd (struct fujitsu *s)
 
               DBG (15, "  skew check: %d\n", get_IN_skew_check(in));
               DBG (15, "  new feed roller: %d\n", get_IN_new_fd_roll(in));
+
+              s->has_adv_paper_prot = get_IN_paper_prot_2(in);
+              DBG (15, "  paper protection: %d\n", s->has_adv_paper_prot);
           }
 
           if (get_IN_page_length (in) > 0x70-5) {
@@ -1689,7 +1715,10 @@ init_vpd (struct fujitsu *s)
               DBG (15, "  paper count: %d\n", get_IN_paper_count(in));
               DBG (15, "  paper number: %d\n", get_IN_paper_number(in));
               DBG (15, "  ext send to: %d\n", get_IN_ext_send_to(in));
-              DBG (15, "  staple det: %d\n", get_IN_staple_det(in));
+
+              s->has_staple_detect = get_IN_staple_det(in);
+              DBG (15, "  staple det: %d\n", s->has_staple_detect);
+
               DBG (15, "  pause host: %d\n", get_IN_pause_host(in));
               DBG (15, "  pause panel: %d\n", get_IN_pause_panel(in));
               DBG (15, "  pause conf: %d\n", get_IN_pause_conf(in));
@@ -1701,7 +1730,9 @@ init_vpd (struct fujitsu *s)
               DBG (15, "  imprint chk b: %d\n", get_IN_imprint_chk_b(in));
               DBG (15, "  imprint chk f: %d\n", get_IN_imprint_chk_f(in));
               DBG (15, "  force w bg: %d\n", get_IN_force_w_bg(in));
-              DBG (15, "  mf recover lvl: %d\n", get_IN_mf_recover_lvl(in));
+
+              s->has_df_recovery = get_IN_mf_recover_lvl(in);
+              DBG (15, "  mf recover lvl: %d\n", s->has_df_recovery);
 
               DBG (15, "  first read time: %d\n", get_IN_first_read_time(in));
               DBG (15, "  div scanning: %d\n", get_IN_div_scanning(in));
@@ -1720,7 +1751,7 @@ init_vpd (struct fujitsu *s)
               DBG (15, "  sync next feed: %d\n", get_IN_sync_next_feed(in));
 
               s->has_op_halt = get_IN_op_halt(in);
-              DBG (15, "  object postion halt: %d\n", s->has_op_halt);
+              DBG (15, "  object position halt: %d\n", s->has_op_halt);
           }
 
           ret = SANE_STATUS_GOOD;
@@ -2014,18 +2045,11 @@ init_model (struct fujitsu *s)
 
   /* if scanner has built-in gamma tables, we use the first one (0) */
   /* otherwise, we use the first downloaded one (0x80) */
-  /* note that you may NOT need to send the table to use it? */
+  /* note that you may NOT need to send the table to use it, */
+  /* the scanner will fall back to the brightness/contrast LUT */
   if (!s->num_internal_gamma && s->num_download_gamma){
     s->window_gamma = 0x80;
   }
-
-  /* older scanners would enable their highest  */
-  /* IPC mode by default. Newer scanners don't, */
-  /* so we go ahead and turn it on. */
-  if (s->has_sdtc)
-    s->ipc_mode = WD_ipc_SDTC;
-  else if (s->has_dtc)
-    s->ipc_mode = WD_ipc_DTC;
 
   /* endorser type tells string length (among other things) */
   if(s->has_endorser_b){
@@ -2141,6 +2165,9 @@ init_model (struct fujitsu *s)
   else if ( strstr (s->model_name, "M309")
    || strstr (s->model_name, "M409")){
 
+    /* weirdness */
+    s->broken_diag_serial = 1;
+
     /* lies */
     s->adbits = 8;
   }
@@ -2160,7 +2187,8 @@ init_model (struct fujitsu *s)
     s->max_y_fb = 14032;
   }
 
-  else if (strstr (s->model_name, "fi-4750") ) {
+  else if (strstr (s->model_name,"fi-4340")
+   || strstr (s->model_name, "fi-4750") ) {
     /* weirdness */
     s->broken_diag_serial = 1;
   }
@@ -2265,10 +2293,8 @@ init_model (struct fujitsu *s)
   }
 
   else if (strstr (s->model_name,"fi-6800")
-   || strstr (s->model_name,"fi-5900")){ /* guessing this scanner too */
-    /* missing from vpd */
-    s->has_staple_detect=1; /* may not actually work? */
-    s->has_df_recovery=1;
+   || strstr (s->model_name,"fi-5900")){
+    /* do not need overrides */
   }
 
   else if (strstr (s->model_name,"iX500")){
@@ -2316,6 +2342,8 @@ init_model (struct fujitsu *s)
 
   else if (strstr (s->model_name,"fi-7180")
    || strstr (s->model_name,"fi-7160")){
+    /* locks up scanner if we try to auto detect */
+    s->has_MS_lamp = 0;
 
     /* weirdness */
     /* these machines have longer max paper at lower res */
@@ -2325,10 +2353,6 @@ init_model (struct fujitsu *s)
     s->max_y_by_res[2].len = 260268;
     s->max_y_by_res[3].res = 200;
     s->max_y_by_res[3].len = 266268;
-
-    /* missing from vpd */
-    s->has_df_recovery=1;
-    s->has_adv_paper_prot=1;
   }
 
   else if (strstr (s->model_name,"fi-7280")
@@ -2344,10 +2368,46 @@ init_model (struct fujitsu *s)
     s->max_y_by_res[3].len = 266268;
 
     /* missing from vpd */
-    s->has_df_recovery=1;
-    s->has_adv_paper_prot=1;
     s->max_x_fb = 10764;
     s->max_y_fb = 14032; /* some scanners can be slightly more? */
+  }
+
+  else if (strstr (s->model_name,"fi-7480")
+   || strstr (s->model_name,"fi-7460")){
+
+    /* weirdness */
+    /* these machines have longer max paper at lower res */
+    s->max_y_by_res[1].res = 400;
+    s->max_y_by_res[1].len = 194268;
+    s->max_y_by_res[2].res = 300;
+    s->max_y_by_res[2].len = 260268;
+    s->max_y_by_res[3].res = 200;
+    s->max_y_by_res[3].len = 266268;
+  }
+
+  else if (strstr (s->model_name,"fi-7030")){
+
+    /* weirdness */
+    /* these machines have longer max paper at lower res */
+    s->max_y_by_res[1].res = 400;
+    s->max_y_by_res[1].len = 192000;
+    s->max_y_by_res[2].res = 300;
+    s->max_y_by_res[2].len = 258000;
+    s->max_y_by_res[3].res = 200;
+    s->max_y_by_res[3].len = 264000;
+  }
+
+  else if (strstr (s->model_name,"fi-7700")
+   || strstr (s->model_name,"fi-7600")){
+
+    /* weirdness */
+    /* these machines have longer max paper at lower res */
+    s->max_y_by_res[1].res = 400;
+    s->max_y_by_res[1].len = 192000;
+    s->max_y_by_res[2].res = 300;
+    s->max_y_by_res[2].len = 258000;
+    s->max_y_by_res[3].res = 200;
+    s->max_y_by_res[3].len = 264000;
   }
 
   DBG (10, "init_model: finish\n");
@@ -2438,11 +2498,6 @@ init_user (struct fujitsu *s)
   }
   s->u_endorser_dir=DIR_TTB;
   strcpy((char *)s->u_endorser_string,"%05ud");
-
-  /* inverted logic ipc settings */
-  s->noise_removal = 1;
-  s->bp_filter = 1;
-  s->smoothing = 1;
 
   /* more recent machines default to this being 'on',  *
    * which causes the scanner to ingest multiple pages *
@@ -3039,8 +3094,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   /* gamma */
   if(option==OPT_GAMMA){
     opt->name = "gamma";
-    opt->title = "Gamma function exponent";
-    opt->desc = "Changes intensity of midtones";
+    opt->title = SANE_I18N ("Gamma function exponent");
+    opt->desc = SANE_I18N ("Changes intensity of midtones");
     opt->type = SANE_TYPE_FIXED;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
@@ -3089,8 +3144,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   /* =============== common ipc params ================================ */
   if(option==OPT_RIF){
     opt->name = "rif";
-    opt->title = "RIF";
-    opt->desc = "Reverse image format";
+    opt->title = SANE_I18N ("RIF");
+    opt->desc = SANE_I18N ("Reverse image format");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_rif)
@@ -3107,8 +3162,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->ht_type_list[i]=NULL;
   
     opt->name = "ht-type";
-    opt->title = "Halftone type";
-    opt->desc = "Control type of halftone filter";
+    opt->title = SANE_I18N ("Halftone type");
+    opt->desc = SANE_I18N ("Control type of halftone filter");
     opt->type = SANE_TYPE_STRING;
     opt->unit = SANE_UNIT_NONE;
 
@@ -3128,8 +3183,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_HT_PATTERN){
     opt->name = "ht-pattern";
-    opt->title = "Halftone pattern";
-    opt->desc = "Control pattern of halftone filter";
+    opt->title = SANE_I18N ("Halftone pattern");
+    opt->desc = SANE_I18N ("Control pattern of halftone filter");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
 
@@ -3151,8 +3206,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_OUTLINE){
     opt->name = "outline";
-    opt->title = "Outline";
-    opt->desc = "Perform outline extraction";
+    opt->title = SANE_I18N ("Outline");
+    opt->desc = SANE_I18N ("Perform outline extraction");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_outline)
@@ -3163,8 +3218,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_EMPHASIS){
     opt->name = "emphasis";
-    opt->title = "Emphasis";
-    opt->desc = "Negative to smooth or positive to sharpen image";
+    opt->title = SANE_I18N ("Emphasis");
+    opt->desc = SANE_I18N ("Negative to smooth or positive to sharpen image");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
 
@@ -3182,8 +3237,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_SEPARATION){
     opt->name = "separation";
-    opt->title = "Separation";
-    opt->desc = "Enable automatic separation of image and text";
+    opt->title = SANE_I18N ("Separation");
+    opt->desc = SANE_I18N ("Enable automatic separation of image and text");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_autosep)
@@ -3194,8 +3249,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_MIRRORING){
     opt->name = "mirroring";
-    opt->title = "Mirroring";
-    opt->desc = "Reflect output image horizontally";
+    opt->title = SANE_I18N ("Mirroring");
+    opt->desc = SANE_I18N ("Reflect output image horizontally");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_mirroring)
@@ -3212,8 +3267,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->wl_follow_list[i]=NULL;
   
     opt->name = "wl-follow";
-    opt->title = "White level follower";
-    opt->desc = "Control white level follower";
+    opt->title = SANE_I18N ("White level follower");
+    opt->desc = SANE_I18N ("Control white level follower");
     opt->type = SANE_TYPE_STRING;
     opt->unit = SANE_UNIT_NONE;
 
@@ -3227,50 +3282,18 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
       opt->cap = SANE_CAP_INACTIVE;
   }
 
-  if(option==OPT_IPC_MODE){
-    i=0;
-    s->ipc_mode_list[i++]=STRING_DEFAULT;
-    if(s->has_dtc){
-      s->ipc_mode_list[i++]=STRING_DTC;
-    }
-    if(s->has_sdtc){
-      s->ipc_mode_list[i++]=STRING_SDTC;
-    }
-    s->ipc_mode_list[i]=NULL;
-  
-    opt->name = "ipc-mode";
-    opt->title = "IPC mode";
-    opt->desc = "Image processing mode, enables additional options";
-    opt->type = SANE_TYPE_STRING;
-    opt->unit = SANE_UNIT_NONE;
-
-    opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
-    opt->constraint.string_list = s->ipc_mode_list;
-    opt->size = maxStringSize (opt->constraint.string_list);
-
-    if ( i > 2 ){
-      opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if(s->s_mode != MODE_HALFTONE && s->s_mode != MODE_LINEART){
-        opt->cap |= SANE_CAP_INACTIVE;
-      }
-    }
-    else
-      opt->cap = SANE_CAP_INACTIVE;
-  }
-
   /* =============== DTC params ================================ */
   /* enabled when in dtc mode (manually or by default) */
   if(option==OPT_BP_FILTER){
     opt->name = "bp-filter";
-    opt->title = "BP filter";
-    opt->desc = "Improves quality of high resolution ball-point pen text";
+    opt->title = SANE_I18N ("BP filter");
+    opt->desc = SANE_I18N ("Improves quality of high resolution ball-point pen text");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
 
     if ( s->has_dtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if(s->ipc_mode == WD_ipc_SDTC 
-       || (s->has_sdtc && s->ipc_mode == WD_ipc_DEFAULT)){
+      if(get_ipc_mode(s) == WD_ipc_SDTC){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3280,15 +3303,14 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_SMOOTHING){
     opt->name = "smoothing";
-    opt->title = "Smoothing";
-    opt->desc = "Enable smoothing for improved OCR";
+    opt->title = SANE_I18N ("Smoothing");
+    opt->desc = SANE_I18N ("Enable smoothing for improved OCR");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
 
     if ( s->has_dtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if(s->ipc_mode == WD_ipc_SDTC 
-       || (s->has_sdtc && s->ipc_mode == WD_ipc_DEFAULT)){
+      if(get_ipc_mode(s) == WD_ipc_SDTC){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3298,9 +3320,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_GAMMA_CURVE){
     opt->name = "gamma-curve";
-    opt->title = "Gamma curve";
-    opt->desc = "Gamma curve";
-    opt->desc = "Gamma curve, from light to dark, but upper two may not work";
+    opt->title = SANE_I18N ("Gamma curve");
+    opt->desc = SANE_I18N ("Gamma curve, from light to dark, but upper two may not work");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
 
@@ -3312,8 +3333,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
     if ( s->has_dtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if(s->ipc_mode == WD_ipc_SDTC 
-       || (s->has_sdtc && s->ipc_mode == WD_ipc_DEFAULT)){
+      if(get_ipc_mode(s) == WD_ipc_SDTC){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3323,8 +3343,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_THRESHOLD_CURVE){
     opt->name = "threshold-curve";
-    opt->title = "Threshold curve";
-    opt->desc = "Threshold curve, from light to dark, but upper two may not be linear";
+    opt->title = SANE_I18N ("Threshold curve");
+    opt->desc = SANE_I18N ("Threshold curve, from light to dark, but upper two may not be linear");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
 
@@ -3336,8 +3356,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
     if ( s->has_dtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if(s->ipc_mode == WD_ipc_SDTC 
-       || (s->has_sdtc && s->ipc_mode == WD_ipc_DEFAULT)){
+      if(get_ipc_mode(s) == WD_ipc_SDTC){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3347,15 +3366,14 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_THRESHOLD_WHITE){
     opt->name = "threshold-white";
-    opt->title = "Threshold white";
-    opt->desc = "Set pixels equal to threshold to white instead of black";
+    opt->title = SANE_I18N ("Threshold white");
+    opt->desc = SANE_I18N ("Set pixels equal to threshold to white instead of black");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
 
     if ( s->has_dtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if(s->ipc_mode == WD_ipc_SDTC 
-       || (s->has_sdtc && s->ipc_mode == WD_ipc_DEFAULT)){
+      if(get_ipc_mode(s) == WD_ipc_SDTC){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3365,15 +3383,14 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_NOISE_REMOVAL){
     opt->name = "noise-removal";
-    opt->title = "Noise removal";
-    opt->desc = "Noise removal";
+    opt->title = SANE_I18N ("Noise removal");
+    opt->desc = SANE_I18N ("Noise removal");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
 
     if ( s->has_dtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if(s->ipc_mode == WD_ipc_SDTC 
-       || (s->has_sdtc && s->ipc_mode == WD_ipc_DEFAULT)){
+      if(get_ipc_mode(s) == WD_ipc_SDTC){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3383,16 +3400,14 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_MATRIX_5){
     opt->name = "matrix-5x5";
-    opt->title = "Matrix 5x5";
-    opt->desc = "Remove 5 pixel square noise";
+    opt->title = SANE_I18N ("Matrix 5x5");
+    opt->desc = SANE_I18N ("Remove 5 pixel square noise");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
 
     if ( s->has_dtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if( !s->noise_removal
-       || s->ipc_mode == WD_ipc_SDTC 
-       || (s->has_sdtc && s->ipc_mode == WD_ipc_DEFAULT)){
+      if(!s->noise_removal){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3402,16 +3417,14 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_MATRIX_4){
     opt->name = "matrix-4x4";
-    opt->title = "Matrix 4x4";
-    opt->desc = "Remove 4 pixel square noise";
+    opt->title = SANE_I18N ("Matrix 4x4");
+    opt->desc = SANE_I18N ("Remove 4 pixel square noise");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
 
     if ( s->has_dtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if( !s->noise_removal
-       || s->ipc_mode == WD_ipc_SDTC 
-       || (s->has_sdtc && s->ipc_mode == WD_ipc_DEFAULT)){
+      if(!s->noise_removal){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3421,16 +3434,14 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_MATRIX_3){
     opt->name = "matrix-3x3";
-    opt->title = "Matrix 3x3";
-    opt->desc = "Remove 3 pixel square noise";
+    opt->title = SANE_I18N ("Matrix 3x3");
+    opt->desc = SANE_I18N ("Remove 3 pixel square noise");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
 
     if ( s->has_dtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if( !s->noise_removal
-       || s->ipc_mode == WD_ipc_SDTC 
-       || (s->has_sdtc && s->ipc_mode == WD_ipc_DEFAULT)){
+      if(!s->noise_removal){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3440,16 +3451,14 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_MATRIX_2){
     opt->name = "matrix-2x2";
-    opt->title = "Matrix 2x2";
-    opt->desc = "Remove 2 pixel square noise";
+    opt->title = SANE_I18N ("Matrix 2x2");
+    opt->desc = SANE_I18N ("Remove 2 pixel square noise");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
 
     if ( s->has_dtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if( !s->noise_removal
-       || s->ipc_mode == WD_ipc_SDTC 
-       || (s->has_sdtc && s->ipc_mode == WD_ipc_DEFAULT)){
+      if(!s->noise_removal){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3462,8 +3471,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   /* called variance with ipc2, sensitivity with ipc3 */
   if(option==OPT_VARIANCE){
     opt->name = "variance";
-    opt->title = "Variance";
-    opt->desc = "Set SDTC variance rate (sensitivity), 0 equals 127";
+    opt->title = SANE_I18N ("Variance");
+    opt->desc = SANE_I18N ("Set SDTC variance rate (sensitivity), 0 equals 127");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
 
@@ -3475,7 +3484,7 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
     if ( s->has_sdtc ){
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
-      if (s->ipc_mode == WD_ipc_DTC){
+      if(get_ipc_mode(s) == WD_ipc_DTC){
         opt->cap |= SANE_CAP_INACTIVE;
       }
     }
@@ -3496,8 +3505,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   if(option==OPT_AWD){
   
     opt->name = "awd";
-    opt->title = "Auto width detection";
-    opt->desc = "Scanner detects paper sides. May reduce scanning speed.";
+    opt->title = SANE_I18N ("Auto width detection");
+    opt->desc = SANE_I18N ("Scanner detects paper sides. May reduce scanning speed.");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_NONE;
@@ -3514,8 +3523,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   if(option==OPT_ALD){
   
     opt->name = "ald";
-    opt->title = "Auto length detection";
-    opt->desc = "Scanner detects paper lower edge. May confuse some frontends.";
+    opt->title = SANE_I18N ("Auto length detection");
+    opt->desc = SANE_I18N ("Scanner detects paper lower edge. May confuse some frontends.");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_NONE;
@@ -3541,8 +3550,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->compress_list[i]=NULL;
 
     opt->name = "compression";
-    opt->title = "Compression";
-    opt->desc = "Enable compressed data. May crash your front-end program";
+    opt->title = SANE_I18N ("Compression");
+    opt->desc = SANE_I18N ("Enable compressed data. May crash your front-end program");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->compress_list;
@@ -3562,8 +3571,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   if(option==OPT_COMPRESS_ARG){
 
     opt->name = "compression-arg";
-    opt->title = "Compression argument";
-    opt->desc = "Level of JPEG compression. 1 is small file, 7 is large file. 0 (default) is same as 4";
+    opt->title = SANE_I18N ("Compression argument");
+    opt->desc = SANE_I18N ("Level of JPEG compression. 1 is small file, 7 is large file. 0 (default) is same as 4");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
@@ -3573,7 +3582,9 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     if(s->has_comp_JPG1){
       s->compress_arg_range.min=0;
       s->compress_arg_range.max=7;
+#ifndef SANE_JPEG_DISABLED
       opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT;
+#endif
 
       if(s->compress != COMP_JPEG){
         opt->cap |= SANE_CAP_INACTIVE;
@@ -3591,8 +3602,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->df_action_list[3] = NULL;
   
     opt->name = "df-action";
-    opt->title = "DF action";
-    opt->desc = "Action following double feed error";
+    opt->title = SANE_I18N ("DF action");
+    opt->desc = SANE_I18N ("Action following double feed error");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->df_action_list;
@@ -3608,8 +3619,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   if(option==OPT_DF_SKEW){
   
     opt->name = "df-skew";
-    opt->title = "DF skew";
-    opt->desc = "Enable double feed error due to skew";
+    opt->title = SANE_I18N ("DF skew");
+    opt->desc = SANE_I18N ("Enable double feed error due to skew");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_NONE;
@@ -3627,8 +3638,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   if(option==OPT_DF_THICKNESS){
   
     opt->name = "df-thickness";
-    opt->title = "DF thickness";
-    opt->desc = "Enable double feed error due to paper thickness";
+    opt->title = SANE_I18N ("DF thickness");
+    opt->desc = SANE_I18N ("Enable double feed error due to paper thickness");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_NONE;
@@ -3646,8 +3657,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   if(option==OPT_DF_LENGTH){
   
     opt->name = "df-length";
-    opt->title = "DF length";
-    opt->desc = "Enable double feed error due to paper length";
+    opt->title = SANE_I18N ("DF length");
+    opt->desc = SANE_I18N ("Enable double feed error due to paper length");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_NONE;
@@ -3670,8 +3681,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->df_diff_list[4] = NULL;
   
     opt->name = "df-diff";
-    opt->title = "DF length difference";
-    opt->desc = "Difference in page length to trigger double feed error";
+    opt->title = SANE_I18N ("DF length difference");
+    opt->desc = SANE_I18N ("Difference in page length to trigger double feed error");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->df_diff_list;
@@ -3694,8 +3705,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->df_recovery_list[3] = NULL;
   
     opt->name = "df-recovery";
-    opt->title = "DF recovery mode";
-    opt->desc = "Request scanner to reverse feed on paper jam";
+    opt->title = SANE_I18N ("DF recovery mode");
+    opt->desc = SANE_I18N ("Request scanner to reverse feed on paper jam");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->df_recovery_list;
@@ -3714,8 +3725,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->paper_protect_list[3] = NULL;
   
     opt->name = "paper-protect";
-    opt->title = "Paper protection";
-    opt->desc = "Request scanner to predict jams in the ADF";
+    opt->title = SANE_I18N ("Paper protection");
+    opt->desc = SANE_I18N ("Request scanner to predict jams in the ADF");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->paper_protect_list;
@@ -3734,8 +3745,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->adv_paper_prot_list[3] = NULL;
   
     opt->name = "adv-paper-protect";
-    opt->title = "Advanced paper protection";
-    opt->desc = "Request scanner to predict jams in the ADF using improved sensors";
+    opt->title = SANE_I18N ("Advanced paper protection");
+    opt->desc = SANE_I18N ("Request scanner to predict jams in the ADF using improved sensors");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->adv_paper_prot_list;
@@ -3754,8 +3765,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->staple_detect_list[3] = NULL;
   
     opt->name = "staple-detect";
-    opt->title = "Staple detection";
-    opt->desc = "Request scanner to detect jams in the ADF caused by staples";
+    opt->title = SANE_I18N ("Staple detection");
+    opt->desc = SANE_I18N ("Request scanner to detect jams in the ADF caused by staples");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->staple_detect_list;
@@ -3774,8 +3785,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->bg_color_list[3] = NULL;
   
     opt->name = "bgcolor";
-    opt->title = "Background color";
-    opt->desc = "Set color of background for scans. May conflict with overscan option";
+    opt->title = SANE_I18N ("Background color");
+    opt->desc = SANE_I18N ("Set color of background for scans. May conflict with overscan option");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->bg_color_list;
@@ -3795,8 +3806,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->do_color_list[4] = NULL;
   
     opt->name = "dropoutcolor";
-    opt->title = "Dropout color";
-    opt->desc = "One-pass scanners use only one color during gray or binary scanning, useful for colored paper or ink";
+    opt->title = SANE_I18N ("Dropout color");
+    opt->desc = SANE_I18N ("One-pass scanners use only one color during gray or binary scanning, useful for colored paper or ink");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->do_color_list;
@@ -3819,8 +3830,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->buff_mode_list[3] = NULL;
   
     opt->name = "buffermode";
-    opt->title = "Buffer mode";
-    opt->desc = "Request scanner to read pages quickly from ADF into internal memory";
+    opt->title = SANE_I18N ("Buffer mode");
+    opt->desc = SANE_I18N ("Request scanner to read pages quickly from ADF into internal memory");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->buff_mode_list;
@@ -3839,8 +3850,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->prepick_list[3] = NULL;
   
     opt->name = "prepick";
-    opt->title = "Prepick";
-    opt->desc = "Request scanner to grab next page from ADF";
+    opt->title = SANE_I18N ("Prepick");
+    opt->desc = SANE_I18N ("Request scanner to grab next page from ADF");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->prepick_list;
@@ -3859,8 +3870,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->overscan_list[3] = NULL;
   
     opt->name = "overscan";
-    opt->title = "Overscan";
-    opt->desc = "Collect a few mm of background on top side of scan, before paper enters ADF, and increase maximum scan area beyond paper size, to allow collection on remaining sides. May conflict with bgcolor option";
+    opt->title = SANE_I18N ("Overscan");
+    opt->desc = SANE_I18N ("Collect a few mm of background on top side of scan, before paper enters ADF, and increase maximum scan area beyond paper size, to allow collection on remaining sides. May conflict with bgcolor option");
     opt->type = SANE_TYPE_STRING;
     opt->constraint_type = SANE_CONSTRAINT_STRING_LIST;
     opt->constraint.string_list = s->overscan_list;
@@ -3878,8 +3889,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->sleep_time_range.quant = 1;
   
     opt->name = "sleeptimer";
-    opt->title = "Sleep timer";
-    opt->desc = "Time in minutes until the internal power supply switches to sleep mode"; 
+    opt->title = SANE_I18N ("Sleep timer");
+    opt->desc = SANE_I18N ("Time in minutes until the internal power supply switches to sleep mode"); 
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
@@ -3897,8 +3908,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->off_time_range.quant = 1;
   
     opt->name = "offtimer";
-    opt->title = "Off timer";
-    opt->desc = "Time in minutes until the internal power supply switches the scanner off. Will be rounded to nearest 15 minutes. Zero means never power off."; 
+    opt->title = SANE_I18N ("Off timer");
+    opt->desc = SANE_I18N ("Time in minutes until the internal power supply switches the scanner off. Will be rounded to nearest 15 minutes. Zero means never power off."); 
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
@@ -3916,8 +3927,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->duplex_offset_range.quant = 1;
   
     opt->name = "duplexoffset";
-    opt->title = "Duplex offset";
-    opt->desc = "Adjust front/back offset";
+    opt->title = SANE_I18N ("Duplex offset");
+    opt->desc = SANE_I18N ("Adjust front/back offset");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
@@ -3934,8 +3945,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->green_offset_range.quant = 1;
   
     opt->name = "greenoffset";
-    opt->title = "Green offset";
-    opt->desc = "Adjust green/red offset";
+    opt->title = SANE_I18N ("Green offset");
+    opt->desc = SANE_I18N ("Adjust green/red offset");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
@@ -3952,8 +3963,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
     s->blue_offset_range.quant = 1;
   
     opt->name = "blueoffset";
-    opt->title = "Blue offset";
-    opt->desc = "Adjust blue/red offset";
+    opt->title = SANE_I18N ("Blue offset");
+    opt->desc = SANE_I18N ("Adjust blue/red offset");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
@@ -3966,8 +3977,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   
   if(option==OPT_LOW_MEM){
     opt->name = "lowmemory";
-    opt->title = "Low Memory";
-    opt->desc = "Limit driver memory usage for use in embedded systems. Causes some duplex transfers to alternate sides on each call to sane_read. Value of option 'side' can be used to determine correct image. This option should only be used with custom front-end software.";
+    opt->title = SANE_I18N ("Low Memory");
+    opt->desc = SANE_I18N ("Limit driver memory usage for use in embedded systems. Causes some duplex transfers to alternate sides on each call to sane_read. Value of option 'side' can be used to determine correct image. This option should only be used with custom front-end software.");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     opt->size = sizeof(SANE_Word);
@@ -3982,8 +3993,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_SIDE){
     opt->name = "side";
-    opt->title = "Duplex side";
-    opt->desc = "Tells which side (0=front, 1=back) of a duplex scan the next call to sane_read will return.";
+    opt->title = SANE_I18N ("Duplex side");
+    opt->desc = SANE_I18N ("Tells which side (0=front, 1=back) of a duplex scan the next call to sane_read will return.");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     opt->size = sizeof(SANE_Word);
@@ -3994,8 +4005,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   /*deskew and crop by hardware*/
   if(option==OPT_HWDESKEWCROP){
     opt->name = "hwdeskewcrop";
-    opt->title = "Hardware deskew and crop";
-    opt->desc = "Request scanner to rotate and crop pages digitally.";
+    opt->title = SANE_I18N ("Hardware deskew and crop");
+    opt->desc = SANE_I18N ("Request scanner to rotate and crop pages digitally.");
     opt->type = SANE_TYPE_BOOL;
     if (s->has_hybrid_crop_deskew)
      opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
@@ -4006,8 +4017,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   /*deskew by software*/
   if(option==OPT_SWDESKEW){
     opt->name = "swdeskew";
-    opt->title = "Software deskew";
-    opt->desc = "Request driver to rotate skewed pages digitally.";
+    opt->title = SANE_I18N ("Software deskew");
+    opt->desc = SANE_I18N ("Request driver to rotate skewed pages digitally.");
     opt->type = SANE_TYPE_BOOL;
     if (1)
      opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
@@ -4019,8 +4030,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   if(option==OPT_SWDESPECK){
 
     opt->name = "swdespeck";
-    opt->title = "Software despeckle diameter";
-    opt->desc = "Maximum diameter of lone dots to remove from scan.";
+    opt->title = SANE_I18N ("Software despeckle diameter");
+    opt->desc = SANE_I18N ("Maximum diameter of lone dots to remove from scan.");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     opt->constraint_type = SANE_CONSTRAINT_RANGE;
@@ -4039,8 +4050,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   /*crop by software*/
   if(option==OPT_SWCROP){
     opt->name = "swcrop";
-    opt->title = "Software crop";
-    opt->desc = "Request driver to remove border from pages digitally.";
+    opt->title = SANE_I18N ("Software crop");
+    opt->desc = SANE_I18N ("Request driver to remove border from pages digitally.");
     opt->type = SANE_TYPE_BOOL;
     if (1)
      opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
@@ -4069,8 +4080,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   /*halt scanner feeder when cancelling*/
   if(option==OPT_HALT_ON_CANCEL){
     opt->name = "halt-on-cancel";
-    opt->title = "Halt on Cancel";
-    opt->desc = "Request driver to halt the paper feed instead of eject during a cancel.";
+    opt->title = SANE_I18N ("Halt on Cancel");
+    opt->desc = SANE_I18N ("Request driver to halt the paper feed instead of eject during a cancel.");
     opt->type = SANE_TYPE_BOOL;
     if (s->has_op_halt)
      opt->cap = SANE_CAP_SOFT_SELECT | SANE_CAP_SOFT_DETECT | SANE_CAP_ADVANCED;
@@ -4081,8 +4092,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
   /* "Endorser" group ------------------------------------------------------ */
   if(option==OPT_ENDORSER_GROUP){
     opt->name = "endorser-options";
-    opt->title = "Endorser Options";
-    opt->desc = "Controls for endorser unit";
+    opt->title = SANE_I18N ("Endorser Options");
+    opt->desc = SANE_I18N ("Controls for endorser unit");
     opt->type = SANE_TYPE_GROUP;
     opt->constraint_type = SANE_CONSTRAINT_NONE;
 
@@ -4093,8 +4104,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_ENDORSER){
     opt->name = "endorser";
-    opt->title = "Endorser";
-    opt->desc = "Enable endorser unit";
+    opt->title = SANE_I18N ("Endorser");
+    opt->desc = SANE_I18N ("Enable endorser unit");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     opt->size = sizeof(SANE_Word);
@@ -4109,8 +4120,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_ENDORSER_BITS){
     opt->name = "endorser-bits";
-    opt->title = "Endorser bits";
-    opt->desc = "Determines maximum endorser counter value.";
+    opt->title = SANE_I18N ("Endorser bits");
+    opt->desc = SANE_I18N ("Determines maximum endorser counter value.");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     opt->size = sizeof(SANE_Word);
@@ -4135,8 +4146,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_ENDORSER_VAL){
     opt->name = "endorser-val";
-    opt->title = "Endorser value";
-    opt->desc = "Initial endorser counter value.";
+    opt->title = SANE_I18N ("Endorser value");
+    opt->desc = SANE_I18N ("Initial endorser counter value.");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     opt->size = sizeof(SANE_Word);
@@ -4159,8 +4170,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_ENDORSER_STEP){
     opt->name = "endorser-step";
-    opt->title = "Endorser step";
-    opt->desc = "Change endorser counter value by this much for each page.";
+    opt->title = SANE_I18N ("Endorser step");
+    opt->desc = SANE_I18N ("Change endorser counter value by this much for each page.");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     opt->size = sizeof(SANE_Word);
@@ -4183,8 +4194,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_ENDORSER_Y){
     opt->name = "endorser-y";
-    opt->title = "Endorser Y";
-    opt->desc = "Endorser print offset from top of paper.";
+    opt->title = SANE_I18N ("Endorser Y");
+    opt->desc = SANE_I18N ("Endorser print offset from top of paper.");
     opt->type = SANE_TYPE_FIXED;
     opt->unit = SANE_UNIT_MM;
     opt->size = sizeof(SANE_Word);
@@ -4209,8 +4220,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_ENDORSER_FONT){
     opt->name = "endorser-font";
-    opt->title = "Endorser font";
-    opt->desc = "Endorser printing font.";
+    opt->title = SANE_I18N ("Endorser font");
+    opt->desc = SANE_I18N ("Endorser printing font.");
     opt->type = SANE_TYPE_STRING;
     opt->unit = SANE_UNIT_NONE;
 
@@ -4239,8 +4250,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_ENDORSER_DIR){
     opt->name = "endorser-dir";
-    opt->title = "Endorser direction";
-    opt->desc = "Endorser printing direction.";
+    opt->title = SANE_I18N ("Endorser direction");
+    opt->desc = SANE_I18N ("Endorser printing direction.");
     opt->type = SANE_TYPE_STRING;
     opt->unit = SANE_UNIT_NONE;
 
@@ -4264,8 +4275,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_ENDORSER_SIDE){
     opt->name = "endorser-side";
-    opt->title = "Endorser side";
-    opt->desc = "Endorser printing side, requires hardware support to change";
+    opt->title = SANE_I18N ("Endorser side");
+    opt->desc = SANE_I18N ("Endorser printing side, requires hardware support to change");
     opt->type = SANE_TYPE_STRING;
     opt->unit = SANE_UNIT_NONE;
 
@@ -4290,8 +4301,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_ENDORSER_STRING){
     opt->name = "endorser-string";
-    opt->title = "Endorser string";
-    opt->desc = "Endorser alphanumeric print format. %05ud or %08ud at the end will be replaced by counter value.";
+    opt->title = SANE_I18N ("Endorser string");
+    opt->desc = SANE_I18N ("Endorser alphanumeric print format. %05ud or %08ud at the end will be replaced by counter value.");
     opt->type = SANE_TYPE_STRING;
     opt->unit = SANE_UNIT_NONE;
     opt->size = s->endorser_string_len + 1;
@@ -4318,8 +4329,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_TOP){
     opt->name = "top-edge";
-    opt->title = "Top edge";
-    opt->desc = "Paper is pulled partly into adf";
+    opt->title = SANE_I18N ("Top edge");
+    opt->desc = SANE_I18N ("Paper is pulled partly into adf");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status || s->ghs_in_rs)
@@ -4330,8 +4341,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_A3){
     opt->name = "a3-paper";
-    opt->title = "A3 paper";
-    opt->desc = "A3 paper detected";
+    opt->title = SANE_I18N ("A3 paper");
+    opt->desc = SANE_I18N ("A3 paper detected");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status)
@@ -4342,8 +4353,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_B4){
     opt->name = "b4-paper";
-    opt->title = "B4 paper";
-    opt->desc = "B4 paper detected";
+    opt->title = SANE_I18N ("B4 paper");
+    opt->desc = SANE_I18N ("B4 paper detected");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status)
@@ -4354,8 +4365,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_A4){
     opt->name = "a4-paper";
-    opt->title = "A4 paper";
-    opt->desc = "A4 paper detected";
+    opt->title = SANE_I18N ("A4 paper");
+    opt->desc = SANE_I18N ("A4 paper detected");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status)
@@ -4366,8 +4377,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_B5){
     opt->name = "b5-paper";
-    opt->title = "B5 paper";
-    opt->desc = "B5 paper detected";
+    opt->title = SANE_I18N ("B5 paper");
+    opt->desc = SANE_I18N ("B5 paper detected");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status)
@@ -4390,8 +4401,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_OMR){
     opt->name = "omr-df";
-    opt->title = "OMR or DF";
-    opt->desc = "OMR or double feed detected";
+    opt->title = SANE_I18N ("OMR or DF");
+    opt->desc = SANE_I18N ("OMR or double feed detected");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status)
@@ -4414,8 +4425,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_SLEEP){
     opt->name = "power-save";
-    opt->title = "Power saving";
-    opt->desc = "Scanner in power saving mode";
+    opt->title = SANE_I18N ("Power saving");
+    opt->desc = SANE_I18N ("Scanner in power saving mode");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status)
@@ -4438,8 +4449,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_MANUAL_FEED){
     opt->name = "manual-feed";
-    opt->title = "Manual feed";
-    opt->desc = "Manual feed selected";
+    opt->title = SANE_I18N ("Manual feed");
+    opt->desc = SANE_I18N ("Manual feed selected");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status)
@@ -4462,8 +4473,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_FUNCTION){
     opt->name = "function";
-    opt->title = "Function";
-    opt->desc = "Function character on screen";
+    opt->title = SANE_I18N ("Function");
+    opt->desc = SANE_I18N ("Function character on screen");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status || s->ghs_in_rs)
@@ -4474,8 +4485,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_INK_EMPTY){
     opt->name = "ink-low";
-    opt->title = "Ink low";
-    opt->desc = "Imprinter ink running low";
+    opt->title = SANE_I18N ("Ink low");
+    opt->desc = SANE_I18N ("Imprinter ink running low");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status && (s->has_endorser_f || s->has_endorser_b))
@@ -4486,8 +4497,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_DOUBLE_FEED){
     opt->name = "double-feed";
-    opt->title = "Double feed";
-    opt->desc = "Double feed detected";
+    opt->title = SANE_I18N ("Double feed");
+    opt->desc = SANE_I18N ("Double feed detected");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status || s->ghs_in_rs)
@@ -4498,8 +4509,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_ERROR_CODE){
     opt->name = "error-code";
-    opt->title = "Error code";
-    opt->desc = "Hardware error code";
+    opt->title = SANE_I18N ("Error code");
+    opt->desc = SANE_I18N ("Hardware error code");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status)
@@ -4510,8 +4521,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_SKEW_ANGLE){
     opt->name = "skew-angle";
-    opt->title = "Skew angle";
-    opt->desc = "Requires black background for scanning";
+    opt->title = SANE_I18N ("Skew angle");
+    opt->desc = SANE_I18N ("Requires black background for scanning");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status)
@@ -4522,8 +4533,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_INK_REMAIN){
     opt->name = "ink-remain";
-    opt->title = "Ink remaining";
-    opt->desc = "Imprinter ink level";
+    opt->title = SANE_I18N ("Ink remaining");
+    opt->desc = SANE_I18N ("Imprinter ink level");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     if (s->has_cmd_hw_status && (s->has_endorser_f || s->has_endorser_b))
@@ -4534,8 +4545,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_DENSITY_SW){
     opt->name = "density";
-    opt->title = "Density";
-    opt->desc = "Density dial";
+    opt->title = SANE_I18N ("Density");
+    opt->desc = SANE_I18N ("Density dial");
     opt->type = SANE_TYPE_INT;
     opt->unit = SANE_UNIT_NONE;
     if (s->ghs_in_rs)
@@ -4546,8 +4557,8 @@ sane_get_option_descriptor (SANE_Handle handle, SANE_Int option)
 
   if(option==OPT_DUPLEX_SW){
     opt->name = "duplex";
-    opt->title = "Duplex switch";
-    opt->desc = "Duplex switch";
+    opt->title = SANE_I18N ("Duplex switch");
+    opt->desc = SANE_I18N ("Duplex switch");
     opt->type = SANE_TYPE_BOOL;
     opt->unit = SANE_UNIT_NONE;
     if (s->ghs_in_rs)
@@ -4749,18 +4760,7 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           }
           return SANE_STATUS_GOOD;
 
-        case OPT_IPC_MODE:
-          if(s->ipc_mode == WD_ipc_DEFAULT){
-            strcpy (val, STRING_DEFAULT);
-          }
-          else if(s->ipc_mode == WD_ipc_DTC){
-            strcpy (val, STRING_DTC);
-          }
-          else if(s->ipc_mode == WD_ipc_SDTC){
-            strcpy (val, STRING_SDTC);
-          }
-          return SANE_STATUS_GOOD;
-
+        /* DTC params*/
         case OPT_BP_FILTER:
           *val_p = s->bp_filter;
           return SANE_STATUS_GOOD;
@@ -4801,6 +4801,7 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           *val_p = s->matrix_2;
           return SANE_STATUS_GOOD;
 
+        /* SDTC params*/
         case OPT_VARIANCE:
           *val_p = s->variance;
           return SANE_STATUS_GOOD;
@@ -5357,6 +5358,14 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           if (s->page_width == FIXED_MM_TO_SCANNER_UNIT(val_c))
               return SANE_STATUS_GOOD;
 
+          /* if full width image, and paper size is changed,
+             change the image size to match new paper */
+          if (s->tl_x == 0 && s->br_x == s->page_width){
+              DBG (20, "sane_control_option: br_x tracking page_width\n");
+              s->br_x = FIXED_MM_TO_SCANNER_UNIT(val_c);
+              *info |= SANE_INFO_RELOAD_PARAMS;
+          }
+
           s->page_width = FIXED_MM_TO_SCANNER_UNIT(val_c);
           *info |= SANE_INFO_RELOAD_OPTIONS;
           return SANE_STATUS_GOOD;
@@ -5364,6 +5373,14 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
         case OPT_PAGE_HEIGHT:
           if (s->page_height == FIXED_MM_TO_SCANNER_UNIT(val_c))
               return SANE_STATUS_GOOD;
+
+          /* if full height image, and paper size is changed,
+             change the image size to match new paper */
+          if (s->tl_y == 0 && s->br_y == s->page_height){
+              DBG (20, "sane_control_option: br_y tracking page_height\n");
+              s->br_y = FIXED_MM_TO_SCANNER_UNIT(val_c);
+              *info |= SANE_INFO_RELOAD_PARAMS;
+          }
 
           s->page_height = FIXED_MM_TO_SCANNER_UNIT(val_c);
           *info |= SANE_INFO_RELOAD_OPTIONS;
@@ -5429,48 +5446,35 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
             s->wl_follow = WD_wl_follow_OFF;
           return SANE_STATUS_GOOD;
 
-        case OPT_IPC_MODE:
-          if (!strcmp (val, STRING_DEFAULT)) {
-            tmp = WD_ipc_DEFAULT;
-          }
-          else if (!strcmp (val, STRING_DTC)) {
-            tmp = WD_ipc_DTC;
-          }
-          else {
-            tmp = WD_ipc_SDTC;
-          }
-
-          if (tmp != s->ipc_mode)
-            *info |= SANE_INFO_RELOAD_OPTIONS;
-
-          s->ipc_mode = tmp;
-          return SANE_STATUS_GOOD;
-
+        /* DTC params*/
         case OPT_BP_FILTER:
           s->bp_filter = val_c;
+          *info |= SANE_INFO_RELOAD_OPTIONS;
           return SANE_STATUS_GOOD;
 
         case OPT_SMOOTHING:
           s->smoothing = val_c;
+          *info |= SANE_INFO_RELOAD_OPTIONS;
           return SANE_STATUS_GOOD;
 
         case OPT_GAMMA_CURVE:
           s->gamma_curve = val_c;
+          *info |= SANE_INFO_RELOAD_OPTIONS;
           return SANE_STATUS_GOOD;
 
         case OPT_THRESHOLD_CURVE:
           s->threshold_curve = val_c;
+          *info |= SANE_INFO_RELOAD_OPTIONS;
           return SANE_STATUS_GOOD;
 
         case OPT_THRESHOLD_WHITE:
           s->threshold_white = val_c;
+          *info |= SANE_INFO_RELOAD_OPTIONS;
           return SANE_STATUS_GOOD;
 
         case OPT_NOISE_REMOVAL:
-          if (val_c != s->noise_removal)
-            *info |= SANE_INFO_RELOAD_OPTIONS;
-
           s->noise_removal = val_c;
+          *info |= SANE_INFO_RELOAD_OPTIONS;
           return SANE_STATUS_GOOD;
 
         case OPT_MATRIX_5:
@@ -5489,8 +5493,10 @@ sane_control_option (SANE_Handle handle, SANE_Int option,
           s->matrix_2 = val_c;
           return SANE_STATUS_GOOD;
 
+        /* SDTC params*/
         case OPT_VARIANCE:
           s->variance = val_c;
+          *info |= SANE_INFO_RELOAD_OPTIONS;
           return SANE_STATUS_GOOD;
 
         /* Advanced Group */
@@ -6681,7 +6687,7 @@ sane_get_parameters (SANE_Handle handle, SANE_Parameters * params)
   return ret;
 }
 
-/* set s_param and u_param data based on user settings
+/* set s_params and u_params data based on user settings
  * and scanner capabilities. */
 SANE_Status
 update_params (struct fujitsu * s)
@@ -6926,8 +6932,9 @@ sane_start (SANE_Handle handle)
       if (ret != SANE_STATUS_GOOD)
         DBG (5, "sane_start: WARNING: cannot send_endorser %d\n", ret);
 
-      /* send lut if scanner has no hardware brightness/contrast */
-      if (!s->late_lut && (!s->brightness_steps || !s->contrast_steps)){
+      /* send lut if scanner has no hardware brightness/contrast,
+       * or we are going to ask it to use a downloaded gamma table */
+      if (!s->late_lut && (!s->brightness_steps || !s->contrast_steps || s->window_gamma & 0x80)){
         ret = send_lut(s);
         if (ret != SANE_STATUS_GOOD)
           DBG (5, "sane_start: WARNING: cannot early send_lut %d\n", ret);
@@ -6940,8 +6947,9 @@ sane_start (SANE_Handle handle)
         goto errors;
       }
     
-      /* send lut if scanner has no hardware brightness/contrast */
-      if (s->late_lut && (!s->brightness_steps || !s->contrast_steps)){
+      /* send lut if scanner has no hardware brightness/contrast,
+       * or we are going to ask it to use a downloaded gamma table */
+      if (s->late_lut && (!s->brightness_steps || !s->contrast_steps || s->window_gamma & 0x80)){
         ret = send_lut(s);
         if (ret != SANE_STATUS_GOOD)
           DBG (5, "sane_start: WARNING: cannot late send_lut %d\n", ret);
@@ -7573,15 +7581,15 @@ set_window (struct fujitsu *s)
     set_WD_separation(desc1,s->separation);
     set_WD_mirroring(desc1,s->mirroring);
 
-    if (s->has_sdtc && s->ipc_mode != WD_ipc_DTC)
+    if (get_ipc_mode(s) == WD_ipc_SDTC)
       set_WD_variance(desc1,s->variance);
 
-    if ((s->has_dtc && !s->has_sdtc) || s->ipc_mode == WD_ipc_DTC){
-      set_WD_filtering(desc1,!s->bp_filter);
-      set_WD_smoothing(desc1,!s->smoothing);
+    else if (get_ipc_mode(s) == WD_ipc_DTC){
+      set_WD_filtering(desc1,s->bp_filter);
+      set_WD_smoothing(desc1,s->smoothing);
       set_WD_gamma_curve(desc1,s->gamma_curve);
       set_WD_threshold_curve(desc1,s->threshold_curve);
-      set_WD_noise_removal(desc1,!s->noise_removal);
+      set_WD_noise_removal(desc1,s->noise_removal);
       if(s->noise_removal){
         set_WD_matrix5x5(desc1,s->matrix_5);
         set_WD_matrix4x4(desc1,s->matrix_4);
@@ -7593,7 +7601,7 @@ set_window (struct fujitsu *s)
 
     set_WD_wl_follow(desc1,s->wl_follow);
     set_WD_subwindow_list(desc1,0);
-    set_WD_ipc_mode(desc1,s->ipc_mode);
+    set_WD_ipc_mode(desc1,get_ipc_mode(s));
   }
 
   else{
@@ -7691,8 +7699,8 @@ get_pixelsize(struct fujitsu *s, int actual)
       /* when we are called post-scan, the scanner may give
        * more accurate data in other fields */
       if(actual && !s->has_short_pixelsize && get_PSIZE_paper_w(in)){
+        DBG(5,"get_pixelsize: Actual width %d -> %d\n", s->s_params.pixels_per_line, get_PSIZE_paper_w(in));
         s->s_params.pixels_per_line = get_PSIZE_paper_w(in);
-        DBG(5,"get_pixelsize: Actual width\n");
       }
       else{
         s->s_params.pixels_per_line = get_PSIZE_num_x(in);
@@ -7707,8 +7715,8 @@ get_pixelsize(struct fujitsu *s, int actual)
       /* when we are called post-scan, the scanner may give
        * more accurate data in other fields */
       else if(actual && !s->has_short_pixelsize && get_PSIZE_paper_l(in)){
+        DBG(5,"get_pixelsize: Actual length %d -> %d\n", s->s_params.lines, get_PSIZE_paper_l(in));
         s->s_params.lines = get_PSIZE_paper_l(in);
-        DBG(5,"get_pixelsize: Actual length\n");
       }
       else{
         s->s_params.lines = get_PSIZE_num_y(in);
@@ -9865,6 +9873,43 @@ get_page_height(struct fujitsu *s)
 
   /* overscan adds a margin to both sides */
   return height;
+}
+
+/* scanners have two different possible IPC
+ * modes, which enable a different series of
+ * subordinate options. Rather than provide
+ * the user with an option to pick the IPC
+ * mode, we show them the subordinate ones,
+ * and pick the right mode to match.
+ */
+static int
+get_ipc_mode(struct fujitsu *s) 
+{
+  if ( s->bp_filter
+    || s->smoothing
+    || s->gamma_curve
+    || s->threshold_curve
+    || s->threshold_white
+    || s->noise_removal
+    || s->matrix_5
+    || s->matrix_4
+    || s->matrix_3
+    || s->matrix_2
+  )
+    return WD_ipc_DTC;
+
+  if(s->variance)
+    return WD_ipc_SDTC;
+
+  /* special case: 0 threshold should activate IPC */
+  if(!s->threshold){
+    if(s->has_sdtc)
+      return WD_ipc_SDTC;
+    if(s->has_dtc)
+      return WD_ipc_DTC;
+  }
+
+  return WD_ipc_DEFAULT;
 }
 
 /* s->max_y gives the maximum height of paper which can be scanned 

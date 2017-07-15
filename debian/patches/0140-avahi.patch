@@ -1,0 +1,54 @@
+Description: Avoid assertion failure when net_avahi_init failed
+Author: Andreas Henriksson <andreas@fatal.se>
+Bug-Debian: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=861112
+Last-Update: 2017-06-20
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: trunk/backend/net.c
+===================================================================
+--- trunk.orig/backend/net.c
++++ trunk/backend/net.c
+@@ -1045,12 +1045,12 @@ sane_init (SANE_Int * version_code, SANE
+ 	      continue;
+ 	    }
+ #ifdef WITH_AVAHI
+-	  avahi_threaded_poll_lock (avahi_thread);
++	  if (avahi_thread) avahi_threaded_poll_lock (avahi_thread);
+ #endif /* WITH_AVAHI */
+ 	  DBG (2, "sane_init: trying to add %s\n", device_name);
+ 	  add_device (device_name, 0);
+ #ifdef WITH_AVAHI
+-	  avahi_threaded_poll_unlock (avahi_thread);
++	  if (avahi_thread) avahi_threaded_poll_unlock (avahi_thread);
+ #endif /* WITH_AVAHI */
+ 	}
+ 
+@@ -1096,12 +1096,12 @@ sane_init (SANE_Int * version_code, SANE
+ 		  continue;
+ #endif /* ENABLE_IPV6 */
+ #ifdef WITH_AVAHI
+-	      avahi_threaded_poll_lock (avahi_thread);
++	      if (avahi_thread) avahi_threaded_poll_lock (avahi_thread);
+ #endif /* WITH_AVAHI */
+ 	      DBG (2, "sane_init: trying to add %s\n", host);
+ 	      add_device (host, 0);
+ #ifdef WITH_AVAHI
+-	      avahi_threaded_poll_unlock (avahi_thread);
++	      if (avahi_thread) avahi_threaded_poll_unlock (avahi_thread);
+ #endif /* WITH_AVAHI */
+ 	    }
+ 	  free (copy);
+@@ -1519,11 +1519,11 @@ sane_open (SANE_String_Const full_name,
+ 	   "sane_open: device %s not found, trying to register it anyway\n",
+ 	   nd_name);
+ #ifdef WITH_AVAHI
+-      avahi_threaded_poll_lock (avahi_thread);
++      if (avahi_thread) avahi_threaded_poll_lock (avahi_thread);
+ #endif /* WITH_AVAHI */
+       status = add_device (nd_name, &dev);
+ #ifdef WITH_AVAHI
+-      avahi_threaded_poll_unlock (avahi_thread);
++      if (avahi_thread) avahi_threaded_poll_unlock (avahi_thread);
+ #endif /* WITH_AVAHI */
+       if (status != SANE_STATUS_GOOD)
+ 	{

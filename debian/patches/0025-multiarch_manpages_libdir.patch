@@ -7,7 +7,7 @@ Index: trunk/doc/Makefile.in
 ===================================================================
 --- trunk.orig/doc/Makefile.in
 +++ trunk/doc/Makefile.in
-@@ -906,7 +906,7 @@ all: bemans $(STANDARD) html-pages
+@@ -941,7 +941,7 @@ all: bemans $(API_SPECS) html-pages
  	@sed -e 's|@DATADIR@|$(datadir)|g' \
  	  -e 's|@CONFIGDIR@|$(configdir)|g' \
  	  -e 's|@DOCDIR@|$(docdir)|g' \
@@ -20,7 +20,7 @@ Index: trunk/doc/Makefile.am
 ===================================================================
 --- trunk.orig/doc/Makefile.am
 +++ trunk/doc/Makefile.am
-@@ -107,7 +107,7 @@ MAN2HTML= nroff -c -man |\
+@@ -98,7 +98,7 @@ MAN2HTML = nroff -c -man |\
  	@sed -e 's|@DATADIR@|$(datadir)|g' \
  	  -e 's|@CONFIGDIR@|$(configdir)|g' \
  	  -e 's|@DOCDIR@|$(docdir)|g' \

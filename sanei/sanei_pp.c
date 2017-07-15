@@ -126,9 +126,7 @@ inb( u_long port )
 #elif defined(HAVE_LIBIEEE1284)
 # include <ieee1284.h>
 #else
-# if defined(__GNUC__)
-#  warning "No I/O support for this architecture!"
-# endif
+# pragma message "No I/O support for this architecture!"
 # define IO_SUPPORT_MISSING
 #endif
 
@@ -697,7 +695,7 @@ pp_init( void )
 #endif
 
 	if( first_time == SANE_FALSE ) {
-		DBG( 5, "pp_init: already initalized\n" );
+		DBG( 5, "pp_init: already initialized\n" );
 		return SANE_STATUS_GOOD;
     }
 

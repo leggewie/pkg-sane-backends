@@ -10,6 +10,9 @@
 
 #include "../include/sane/config.h"
 #include <semaphore.h>
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
 
 #undef  BACKEND_NAME
 #define BACKEND_NAME kvs40xx
@@ -223,6 +226,18 @@ swap_bytes32 (u32 x)
 {
   return x << 24 | x >> 24 |
     (x & (u32) 0x0000ff00UL) << 8 | (x & (u32) 0x00ff0000UL) >> 8;
+}
+
+static inline void
+copy16 (u8 * p, u16 x)
+{
+  memcpy (p, (u8 *) &x, sizeof (x));
+}
+
+static inline void
+copy32 (u8 * p, u32 x)
+{
+  memcpy (p, (u8 *) &x, sizeof (x));
 }
 
 #if WORDS_BIGENDIAN

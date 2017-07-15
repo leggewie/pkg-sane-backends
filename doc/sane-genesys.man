@@ -10,7 +10,7 @@ access to USB flatbed scanners based on the Genesys GL646, GL841, GL843, GL847 a
 At present, the following scanners are known to work with this backend:
 .PP 
 .RS
-Canon LiDE 35/40/50/60/100/110/200/210/220/700
+Canon LiDE 35/40/50/60/100/110/120/200/210/220/700
 .br
 Hewlett-Packard HP2300C/HP2400/HP3670/HP3690/G4010/G4050
 .br
@@ -52,7 +52,7 @@ in the feeder then start calibration either by passing the \-\-calibrate option 
 or by clicking on the available 'calibrate' button in the 'advanced options' in a graphical
 frontend. The result of the calibration is stored in a file in the home directory of the user doing it.
 If you plug the scanner in another machine or use it with another account, calibration
-will have to be redone, unles you use the \-\-calibration\-file option.
+will have to be redone, unless you use the \-\-calibration\-file option.
 If no home directory is defined,
 USERAPPPROFILE will be used, then TMPDIR or TMP. If none of these directories exist, the backend will try
 to write in the current working directory. Flatbed scanners also make use of the calibration file as a cache
@@ -71,7 +71,7 @@ A value of -1 means forever, 0 means no cache.
 .B \-\-threshold percent
 .RS
 	0..100% (in steps of 1). Select minimum brightness to get a white point. Pixels
-whith brightness below that value will be scanned as black.
+with brightness below that value will be scanned as black.
 .RE
 
 .B \-\-brightness value
@@ -284,6 +284,9 @@ Brian Paavo from Benthic Science Limited for donating a Canoscan LiDE 700F.
 .br
 .TP
 Dany Qumsiyeh for donating a Canoscan LiDE 210 and a LiDE 220.
+.br
+.TP
+Luc Verhaegen for donating a Canoscan LiDE 120.
 .br
 
 .SH "SEE ALSO"

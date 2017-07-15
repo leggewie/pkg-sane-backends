@@ -3,7 +3,7 @@
    Copyright (C) 2003 Oliver Rauch
    Copyright (C) 2003, 2004 Henning Meier-Geinitz <henning@meier-geinitz.de>
    Copyright (C) 2004, 2005 Gerhard Jaeger <gerhard@gjaeger.de>
-   Copyright (C) 2004-2013 Stéphane Voltz <stef.dev@free.fr>
+   Copyright (C) 2004-2013 StÃ©phane Voltz <stef.dev@free.fr>
    Copyright (C) 2005-2009 Pierre Willenbrock <pierre@pirsoft.dnsalias.org>
    Copyright (C) 2006 Laurent Charpentier <laurent_pubs@yahoo.com>
    Parts of the structs have been taken from the gt68xx backend by
@@ -104,7 +104,7 @@
   do { status = function;                               \
     if (status != SANE_STATUS_GOOD) \
       { \
-        DBG(DBG_error, "%s: %s\n", __FUNCTION__, sane_strstatus (status)); \
+        DBG(DBG_error, "%s: %s\n", __func__, sane_strstatus (status)); \
 	return status; \
       }	\
   } while (SANE_FALSE)
@@ -114,7 +114,7 @@
     if (status != SANE_STATUS_GOOD) \
       { \
 	 free(mem); \
-	 DBG(DBG_error, "%s: %s\n", __FUNCTION__, sane_strstatus (status)); \
+	 DBG(DBG_error, "%s: %s\n", __func__, sane_strstatus (status)); \
 	 return status;      \
       } \
   } while (SANE_FALSE)
@@ -129,8 +129,8 @@
 	  } \
   } while (SANE_FALSE)
 
-#define DBGSTART DBG (DBG_proc, "%s start\n", __FUNCTION__);
-#define DBGCOMPLETED DBG (DBG_proc, "%s completed\n", __FUNCTION__);
+#define DBGSTART DBG (DBG_proc, "%s start\n", __func__);
+#define DBGCOMPLETED DBG (DBG_proc, "%s completed\n", __func__);
 
 #define FREE_IFNOT_NULL(x)		if(x!=NULL) { free(x); x=NULL;}
 
@@ -352,6 +352,7 @@ Genesys_Color_Order;
 #define DAC_IMG101         18
 #define DAC_PLUSTEK3800    19
 #define DAC_CANONLIDE80    20
+#define DAC_CANONLIDE120   21
 
 #define CCD_UMAX         0
 #define CCD_ST12         1	/* SONY ILX548: 5340 Pixel  ??? */
@@ -410,6 +411,7 @@ Genesys_Color_Order;
 #define GPO_IMG101       22
 #define GPO_PLUSTEK3800  23
 #define GPO_CANONLIDE80  24
+#define GPO_CANONLIDE120 25
 
 #define MOTOR_UMAX          0
 #define MOTOR_5345          1
@@ -435,6 +437,7 @@ Genesys_Color_Order;
 #define MOTOR_PLUSTEK3800  22
 #define MOTOR_CANONLIDE210 23
 #define MOTOR_CANONLIDE80  24
+#define MOTOR_CANONLIDE120 25
 
 
 /* Forward typedefs */
@@ -506,8 +509,8 @@ typedef struct Genesys_Command_Set
     SANE_Status (*coarse_gain_calibration) (Genesys_Device * dev, int dpi);
     SANE_Status (*led_calibration) (Genesys_Device * dev);
 
-    SANE_Status (*slow_back_home) (Genesys_Device * dev,
-				   SANE_Bool wait_until_home);
+    SANE_Status (*slow_back_home) (Genesys_Device * dev, SANE_Bool wait_until_home);
+    SANE_Status (*rewind) (Genesys_Device * dev);
 
     SANE_Status (*bulk_write_register) (Genesys_Device * dev,
 					Genesys_Register_Set * reg,

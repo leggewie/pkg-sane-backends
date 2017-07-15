@@ -53,7 +53,7 @@ Index: trunk/tools/sane-desc.c
    printf ("<h1>%s</h1>\n", title);
    printf ("</div>\n" "<hr>\n");
    printf ("%s\n", intro);
-@@ -3465,8 +3465,8 @@ print_udev_header (void)
+@@ -3463,8 +3463,8 @@ print_udev_header (void)
  {
    time_t current_time = time (0);
    printf ("# This file was automatically created based on description files (*.desc)\n"
