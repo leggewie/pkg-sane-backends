@@ -11,6 +11,7 @@ sane-backends (1.0.27-1~experimental2) UNRELEASED; urgency=medium
       (Closes: #868265).
   * debian/sane-utils.postrm:
     + Reenable set -e and masquerade update-inetd calls with "|| true".
+  * Rebuild symbols files (Closes: #868309).
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 15 Jul 2017 11:31:34 +0200
 
