@@ -113,7 +113,10 @@ override_dh_installudev-arch:
 ifeq (linux,$(DEB_HOST_ARCH_OS))
 	# udev support
 	# Generate the udev rules file
-	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m udev+acl > $(CURDIR)/debian/libsane1.udev
+#	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m udev+acl > $(CURDIR)/debian/libsane1.udev
+	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m udev+hwdb > $(CURDIR)/debian/libsane1.udev
+	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m hwdb > $(CURDIR)/debian/20-sane.hwdb
+	cp $(CURDIR)/debian/20-sane.hwdb $(CURDIR)/debian/libsane1/lib/udev/hwdb.d/
 	dh_installudev
 endif
 
