@@ -79,7 +79,7 @@ make sure the appropriate device files (eg. /dev/sg0, ...) are owned by root
 and the scanner group, with permissions set to 0660.
 
 For USB and SCSI scanners, the permissions will be automatically set by udev;
-the /lib/udev/rules.d/60-libsane.rules file contains a list of USB and SCSI
+the /lib/udev/rules.d/60-libsane1.rules file contains a list of USB and SCSI
 scanners supported by SANE.
 
 The udev rules now use ACLs instead of standard UNIX permissions; the scanner
@@ -88,9 +88,9 @@ permissions.
 
 If your scanner is missing from the list, do NOT modify this file; it is not
 a configuration file, which means your changes WILL be overwritten upon
-upgrade. Instead, create /etc/udev/rules.d/60-libsane.rules and add the udev
-rule for your scanner in this file. /lib/udev/rules.d/60-libsane.rules will
-then be ignored by udev and /etc/udev/rules.d/60-libsane.rules will be used
+upgrade. Instead, create /etc/udev/rules.d/60-libsane1.rules and add the udev
+rule for your scanner in this file. /lib/udev/rules.d/60-libsane1.rules will
+then be ignored by udev and /etc/udev/rules.d/60-libsane1.rules will be used
 instead.
 
 Feel free to file a bug report (severity wishlist) against the libsane package
@@ -104,7 +104,7 @@ the scanner is supported (basic, good, ...).
 
 udev will automatically set up the permissions and ownership on the device
 node corresponding to your scanner according to the rules defined in the
-libsane.rules file (default is root:scanner, 0664). If you want to execute
+libsane1.rules file (default is root:scanner, 0664). If you want to execute
 a script when your scanner is plugged in, add RUN+="/path/to/script" to the
 rule matching your scanner.
 

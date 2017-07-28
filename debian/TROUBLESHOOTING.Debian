@@ -18,7 +18,7 @@ REMARK: Sometimes usblp is used to access your printer.
 
 From https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=789593
 
-The file /lib/udev/rules.d/60-libsane.rules uses the command "/bin/setfacl -m g:scanner:rw 
+The file /lib/udev/rules.d/60-libsane1.rules uses the command "/bin/setfacl -m g:scanner:rw 
 $env{DEVNAME}" to add the "scanner" group with rw access to the device permissions.
 
 In my case, with /dev on an ext4 filesystem with no ACL support enabled in the kernel, setfacl 
@@ -26,4 +26,4 @@ returns "Operation not supported". I assume this is because it's trying to add a
 possible in its fallback mode of traditional Unix-style file permissions.
 
 As a workaround, I have substituted "/bin/chown root:scanner $env{DEVNAME}" as the command at the 
-end of 60-libsane.rules (an alternative would be to use a UDEV rule element to change the ownership).
+end of 60-libsane1.rules (an alternative would be to use a UDEV rule element to change the ownership).
