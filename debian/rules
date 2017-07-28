@@ -29,7 +29,7 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 endif
 
 %:
-	dh $@ --parallel --with autotools_dev,systemd
+	dh $@
 
 override_dh_auto_configure:
 	autoconf

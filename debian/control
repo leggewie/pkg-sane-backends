@@ -4,11 +4,9 @@ Priority: optional
 Maintainer: Jörg Frings-Fürst <debian@jff-webhosting.net>
 Standards-Version: 4.0.0
 Build-Depends:
- autotools-dev,
  autoconf,
  chrpath,
  debhelper (>= 10),
- dh-systemd,
  gettext,
  libavahi-client-dev,
  libcam-dev [kfreebsd-any],
