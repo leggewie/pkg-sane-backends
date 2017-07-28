@@ -134,4 +134,4 @@ override_dh_systemd_enable-arch:
 override_dh_makeshlibs-arch:
 	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane1 -plibsane1
 	# Empty dependency_libs in all .la files
-	find debian -name "*.la" -type f -exec sed -i "/dependency_libs/ s/'.*'/''/" -i {} \;
+	#find debian -name "*.la" -type f -exec sed -i "/dependency_libs/ s/'.*'/''/" -i {} \;
