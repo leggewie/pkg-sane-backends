@@ -17,7 +17,7 @@ Build-Depends:
  libltdl3-dev,
  libsystemd-dev [linux-any],
  libtiff-dev,
- libusb-1.0-0-dev [!hurd-i386],
+ libusb-1.0-0-dev,
  pkg-config,
  po-debconf,
  texlive,

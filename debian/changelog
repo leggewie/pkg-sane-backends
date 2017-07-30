@@ -9,6 +9,7 @@ sane-backends (1.0.27-1~experimental2) experimental; urgency=medium
     + Add Breaks and Replaces to the package libsane1 (Closes: #868308).
     + Remove outdated Recommends libsane-extras from libsane1
       (Closes: #868265).
+    + Remove [!hurd-i386] from B-D libusb-1.0-0-dev.
   * debian/sane-utils.postrm:
     + Enable set -e and masquerade update-inetd calls with "|| true".
   * Rebuild symbols files (Closes: #868309).
