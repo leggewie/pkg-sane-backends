@@ -29,7 +29,7 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 endif
 
 %:
-	dh $@ --parallel --with autotools_dev,systemd
+	dh $@
 
 override_dh_auto_configure:
 	autoconf
@@ -113,7 +113,10 @@ override_dh_installudev-arch:
 ifeq (linux,$(DEB_HOST_ARCH_OS))
 	# udev support
 	# Generate the udev rules file
-	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m udev+acl > $(CURDIR)/debian/libsane.udev
+#	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m udev+acl > $(CURDIR)/debian/libsane1.udev
+	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m udev+hwdb > $(CURDIR)/debian/libsane1.udev
+	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m hwdb > $(CURDIR)/debian/20-sane.hwdb
+	cp $(CURDIR)/debian/20-sane.hwdb $(CURDIR)/debian/libsane1/lib/udev/hwdb.d/
 	dh_installudev
 endif
 
@@ -127,9 +130,8 @@ override_dh_installinit-arch:
 
 override_dh_systemd_enable-arch:
 	dh_systemd_enable --no-enable saned.socket
-	cp 111.111 222.222
 
 override_dh_makeshlibs-arch:
 	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane1 -plibsane1
 	# Empty dependency_libs in all .la files
-	find debian -name "*.la" -type f -exec sed -i "/dependency_libs/ s/'.*'/''/" -i {} \;
+	#find debian -name "*.la" -type f -exec sed -i "/dependency_libs/ s/'.*'/''/" -i {} \;

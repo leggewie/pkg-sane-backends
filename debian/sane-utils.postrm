@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# set -e
+set -e
 #
 # set -e are disabled because pathfind update-inetd 
 # gives an piuparts error.
@@ -26,10 +26,10 @@ pathfind() {
 
 
 if [ "$1" = purge ] ; then
-    pathfind update-inetd
+    pathfind update-inetd || true
     if [ $? = 0 ] ; then
-	update-inetd --remove sane-port
-	update-inetd --remove "#<off># sane-port"
+	update-inetd --remove sane-port || true
+	update-inetd --remove "#<off># sane-port" || true
     fi
 
 #

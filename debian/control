@@ -4,11 +4,9 @@ Priority: optional
 Maintainer: Jörg Frings-Fürst <debian@jff-webhosting.net>
 Standards-Version: 4.0.0
 Build-Depends:
- autotools-dev,
  autoconf,
  chrpath,
  debhelper (>= 10),
- dh-systemd,
  gettext,
  libavahi-client-dev,
  libcam-dev [kfreebsd-any],
@@ -19,7 +17,7 @@ Build-Depends:
  libltdl3-dev,
  libsystemd-dev [linux-any],
  libtiff-dev,
- libusb-1.0-0-dev [!hurd-i386],
+ libusb-1.0-0-dev,
  pkg-config,
  po-debconf,
  texlive,
@@ -78,6 +76,8 @@ Package: libsane1
 Section: libs
 Architecture: any
 Multi-Arch: same
+Breaks: libsane (<<1.0.27-1)
+Replaces: libsane (<<1.0.27-1)
 Pre-Depends: ${misc:Pre-Depends}
 Depends:
  acl [linux-any],
@@ -86,7 +86,7 @@ Depends:
  udev [linux-any] | makedev [linux-any],
  ${misc:Depends},
  ${shlibs:Depends}
-Recommends: libsane-extras, sane-utils (>= ${binary:Version})
+Recommends: sane-utils (>= ${binary:Version})
 Suggests: avahi-daemon, hplip
 Description: API library for scanners
  SANE stands for "Scanner Access Now Easy" and is an application
