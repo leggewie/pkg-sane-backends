@@ -1,26 +1,29 @@
 sane-backends (1.0.27-1~experimental2) experimental; urgency=medium
 
   * debian/rules:
-    - Rename libsane.udev to libsane1.udev to get missing
-      60-libsane1.rules (Closes: #868312).
-  * Replace libsane.udev with libsane1.udev at TROUBLESHOOTING.Debian
+    - Rename libsane.udev to libsane1.udev to make sure that
+      60-libsane1.rules is actually created (Closes: #868312).
+  * Rename libsane.udev to libsane1.udev in TROUBLESHOOTING.Debian
     and libsane1.README.Debian.
   * debian/control:
-    + Add Breaks and Replaces to the package libsane1 (Closes: #868308).
-    + Remove outdated Recommends libsane-extras from libsane1
-      (Closes: #868265).
+    + Add Breaks and Replaces against libsane to libsane1
+      binary package (Closes: #868308).
+    + Remove outdated Recommends libsane-extras to libsane1
+      binary package (Closes: #868265).
+    + Remove [!hurd-i386] from libusb-1.0-0-dev Build-Dependency.
   * debian/sane-utils.postrm:
-    + Enable set -e and masquerade update-inetd calls with "|| true".
-  * Rebuild symbols files (Closes: #868309).
+    + Add set -e and silence update-inetd calls with "|| true".
+  * Regenerate symbols files from build logs (Closes: #868309).
   * Use the hwdb+udev format (Closes: #869244):
-    - debian/rules: Change override_dh_installudev-arch.
+    - debian/rules: Call sane-desc with -m udev+hwdb and -m hwdb,
+      disable -m udev+acl call in override_dh_installudev-arch.
     - New file libsane1.dirs for /lib/udev/hwdb.d/.
-  * Drop both dh-autoreconf/dh-systemd from both build-depends
-    and dh --with arguments because this is all defaults when
-    using dh compat 10.
-  * Drop --parallel from dh because this is default when using
-    dh compat 10.
-  * Remove .la files from install (Closes: #868307).
+  * Drop both dh-autoreconf/dh-systemd from both Build-Depends
+    and dh command line as both are enabled by default for
+    dh compat level 10.
+  * Drop --parallel from the dh command line because parallel
+    builds are enabled by default for dh compat level 10.
+  * Drop .la files from libsane1.install (Closes: #868307).
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Fri, 28 Jul 2017 13:53:30 +0200
 
