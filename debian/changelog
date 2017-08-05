@@ -4,6 +4,8 @@ sane-backends (1.0.27-1~experimental3) UNRELEASED; urgency=medium
     + Drop outdated Recommends libsane-extras-dev to libsane-dev
       binary package (Closes: #868265).
     + Drop outdated texlive and texlive-latex-extra Build-Dependency.
+  * debian/rules:
+    + Drop create and install the /etc/sane.d/dll.d directory.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 02 Aug 2017 18:20:24 +0200
 

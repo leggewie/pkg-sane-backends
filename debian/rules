@@ -112,8 +112,6 @@ override_dh_installdocs-arch:
 
 override_dh_installdocs-indep:
 	dh_installdocs
-	# create the /etc/sane.d/dll.d directory in libsane-common
-#	install -d debian/libsane-common/etc/sane.d/dll.d
 	# Platform-specific documentation
 	$(RM) debian/libsane-common/etc/sane.d/saned.conf
 ifeq (kfreebsd,$(DEB_HOST_ARCH_OS))
