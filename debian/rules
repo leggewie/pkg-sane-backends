@@ -62,7 +62,6 @@ override_dh_auto_clean:
 	$(RM) include/byteorder.h include/_stdint.h
 	# Add here commands to clean up after the build process.
 	[ ! -f Makefile ] || $(MAKE) distclean
-	$(RM) debian/libsane-common.install
 	$(RM) debian/libsane1.udev
 	dh_auto_clean
 
@@ -74,7 +73,6 @@ override_dh_auto_install-arch:
 	$(RM) debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/sane/libsane-dll.*
 
 override_dh_auto_install-indep:
-	cp debian/libsane-common.install.in debian/libsane-common.install
 	dh_auto_install
 
 override_dh_install-arch:
