@@ -6,6 +6,9 @@ sane-backends (1.0.27-1~experimental3) UNRELEASED; urgency=medium
     + Drop outdated texlive and texlive-latex-extra Build-Dependency.
   * debian/rules:
     + Drop create and install the /etc/sane.d/dll.d directory.
+    + Move rules from override_dh_install-arch and override_dh_auto_install-arch
+      to override_dh_install-indep and override_dh_auto_install-indep
+      to build the arch all packages without error (CLoses: #870455).
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 02 Aug 2017 18:20:24 +0200
 

@@ -63,7 +63,7 @@ override_dh_auto_clean:
 	# Add here commands to clean up after the build process.
 	[ ! -f Makefile ] || $(MAKE) distclean
 	$(RM) debian/libsane-common.install
-	$(RM) debian/libsane.udev
+	$(RM) debian/libsane1.udev
 	dh_auto_clean
 
 override_dh_auto_install-arch:
@@ -72,29 +72,16 @@ override_dh_auto_install-arch:
 	$(RM) debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/sane/libsane.so.1
 	# remove libsane-dll, same as regular libsane
 	$(RM) debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/sane/libsane-dll.*
-	# install only the manpages for the backends which have been built
-#	cp debian/libsane-common.install.in debian/libsane-common.install
-#	ls debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/sane/*.so | sed -e \
-#		"s#.*/lib\([^.]\+\)[.]so#usr/share/man/man5/\1.5#" | { while read mp; do \
-#		test -e debian/tmp/$$mp && echo $$mp >> debian/libsane-common.install; done }
 
 override_dh_auto_install-indep:
 	cp debian/libsane-common.install.in debian/libsane-common.install
 	dh_auto_install
-#	ls debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/sane/*.so | sed -e \
-#		"s#.*/lib\([^.]\+\)[.]so#usr/share/man/man5/\1.5#" | { while read mp; do \
-#		test -e debian/tmp/$$mp && echo $$mp >> debian/libsane-common.install; done }
 
 override_dh_install-arch:
 	dh_install
-#	# Install HAL fdi file
-#	mkdir -p $(CURDIR)/debian/libsane-common/usr/share/hal/fdi/preprobe/10osvendor
-#	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m hal-new > \
-#	$(CURDIR)/debian/libsane-common/usr/share/hal/fdi/preprobe/10osvendor/20-libsane.fdi
 	# Install the pkg-config file
 	mkdir -p debian/libsane-dev/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/
 	cp tools/sane-backends.pc debian/libsane-dev/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/
-	#
 	mkdir -p $(CURDIR)/debian/sane-utils/usr/share/man/man5/
 	cp $(CURDIR)/doc/sane-umax_pp.man $(CURDIR)/debian/sane-utils/usr/share/man/man5/umax_pp.5
 
@@ -125,7 +112,6 @@ override_dh_installudev-arch:
 ifeq (linux,$(DEB_HOST_ARCH_OS))
 	# udev support
 	# Generate the udev rules file
-#	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m udev+acl > $(CURDIR)/debian/libsane1.udev
 	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m udev+hwdb > $(CURDIR)/debian/libsane1.udev
 	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m hwdb > $(CURDIR)/debian/20-sane.hwdb
 	cp $(CURDIR)/debian/20-sane.hwdb $(CURDIR)/debian/libsane1/lib/udev/hwdb.d/
@@ -145,5 +131,3 @@ override_dh_systemd_enable-arch:
 
 override_dh_makeshlibs-arch:
 	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane1 -plibsane1
-	# Empty dependency_libs in all .la files
-	#find debian -name "*.la" -type f -exec sed -i "/dependency_libs/ s/'.*'/''/" -i {} \;
