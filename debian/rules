@@ -73,23 +73,37 @@ override_dh_auto_install-arch:
 	# remove libsane-dll, same as regular libsane
 	$(RM) debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/sane/libsane-dll.*
 	# install only the manpages for the backends which have been built
+#	cp debian/libsane-common.install.in debian/libsane-common.install
+#	ls debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/sane/*.so | sed -e \
+#		"s#.*/lib\([^.]\+\)[.]so#usr/share/man/man5/\1.5#" | { while read mp; do \
+#		test -e debian/tmp/$$mp && echo $$mp >> debian/libsane-common.install; done }
+
+override_dh_auto_install-indep:
 	cp debian/libsane-common.install.in debian/libsane-common.install
-	ls debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/sane/*.so | sed -e \
-		"s#.*/lib\([^.]\+\)[.]so#usr/share/man/man5/\1.5#" | { while read mp; do \
-		test -e debian/tmp/$$mp && echo $$mp >> debian/libsane-common.install; done }
+	dh_auto_install
+#	ls debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/sane/*.so | sed -e \
+#		"s#.*/lib\([^.]\+\)[.]so#usr/share/man/man5/\1.5#" | { while read mp; do \
+#		test -e debian/tmp/$$mp && echo $$mp >> debian/libsane-common.install; done }
 
 override_dh_install-arch:
+	dh_install
+#	# Install HAL fdi file
+#	mkdir -p $(CURDIR)/debian/libsane-common/usr/share/hal/fdi/preprobe/10osvendor
+#	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m hal-new > \
+#	$(CURDIR)/debian/libsane-common/usr/share/hal/fdi/preprobe/10osvendor/20-libsane.fdi
+	# Install the pkg-config file
+	mkdir -p debian/libsane-dev/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/
+	cp tools/sane-backends.pc debian/libsane-dev/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/
+	#
+	mkdir -p $(CURDIR)/debian/sane-utils/usr/share/man/man5/
+	cp $(CURDIR)/doc/sane-umax_pp.man $(CURDIR)/debian/sane-utils/usr/share/man/man5/umax_pp.5
+
+override_dh_install-indep:
 	dh_install
 	# Install HAL fdi file
 	mkdir -p $(CURDIR)/debian/libsane-common/usr/share/hal/fdi/preprobe/10osvendor
 	$(CURDIR)/tools/sane-desc -s $(CURDIR)/doc/descriptions -m hal-new > \
 	$(CURDIR)/debian/libsane-common/usr/share/hal/fdi/preprobe/10osvendor/20-libsane.fdi
-	# Install the pkg-config file
-	mkdir -p debian/libsane-dev/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/
-	cp tools/sane-backends.pc debian/libsane-dev/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/
-	#
-	mkdir -p $(CURDIR)/debian//sane-utils/usr/share/man/man5/
-	cp $(CURDIR)/doc/sane-umax_pp.man $(CURDIR)/debian/sane-utils/usr/share/man/man5/umax_pp.5
 
 override_dh_installdocs-arch:
 	dh_installdocs
@@ -99,7 +113,7 @@ override_dh_installdocs-arch:
 override_dh_installdocs-indep:
 	dh_installdocs
 	# create the /etc/sane.d/dll.d directory in libsane-common
-	install -d debian/libsane-common/etc/sane.d/dll.d
+#	install -d debian/libsane-common/etc/sane.d/dll.d
 	# Platform-specific documentation
 	$(RM) debian/libsane-common/etc/sane.d/saned.conf
 ifeq (kfreebsd,$(DEB_HOST_ARCH_OS))

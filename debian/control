@@ -20,8 +20,6 @@ Build-Depends:
  libusb-1.0-0-dev,
  pkg-config,
  po-debconf,
- texlive,
- texlive-latex-extra,
  xutils-dev
 Homepage: http://www.sane-project.org
 Vcs-Git: git://anonscm.debian.org/collab-maint/sane-backends.git
@@ -113,7 +111,6 @@ Multi-Arch: same
 Depends:
  libsane1 (= ${binary:Version}),
  ${misc:Depends}
-Recommends: libsane-extras-dev
 Description: API development library for scanners [development files]
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
