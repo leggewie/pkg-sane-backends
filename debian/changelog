@@ -10,6 +10,12 @@ sane-backends (1.0.27-1~experimental3) UNRELEASED; urgency=medium
       to override_dh_install-indep and override_dh_auto_install-indep
       to build the arch all packages without error (CLoses: #870455).
   * Move libsane-common.install.in to libsane-common.install.
+  * debian/copyright:
+    + Add year 2017 for debian/*.
+  * New debian/patches/0150-genesys-Fix-use-of-uninitialized-variable.patch:
+    + Initializing usb_mode (Closes:# 869673).
+      Thanks to Florian Lindemann <linde@bfw-online.de> and
+      Olaf Meeuwissen <paddy-hack@member.fsf.org>.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 02 Aug 2017 18:20:24 +0200
 

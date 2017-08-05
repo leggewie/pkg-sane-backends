@@ -21,3 +21,4 @@
 0140-avahi.patch
 0145-avahi.patch
 0100-source_spelling.patch
+0150-genesys-Fix-use-of-uninitialized-variable.patch
