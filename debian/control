@@ -34,6 +34,8 @@ Depends:
  update-inetd,
  ${misc:Depends},
  ${shlibs:Depends}
+Breaks: libsane-common (<<1.0.27-1~)
+Replaces: libsane-common (<<1.0.27-1~)
 Suggests: avahi-daemon, unpaper
 Description: API library for scanners -- utilities
  SANE stands for "Scanner Access Now Easy" and is an application
@@ -56,6 +58,7 @@ Multi-Arch: foreign
 Pre-Depends:
  dpkg (>= 1.15.7.2)
 Depends: ${misc:Depends}
+Breaks: sane-utils (<<1.0.27-1~)
 Description: API library for scanners -- documentation and support files
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any

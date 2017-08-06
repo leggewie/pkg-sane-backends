@@ -95,7 +95,7 @@ override_dh_installman-indep:
 	$(RM) $(CURDIR)/debian/libsane-common/usr/share/man/man1/sane-find-scanner.1
 	$(RM) $(CURDIR)/debian/libsane-common/usr/share/man/man1/scanimage.1
 	$(RM) $(CURDIR)/debian/libsane-common/usr/share/man/man5/sane-umax_pp.5
-	$(RM) $(CURDIR)/debian/libsane-common/usr/share/man/man8/saned.8
+	$(RM) -r $(CURDIR)/debian/libsane-common/usr/share/man/man8/
         # remove manpages for not build libs
 	$(RM) $(CURDIR)/debian/libsane-common/usr/share/man/man5/sane-v4l.5
 

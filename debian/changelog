@@ -18,6 +18,7 @@ sane-backends (1.0.27-1~experimental3) UNRELEASED; urgency=medium
       Olaf Meeuwissen <paddy-hack@member.fsf.org>.
   * Move install of man pages from debian/rules to libsane-common.manpages and
     sane-utils.manpages.
+  * Move umax_pp.5 from libsane-common to sane-utils.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 02 Aug 2017 18:20:24 +0200
 
