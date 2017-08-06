@@ -1,4 +1,4 @@
-sane-backends (1.0.27-1~experimental3) UNRELEASED; urgency=medium
+sane-backends (1.0.27-1~experimental3) experimental; urgency=medium
 
   * debian/control:
     + Drop outdated Recommends libsane-extras-dev to libsane-dev
@@ -20,7 +20,7 @@ sane-backends (1.0.27-1~experimental3) UNRELEASED; urgency=medium
     sane-utils.manpages.
   * Move umax_pp.5 from libsane-common to sane-utils.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 02 Aug 2017 18:20:24 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 06 Aug 2017 14:40:14 +0200
 
 sane-backends (1.0.27-1~experimental2) experimental; urgency=medium
 
