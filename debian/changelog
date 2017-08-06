@@ -16,6 +16,8 @@ sane-backends (1.0.27-1~experimental3) UNRELEASED; urgency=medium
     + Initializing usb_mode (Closes:# 869673).
       Thanks to Florian Lindemann <linde@bfw-online.de> and
       Olaf Meeuwissen <paddy-hack@member.fsf.org>.
+  * Move install of man pages from debian/rules to libsane-common.manpages and
+    sane-utils.manpages.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Wed, 02 Aug 2017 18:20:24 +0200
 
