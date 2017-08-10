@@ -19,8 +19,10 @@ sane-backends (1.0.27-1~experimental3) experimental; urgency=medium
   * Move install of man pages from debian/rules to libsane-common.manpages and
     sane-utils.manpages.
   * Move umax_pp.5 from libsane-common to sane-utils.
+  * debian/sane-utils.saned.init:
+    + Add parameter to --retry at the stop section (Closes: #871543).
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sun, 06 Aug 2017 14:40:14 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 10 Aug 2017 08:51:45 +0200
 
 sane-backends (1.0.27-1~experimental2) experimental; urgency=medium
 

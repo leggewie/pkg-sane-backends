@@ -52,7 +52,7 @@ case "$1" in
   stop)
 	log_daemon_msg "Stopping $DESC" "$NAME"
 	start-stop-daemon --stop --oknodo --quiet --pidfile /var/run/$NAME.pid \
-		--retry --exec $DAEMON
+		--retry 10 --exec $DAEMON
 	log_end_msg $?
 	;;
   force-reload)
