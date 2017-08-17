@@ -1,26 +1,29 @@
 sane-backends (1.0.27-1~experimental3) experimental; urgency=medium
 
   * debian/control:
-    + Drop outdated Recommends libsane-extras-dev to libsane-dev
+    - Drop outdated Recommends libsane-extras-dev to libsane-dev
       binary package (Closes: #868265).
-    + Drop outdated texlive and texlive-latex-extra Build-Dependency.
+    - Drop outdated texlive and texlive-latex-extra Build-Dependency.
   * debian/rules:
-    + Drop create and install the /etc/sane.d/dll.d directory.
-    + Move rules from override_dh_install-arch and override_dh_auto_install-arch
+    - Drop create and install the /etc/sane.d/dll.d directory.
+    - Move rules from override_dh_install-arch and override_dh_auto_install-arch
       to override_dh_install-indep and override_dh_auto_install-indep
       to build the arch all packages without error (CLoses: #870455).
   * Move libsane-common.install.in to libsane-common.install.
   * debian/copyright:
-    + Add year 2017 for debian/*.
+    - Add year 2017 for debian/*.
   * New debian/patches/0150-genesys-Fix-use-of-uninitialized-variable.patch:
-    + Initializing usb_mode (Closes:# 869673).
+    - Initializing usb_mode (Closes:# 869673).
       Thanks to Florian Lindemann <linde@bfw-online.de> and
       Olaf Meeuwissen <paddy-hack@member.fsf.org>.
   * Move install of man pages from debian/rules to libsane-common.manpages and
-    sane-utils.manpages.
+    sane-utils.manpages (Closes: #872366).
   * Move umax_pp.5 from libsane-common to sane-utils.
   * debian/sane-utils.saned.init:
-    + Add parameter to --retry at the stop section (Closes: #871543).
+    - Add parameter to --retry at the stop section (Closes: #871543).
+  * libsane1.README.Debian:
+    - Remove references to the libsane-extras package.
+  * Correct typos in the previous changelog entry.
 
  -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 10 Aug 2017 08:51:45 +0200
 
@@ -32,13 +35,13 @@ sane-backends (1.0.27-1~experimental2) experimental; urgency=medium
   * Rename libsane.udev to libsane1.udev in TROUBLESHOOTING.Debian
     and libsane1.README.Debian.
   * debian/control:
-    + Add Breaks and Replaces against libsane to libsane1
+    - Add Breaks and Replaces against libsane to libsane1
       binary package (Closes: #868308).
-    + Remove outdated Recommends libsane-extras to libsane1
+    - Remove outdated Recommends libsane-extras to libsane1
       binary package (Closes: #868265).
-    + Remove [!hurd-i386] from libusb-1.0-0-dev Build-Dependency.
+    - Remove [!hurd-i386] from libusb-1.0-0-dev Build-Dependency.
   * debian/sane-utils.postrm:
-    + Add set -e and silence update-inetd calls with "|| true".
+    - Add set -e and silence update-inetd calls with "|| true".
   * Regenerate symbols files from build logs (Closes: #868309).
   * Use the hwdb+udev format (Closes: #869244):
     - debian/rules: Call sane-desc with -m udev+hwdb and -m hwdb,
