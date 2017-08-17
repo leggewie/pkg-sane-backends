@@ -25,7 +25,7 @@ sane-backends (1.0.27-1~experimental3) experimental; urgency=medium
     - Remove references to the libsane-extras package.
   * Correct typos in the previous changelog entry.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 10 Aug 2017 08:51:45 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 17 Aug 2017 16:10:44 +0200
 
 sane-backends (1.0.27-1~experimental2) experimental; urgency=medium
 
