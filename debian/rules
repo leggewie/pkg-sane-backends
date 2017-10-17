@@ -134,7 +134,7 @@ override_dh_installinit-arch:
 	dh_installinit -psane-utils --name=saned
 
 override_dh_systemd_enable-arch:
-	dh_systemd_enable --no-enable saned.socket
+	dh_systemd_enable --no-enable debian/saned.socket
 
 override_dh_makeshlibs-arch:
 	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane1 -plibsane1

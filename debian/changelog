@@ -9,6 +9,7 @@ sane-backends (1.0.27-1~experimental3) experimental; urgency=medium
     - Move rules from override_dh_install-arch and override_dh_auto_install-arch
       to override_dh_install-indep and override_dh_auto_install-indep
       to build the arch all packages without error (CLoses: #870455).
+    - At dh_systemd_enable use debian/saned.socket instead saned.socket.
   * Move libsane-common.install.in to libsane-common.install.
   * debian/copyright:
     - Add year 2017 for debian/*.
