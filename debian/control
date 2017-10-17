@@ -2,7 +2,7 @@ Source: sane-backends
 Section: graphics
 Priority: optional
 Maintainer: Jörg Frings-Fürst <debian@jff-webhosting.net>
-Standards-Version: 4.0.0
+Standards-Version: 4.1.1
 Build-Depends:
  autoconf,
  chrpath,
