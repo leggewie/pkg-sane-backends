@@ -28,7 +28,7 @@ sane-backends (1.0.27-1~experimental3) experimental; urgency=medium
   * Declare compliance with Debian Policy 4.1.1 (No changes needed).
   * Move rm_conffile from libsane-common.preinst to libsane-common.maintscript.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Thu, 17 Aug 2017 16:10:44 +0200
+ -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Tue, 17 Oct 2017 21:47:01 +0200
 
 sane-backends (1.0.27-1~experimental2) experimental; urgency=medium
 
