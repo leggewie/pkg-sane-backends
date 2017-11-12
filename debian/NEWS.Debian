@@ -11,4 +11,4 @@ sane-backends (1.0.25-3) unstable; urgency=medium
   .
   Please use pkg-config instead of sane-config from the package pkg-config.
 
- -- Jörg Frings-Fürst <debian@jff-webhosting.net>  Sat, 10 Dec 2016 13:45:15 +0100
+ -- Jörg Frings-Fürst <debian@jff.email>  Sat, 10 Dec 2016 13:45:15 +0100

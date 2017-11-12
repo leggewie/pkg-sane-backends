@@ -1,3 +1,9 @@
+sane-backends (1.0.27-1~experimental4) UNRELEASED; urgency=medium
+
+  * Change to my new email address.
+
+ -- Jörg Frings-Fürst <debian@jff.email>  Sun, 12 Nov 2017 13:59:10 +0100
+
 sane-backends (1.0.27-1~experimental3) experimental; urgency=medium
 
   * debian/control:

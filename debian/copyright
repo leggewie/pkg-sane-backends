@@ -13,7 +13,7 @@ Copyright: 1997-2002 Kevin Dalley <kevind@rahul.net>
            2002-2011 Julien BLACHE <jblache@debian.org>
            2002-2006 Aurélien Jarno <aurel32@debian.org>
            2013      Mark Buda <hermit@acm.org>
-           2014-2017 Jörg Frings-Fürst <debian@jff-webhosting.net>
+           2014-2017 Jörg Frings-Fürst <debian@jff.email>
 License: GPL-2+ with sane exception
 
 Files: backend/abaton.*

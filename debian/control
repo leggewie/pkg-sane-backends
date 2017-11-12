@@ -1,7 +1,7 @@
 Source: sane-backends
 Section: graphics
 Priority: optional
-Maintainer: Jörg Frings-Fürst <debian@jff-webhosting.net>
+Maintainer: Jörg Frings-Fürst <debian@jff.email>
 Standards-Version: 4.1.1
 Build-Depends:
  autoconf,
