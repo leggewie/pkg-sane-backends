@@ -14,7 +14,7 @@ file in this directory that doesn't look like a backup file will be treated
 as a configuration snippet.
 
 This facility is used by packages providing external backends (like
-libsane-extras, hpoj or hplip) to "register" the backends they provide without
+hpoj or hplip) to "register" the backends they provide without
 much hassle.
 
 Each backend has a configuration file which specifies which devices,
@@ -168,14 +168,5 @@ tracking system, pleases always provide:
 
 Without that, your bug report will take longer to be processed, because we'll
 need to ask you for each of these items. Please help us help you.
-
-
-UNSUPPORTED DEVICES AND SPECIFIC NOTES
---------------------------------------
-
-If your scanner (or camera, or whatever) is not supported by the regular
-SANE distribution, have a look at the libsane-extras package which contains
-some backends not yet included in the regular SANE distribution.
-
 
 -- Julien BLACHE <jblache@debian.org>, Wed, 16 Feb 2011 19:00:12 +0100

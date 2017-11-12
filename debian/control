@@ -2,7 +2,7 @@ Source: sane-backends
 Section: graphics
 Priority: optional
 Maintainer: Jörg Frings-Fürst <debian@jff-webhosting.net>
-Standards-Version: 4.0.0
+Standards-Version: 4.1.1
 Build-Depends:
  autoconf,
  chrpath,
@@ -20,8 +20,6 @@ Build-Depends:
  libusb-1.0-0-dev,
  pkg-config,
  po-debconf,
- texlive,
- texlive-latex-extra,
  xutils-dev
 Homepage: http://www.sane-project.org
 Vcs-Git: git://anonscm.debian.org/collab-maint/sane-backends.git
@@ -36,6 +34,8 @@ Depends:
  update-inetd,
  ${misc:Depends},
  ${shlibs:Depends}
+Breaks: libsane-common (<<1.0.27-1~)
+Replaces: libsane-common (<<1.0.27-1~)
 Suggests: avahi-daemon, unpaper
 Description: API library for scanners -- utilities
  SANE stands for "Scanner Access Now Easy" and is an application
@@ -58,6 +58,7 @@ Multi-Arch: foreign
 Pre-Depends:
  dpkg (>= 1.15.7.2)
 Depends: ${misc:Depends}
+Breaks: sane-utils (<<1.0.27-1~)
 Description: API library for scanners -- documentation and support files
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
@@ -113,7 +114,6 @@ Multi-Arch: same
 Depends:
  libsane1 (= ${binary:Version}),
  ${misc:Depends}
-Recommends: libsane-extras-dev
 Description: API development library for scanners [development files]
  SANE stands for "Scanner Access Now Easy" and is an application
  programming interface (API) that provides standardized access to any
