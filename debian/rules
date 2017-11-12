@@ -4,20 +4,7 @@
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
-DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
-DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
-DEB_HOST_MULTIARCH  ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
-DEB_HOST_ARCH       ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
-DEB_HOST_ARCH_OS    ?= $(shell dpkg-architecture -qDEB_HOST_ARCH_OS)
-
-VERSION = $(shell head -n1 debian/changelog | sed -e 's/.*(//;s/-.*).*//;s/\+/\-/')
-
-ifeq ($(DEB_HOST_ARCH_OS),)
-  DEB_HOST_ARCH_OS := $(subst -gnu,,$(shell dpkg-architecture -qDEB_HOST_GNU_SYSTEM))
-  ifeq ($(DEB_HOST_ARCH_OS),gnu)
-      DEB_HOST_ARCH_OS := hurd
-  endif
-endif
+include /usr/share/dpkg/default.mk
 
 ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -g
@@ -95,7 +82,7 @@ override_dh_installman-indep:
 	$(RM) $(CURDIR)/debian/libsane-common/usr/share/man/man1/sane-find-scanner.1
 	$(RM) $(CURDIR)/debian/libsane-common/usr/share/man/man1/scanimage.1
 	$(RM) $(CURDIR)/debian/libsane-common/usr/share/man/man5/sane-umax_pp.5
-	$(RM) $(CURDIR)/debian/libsane-common/usr/share/man/man8/saned.8
+	$(RM) -r $(CURDIR)/debian/libsane-common/usr/share/man/man8/
         # remove manpages for not build libs
 	$(RM) $(CURDIR)/debian/libsane-common/usr/share/man/man5/sane-v4l.5
 
@@ -134,7 +121,7 @@ override_dh_installinit-arch:
 	dh_installinit -psane-utils --name=saned
 
 override_dh_systemd_enable-arch:
-	dh_systemd_enable --no-enable saned.socket
+	dh_systemd_enable --no-enable debian/saned.socket
 
 override_dh_makeshlibs-arch:
-	dh_makeshlibs -- -v$(VERSION) -Pdebian/libsane1 -plibsane1
+	dh_makeshlibs -- -v$(DEB_VERSION_UPSTREAM) -Pdebian/libsane1 -plibsane1

@@ -1,0 +1,1 @@
+rm_conffile /etc/sane.d/v4l.conf 1.0.24-10~
