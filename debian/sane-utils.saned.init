@@ -33,11 +33,6 @@ if [ -f /etc/default/saned ] ; then
     . /etc/default/saned
 fi
 
-if [ "x$RUN" != "xyes" ] ; then
-    log_success_msg "$NAME disabled; edit /etc/default/saned"
-    exit 0
-fi
-
 DAEMON_OPTS="-a $RUN_AS_USER"
 
 set -e

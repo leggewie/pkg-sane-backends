@@ -10,6 +10,8 @@ sane-backends (1.0.27-1~experimental4) UNRELEASED; urgency=medium
     - Change debian/compat to 11.
     - Bump minimum debhelper version in debian/control to >= 11.
   * Declare compliance with Debian Policy 4.1.3 (No changes needed).
+  * Remove the RUN parameter from /etc/default/saned and /etc/init.d/saned
+    in relation to Debian Policy Manual section 9.3.3.1.
 
  -- Jörg Frings-Fürst <debian@jff.email>  Sun, 12 Nov 2017 13:59:10 +0100
 
