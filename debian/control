@@ -6,7 +6,7 @@ Standards-Version: 4.1.1
 Build-Depends:
  autoconf,
  chrpath,
- debhelper (>= 10),
+ debhelper (>= 11),
  gettext,
  libavahi-client-dev,
  libcam-dev [kfreebsd-any],
