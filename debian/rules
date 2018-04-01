@@ -39,6 +39,9 @@ override_dh_auto_configure:
 		--with-usb \
 		--without-v4l
 
+override_dh_autoreconf:
+	dh_autoreconf -Xlibtool.m4
+
 override_dh_auto_build-indep:
 	# generate POT file for translators
 	(cd po && make sane-backends.pot)
