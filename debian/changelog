@@ -4,6 +4,11 @@ sane-backends (1.0.27-1~experimental4) UNRELEASED; urgency=medium
   * debian/rules:
     - Add override_dh_autoreconf to prevend delete of libtool.m4
       (Closes: #887032).
+    - Remove outdated configure parameter --enable-translations.
+    - Add configure parameter --enable-parport-directio for better parport
+      handling.
+    - Rename configure parameter --with-docdir to --docdir.
+    - Move backend-writing.txt from new directory.
   * debian/copyright:
     - Use secure copyright format URI.
   * Migrate to debhelper 11:

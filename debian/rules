@@ -28,16 +28,16 @@ override_dh_auto_configure:
 		--localstatedir=/var \
 		--datadir=\$${prefix}/share \
 		--mandir=\$${prefix}/share/man \
-		--with-docdir=\$${prefix}/share/doc/libsane \
+		--docdir=\$${prefix}/share/doc/libsane \
 		--disable-locking \
 		--enable-static \
 		--enable-pthread \
 		--with-gphoto2 \
-		--enable-translations \
 		--enable-avahi \
 		--enable-pnm-backend \
 		--with-usb \
-		--without-v4l
+		--without-v4l \
+		--enable-parport-directio
 
 override_dh_autoreconf:
 	dh_autoreconf -Xlibtool.m4
@@ -92,7 +92,7 @@ override_dh_installman-indep:
 override_dh_installdocs-arch:
 	dh_installdocs
 	# move files that belong to libsane-dev
-	mv debian/tmp/usr/share/doc/sane-backends/backend-writing.txt debian/libsane-dev/usr/share/doc/libsane-dev/
+	mv debian/tmp/usr/share/doc/libsane/backend-writing.txt debian/libsane-dev/usr/share/doc/libsane-dev/
 
 override_dh_installdocs-indep:
 	dh_installdocs
