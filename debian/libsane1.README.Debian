@@ -64,14 +64,14 @@ components, please refer to the manual pages listed below:
 SETUP
 -----
 
-In this day and age, SANE integrates with udev and ConsoleKit seemlessly; this
-means users physically logged into the machine (as opposed to users logged in
-remotely via SSH) have access to the scanners by default.
+In this day and age, SANE integrates with udev and ConsoleKit/systemd-logind
+seemlessly; this means users physically logged into the machine (as opposed
+to users logged in remotely via SSH) have access to the scanners by default.
 
 The solution proposed below is a legacy setup that remains valid for sharing
-scanners with saned or for systems that don't use ConsoleKit. Note that this is
-only a proposed solution, you are free to come up with and implement whatever
-access control mechanism you see fit.
+scanners with saned or for systems that don't use ConsoleKit/systemd-logind.
+Note that this is only a proposed solution, you are free to come up with and
+implement whatever access control mechanism you see fit.
 
 This package added a scanner group to your system. We recommend you add to
 this group the users that should be able to access your scanner(s), and
