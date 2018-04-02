@@ -22,3 +22,5 @@
 0145-avahi.patch
 0100-source_spelling.patch
 0150-genesys-Fix-use-of-uninitialized-variable.patch
+#0130-usb-timeout.patch
+0715-20-sane.hwdb_multi-arch.patch

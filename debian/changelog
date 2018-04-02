@@ -12,7 +12,11 @@ sane-backends (1.0.27-1~experimental4) UNRELEASED; urgency=medium
   * Declare compliance with Debian Policy 4.1.3 (No changes needed).
   * Remove the RUN parameter from /etc/default/saned and /etc/init.d/saned
     in relation to Debian Policy Manual section 9.3.3.1.
-
+  * Refresh debian/patches/0100-source_spelling.patch.
+  * New debian/patches/0715-20-sane.hwdb_multi-arch.patch:
+    - Remove buildtime from 20-sane.hwdb to make the file multi-arch ready
+      (Closes: #880391)
+ 
  -- Jörg Frings-Fürst <debian@jff.email>  Sun, 12 Nov 2017 13:59:10 +0100
 
 sane-backends (1.0.27-1~experimental3) experimental; urgency=medium

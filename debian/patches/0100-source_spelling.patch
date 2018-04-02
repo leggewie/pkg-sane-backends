@@ -47,3 +47,82 @@ Index: trunk/doc/sane-pixma.man
  .PP
  Setting timeouts should only be required in exceptional cases.
  .PP
+@@ -288,7 +288,7 @@ common subnet for scanning.
+ .PP
+ Scanner detection is slightly more complicated. The pixma backend sends
+ a broadcast on all direct connected subnets it can find (provided your OS 
+-allows for enumeration of all netowrk interfaces). The broadcast is sent FROM 
++allows for enumeration of all network interfaces). The broadcast is sent FROM 
+ port 8612 TO port 8610 or 8612 on the broadcast address of each interface.
+ The outgoing packets will be allowed by the rule described above.
+ .PP
+Index: trunk/doc/sane-canon_dr.man
+===================================================================
+--- trunk.orig/doc/sane-canon_dr.man
++++ trunk/doc/sane-canon_dr.man
+@@ -105,7 +105,7 @@ Scanners can be specified in the configu
+ .PP
+ "scsi CANON DR"
+ .RS
+-Requests backend to search all scsi busses in the system for a device 
++Requests backend to search all scsi buses in the system for a device 
+ which reports itself to be a scanner made by 'CANON', with a model name
+ starting with 'DR'. 
+ .RE
+@@ -119,7 +119,7 @@ specify one. Probably should not be used
+ .PP
+ "usb 0x04a9 0x1603" (or other vendor/product ids)
+ .RS
+-Requests backend to search all usb busses in the system for a device 
++Requests backend to search all usb buses in the system for a device 
+ which uses that vendor and product id. The device will then be queried
+ to determine if it is a Canon scanner.
+ .RE
+Index: trunk/doc/sane-cardscan.man
+===================================================================
+--- trunk.orig/doc/sane-cardscan.man
++++ trunk/doc/sane-cardscan.man
+@@ -37,7 +37,7 @@ Scanners can be specified in the configu
+ .PP
+ "usb 0x04c5 0x1042" (or other vendor/product ids)
+ .RS
+-Requests backend to search all usb busses in the system for a device 
++Requests backend to search all usb buses in the system for a device 
+ which uses that vendor and product id. The device will then be queried
+ to determine if it is a cardscan scanner.
+ .RE
+Index: trunk/doc/sane-epjitsu.man
+===================================================================
+--- trunk.orig/doc/sane-epjitsu.man
++++ trunk/doc/sane-epjitsu.man
+@@ -42,7 +42,7 @@ Scanners can be specified in the configu
+ .PP
+ "usb 0x04c5 0x10c7" (or other vendor/product ids)
+ .RS
+-Requests backend to search all usb busses in the system for a device which uses that vendor and product id. The device will then be queried to determine if it is a supported scanner.
++Requests backend to search all usb buses in the system for a device which uses that vendor and product id. The device will then be queried to determine if it is a supported scanner.
+ .RE
+ .PP
+ "usb /dev/usb/scanner0" (or other device file)
+Index: trunk/doc/sane-fujitsu.man
+===================================================================
+--- trunk.orig/doc/sane-fujitsu.man
++++ trunk/doc/sane-fujitsu.man
+@@ -109,7 +109,7 @@ Scanners can be specified in the configu
+ .PP
+ "scsi FUJITSU"
+ .RS
+-Requests backend to search all scsi busses in the system for a device 
++Requests backend to search all scsi buses in the system for a device 
+ which reports itself to be a scanner made by 'FUJITSU'. 
+ .RE
+ .PP
+@@ -122,7 +122,7 @@ specify one. Probably should not be used
+ .PP
+ "usb 0x04c5 0x1042" (or other vendor/product ids)
+ .RS
+-Requests backend to search all usb busses in the system for a device 
++Requests backend to search all usb buses in the system for a device 
+ which uses that vendor and product id. The device will then be queried
+ to determine if it is a Fujitsu scanner.
+ .RE
