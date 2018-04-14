@@ -2,31 +2,31 @@ sane-backends (1.0.27-1~experimental4) experimental; urgency=medium
 
   * Change to my new email address.
   * debian/rules:
-    - Add override_dh_autoreconf to prevent delete of libtool.m4
+    - Add override_dh_autoreconf to prevent removal of libtool.m4
       (Closes: #887032).
     - Remove outdated configure parameter --enable-translations.
     - Add configure parameter --enable-parport-directio for better parallel
       port handling.
     - Rename configure parameter --with-docdir to --docdir.
-    - Move backend-writing.txt from new directory.
+    - Correct the source directory to get backend-writing.txt.
   * debian/copyright:
     - Use secure copyright format URI.
   * Migrate to debhelper 11:
     - Change debian/compat to 11.
     - Bump minimum debhelper version in debian/control to >= 11.
-  * Declare compliance with Debian Policy 4.1.3 (No changes needed).
-  * Remove the RUN parameter from /etc/default/saned and /etc/init.d/saned
-    in relation to Debian Policy Manual section 9.3.3.1.
+  * Declare compliance with Debian Policy 4.1.4:
+    - Remove the RUN parameter from /etc/default/saned and /etc/init.d/saned
+      in compliance with Debian Policy Manual section 9.3.3.1.
   * Refresh debian/patches/0100-source_spelling.patch.
   * New debian/patches/0715-20-sane.hwdb_multi-arch.patch:
-    - Remove buildtime from 20-sane.hwdb to make the file multi-arch ready
+    - Remove buildtime from 20-sane.hwdb to make the file ready for multi-arch.
       (Closes: #880391)
   * debian/libsane1.README.Debian:
     - Replace ConsoleKit with ConsoleKit/systemd-logind (Closes: #872364).
   * debian/control:
     - Add libsnmp-dev to Build-Depends to enable SNMP support.
 
- -- Jörg Frings-Fürst <debian@jff.email>  Mon, 02 Apr 2018 14:29:43 +0200
+ -- Jörg Frings-Fürst <debian@jff.email>  Sat, 14 Apr 2018 13:30:56 +0200
 
 sane-backends (1.0.27-1~experimental3) experimental; urgency=medium
 
